@@ -81,7 +81,7 @@ async def requestCode(request: Request):
     if not uniqueCode:
         uniqueCode = blake2b(
             data["deviceID"].encode("utf-8"),
-            key="AltAmino".encode("utf-8"),
+            key=Config.PASSWORD_SALT.encode("utf-8"),
             salt=str(ceil(timestamp())).encode("utf-8"),
             digest_size=32,
         ).hexdigest()
@@ -235,7 +235,7 @@ async def register(request: Request):
 
     uid = str(uuid4())
     passwordHash = blake2b(
-        data["secret"].encode("utf-8"), key="AltAmino".encode("utf-8")
+        data["secret"].encode("utf-8"), key=Config.PASSWORD_SALT.encode("utf-8")
     ).hexdigest()
     await users.insert_one(
         ModelFabric.Construct(
@@ -321,7 +321,7 @@ async def login(request: Request):
     if len(secretSplitted) == 2 and secretSplitted[0] == "0":
         passwordHash = blake2b(
             data["secret"].encode("utf-8"),
-            key="AltAmino".encode("utf-8"),
+            key=Config.PASSWORD_SALT.encode("utf-8"),
             digest_size=64,
         ).hexdigest()
 
