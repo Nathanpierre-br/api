@@ -195,7 +195,7 @@ async def delete_chat(chatId: str, request: Request):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession()
-    
+
     trigger_uid = request.state.session["uid"]
     db = await Database().init()
     table = await db.get("x0", "Chats")
@@ -222,7 +222,6 @@ async def if_chat_exists(
 
     uid = request.state.session["uid"]
     if type == "exist-single" and q:
-
         db = await Database().init()
         table = await db.get("x0", "Chats")
         query = {
@@ -464,8 +463,7 @@ async def send_message(request: Request, chatId: str):
         if (
             (
                 # [info] types in messagetypes.json
-                data["type"]
-                not in [0, 2, 3]
+                data["type"] not in [0, 2, 3]
             )
             or (
                 data.get("mediaType")
@@ -714,8 +712,7 @@ async def update_message(request: Request, chatId: str, messageId: str):
         if (
             (
                 # [info] types in messagetypes.json
-                data["type"]
-                not in [0, 2, 3]
+                data["type"] not in [0, 2, 3]
             )
             or (
                 data.get("mediaType")
@@ -923,8 +920,9 @@ async def get_chat_members(
     connection = await Database().init()
     chat = await connection.get("x0", f"Chats")
     chat_info = await chat.find_one({"id": chatId})
-    g_users, xndc_users = await connection.get(table="Users"), await connection.get(
-        "x0", "Users"
+    g_users, xndc_users = (
+        await connection.get(table="Users"),
+        await connection.get("x0", "Users"),
     )
     if type == "default":
         members = chat_info["memberList"]
@@ -955,8 +953,9 @@ async def get_chat_members(
                 continue
             non_cohosts.append(i)
         non_cohosts = non_cohosts[start : start + size]
-        g_users, xndc_users = await connection.get(table="Users"), await connection.get(
-            "x0", "Users"
+        g_users, xndc_users = (
+            await connection.get(table="Users"),
+            await connection.get("x0", "Users"),
         )
 
         answer = Base.Answer(
@@ -995,8 +994,9 @@ async def get_chat_cohosts(request: Request, chatId: str):
         return Errors.NotEnoughRights(timestamp() - t1)
 
     members = chat_info["cohostsIds"]
-    g_users, xndc_users = await connection.get(table="Users"), await connection.get(
-        "x0", "Users"
+    g_users, xndc_users = (
+        await connection.get(table="Users"),
+        await connection.get("x0", "Users"),
     )
 
     answer = Base.Answer(
@@ -1033,8 +1033,9 @@ async def set_cohosts(request: Request, chatId: str):
         await connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
-    g_users, xndc_users = await connection.get(table="Users"), await connection.get(
-        "x0", "Users"
+    g_users, xndc_users = (
+        await connection.get(table="Users"),
+        await connection.get("x0", "Users"),
     )
     answer = Base.Answer(
         {
@@ -1075,8 +1076,9 @@ async def set_cohosts(request: Request, chatId: str, uid: str):
 
     chat_info = await chat.find_one({"id": chatId})
     cohosts = chat_info["cohostsIds"]
-    g_users, xndc_users = await connection.get(table="Users"), await connection.get(
-        "x0", "Users"
+    g_users, xndc_users = (
+        await connection.get(table="Users"),
+        await connection.get("x0", "Users"),
     )
     answer = Base.Answer(
         {
@@ -1183,8 +1185,9 @@ async def join_chat(request: Request, chatId: str, userId: str):
         content=None,
     )
     await table.insert_one(message)
-    g_users, xndc_users = await connection.get(table="Users"), await connection.get(
-        "x0", "Users"
+    g_users, xndc_users = (
+        await connection.get(table="Users"),
+        await connection.get("x0", "Users"),
     )
     messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
     ws_send_obj = {
@@ -1275,8 +1278,9 @@ async def leave_chat(request: Request, chatId: str, userId: str, allowRejoin: in
             | isBan,
         )
 
-        g_users, xndc_users = await connection.get(table="Users"), await connection.get(
-            "x0", "Users"
+        g_users, xndc_users = (
+            await connection.get(table="Users"),
+            await connection.get("x0", "Users"),
         )
         messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
         ws_send_obj = {
@@ -1377,8 +1381,9 @@ async def toggle_things(chatId: str, mode: str, parameter: str, request: Request
                 {"id": chatId}, {"$set": {"lastMessageId": messageId}}
             )
 
-            g_users, xndc_users = await db.get(table="Users"), await db.get(
-                "x0", "Users"
+            g_users, xndc_users = (
+                await db.get(table="Users"),
+                await db.get("x0", "Users"),
             )
             messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
             ws_send_obj = {
