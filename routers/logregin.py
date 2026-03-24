@@ -356,7 +356,7 @@ async def login(request: Request):
                     "auid": row["id"],
                     "account": User.OwnSensetiveProfile(row),
                     "userProfile": User.OwnNonSensetiveProfile(additionalRow | row),
-                    "secret": f"31 {row['id']} {ip} {b64encode(passwordHash.encode()).decode()} {tmstmp} {31*tmstmp}",
+                    "secret": f"31 {row['id']} {ip} {b64encode(passwordHash.encode()).decode()} {tmstmp} {31 * tmstmp}",
                     "sid": await SessionProcessor.Make(
                         row["id"], ip, data["clientType"]
                     ),

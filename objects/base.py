@@ -15,7 +15,7 @@ class Base:
         return ORJSONResponse(
             {
                 "api:statuscode": api_status_code,
-                "api:duration": f"{round(spent_time+0.001, 4)}s",
+                "api:duration": f"{round(spent_time + 0.001, 4)}s",
                 "api:message": api_message,
                 "api:timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             }
