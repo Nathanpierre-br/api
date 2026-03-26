@@ -93,19 +93,26 @@ class RequestProcessor:
         # non-get request checks
         if request.method in ["POST", "DELETE"]:
             content_type = headers.get("Content-Type") or "application/octet-stream"
-            print(content_type, headers) # sorry will remove latwr
-            if content_type not in [
+            c_t_white_list = [
                 "image/jpg",
                 "image/jpeg",
                 "image/png",
                 "image/webp",
                 "image/gif",
+                "audio/mp4",
+                "audio/ogg",
+                "audio/aac",
+                "audio/x-aac",
+                "audio/ogg; codecs=opus"
+                "video/mp4",
                 "application/x-www-form-urlencoded",
                 "application/octet-stream",
                 "application/json",
                 "application/json; charset=utf-8",
-            ]:
-                return [False, Errors.InvalidRequest()]
+            ]
+            for item in content_type.split(","):
+                if item not in c_t_white_list:
+                    return [False, Errors.InvalidRequest()]
 
             content_length = headers.get("Content-Length", "0")
             if not content_length.isdigit():
