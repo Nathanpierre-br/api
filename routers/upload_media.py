@@ -11,9 +11,27 @@ from objects import *
 # import sys
 # sys.path.append('../')
 
+def detect_file_ext(data: bytes) -> str | None:
+    if len(data) < 12:
+        return None
+
+    # JPEG
+    if data.startswith(b'\xff\xd8\xff'):
+        return ".jpeg"
+    # PNG
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return ".png"
+    # GIF
+    if data.startswith(b'GIF87a') or data.startswith(b'GIF89a'):
+        return ".gif"
+    # WebP
+    if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+        return ".webp"
+    
+    return None
+
 upload_media = APIRouter()
 upload_media.route_class = CachableRoute
-
 
 @upload_media.post("/g/s/media/upload")
 async def upload(request: Request):
@@ -23,7 +41,6 @@ async def upload(request: Request):
 
     # this is getting data
     body = await request.body()
-    headers = request.headers
 
     if len(body) > Config.MAX_FILE_SIZE:
         return Errors.BigMediaContent(timestamp() - t1)
@@ -36,29 +53,18 @@ async def upload(request: Request):
         endpoint_url=Config.S3_ENDPOINT_URL,
     )
 
-    # generating filename
-    content_type = headers.get("Content-Type", "")
-    if "," in content_type:
-        arr_c_t = content_type.split(",")
-        for i in arr_c_t:
-            if "image" in i:
-                content_type = i
-                break
-
-    filetype_dict = {
-        "image/jpg": ".jpg",
-        "image/jpeg": ".jpeg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-    }
-    filetype = filetype_dict.get(content_type, "")
-    if filetype == "":
+    # validating imagw and getting its type
+    # [note]: its still not safe,
+    # but better and still fast then content-type
+    file_ext = detect_file_ext(body)    
+    if file_ext == "":
         return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
-    filename = "".join([choice(ascii_letters + digits) for _ in range(64)]) + filetype
+
+    # generating filename
+    filename = "".join([choice(ascii_letters + digits) for _ in range(64)]) + file_ext
 
     # compress + resize if needed
-    body = ImageTools.compress(body, filetype[1:])
+    body = ImageTools.compress(body, file_ext[1:])
 
     # upload file
     s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
@@ -75,7 +81,6 @@ async def upload_with_target(request: Request, target: str):
 
     # this is getting data
     body = await request.body()
-    headers = request.headers
 
     if len(body) > Config.MAX_FILE_SIZE:
         return Errors.BigMediaContent(timestamp() - t1)
@@ -88,25 +93,22 @@ async def upload_with_target(request: Request, target: str):
         endpoint_url=Config.S3_ENDPOINT_URL,
     )
 
-    # generating filename
-    content_type = headers.get("Content-Type", "")
-    filetype_dict = {
-        "image/jpg": ".jpg",
-        "image/jpeg": ".jpeg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-    }
-    filetype = filetype_dict.get(content_type, "")
-    if filetype == "":
+    # validating imagw and getting its type
+    # [note]: its still not safe,
+    # but better and still fast then content-type
+    file_ext = detect_file_ext(body)    
+    if file_ext == "":
         return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
-    filename = "".join([choice(ascii_letters + digits) for _ in range(64)]) + filetype
+
+    # generating filename
+    filename = "".join([choice(ascii_letters + digits) for _ in range(64)]) + file_ext
 
     # compress + resize if needed
-    body = ImageTools.compress(body, filetype[1:])
+    body = ImageTools.compress(body, file_ext[1:])
 
     # upload file
     s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
+
     return Base.Answer(
         {"mediaValue": Config.MEDIA_BASE_URL + filename}, timestamp() - t1
     )
