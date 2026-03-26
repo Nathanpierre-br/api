@@ -93,6 +93,7 @@ class RequestProcessor:
         # non-get request checks
         if request.method in ["POST", "DELETE"]:
             content_type = headers.get("Content-Type") or "application/octet-stream"
+            print(content_type, headers) # sorry will remove latwr
             if content_type not in [
                 "image/jpg",
                 "image/jpeg",
