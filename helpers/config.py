@@ -21,6 +21,7 @@ class Config:
     SMTP_PORT = environ.get("SMTP_PORT")
     SMTP_USER = environ.get("SMTP_USER")
     SMTP_PSWD = environ.get("SMTP_PSWD")
+    SMTP_SNDR = environ.get("SMTP_SNDR")
 
     API_DOMAIN = environ.get("API_DOMAIN")
     SITE_DOMAIN = environ.get("SITE_DOMAIN")

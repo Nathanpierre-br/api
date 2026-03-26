@@ -109,7 +109,7 @@ async def requestCode(request: Request):
             use_starttls=True,
         )
         email.send(
-            # sender="AltAmino Team",
+            sender=Config.SMTP_SNDR,
             subject="Confirmation code for AltAmino",
             receivers=[reciever],
             html=text.replace(
