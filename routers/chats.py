@@ -149,7 +149,7 @@ async def edit_chat(chatId: str, request: Request):
     table = await db.get("x0", "Chats")
     chat_info = await table.find_one({"id": chatId})
 
-    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info["cohostsIds"]:
+    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get('cohostsIds', []):
         # bg = data.get("extensions", {}).get("bm", [None, None])[1]
         bg = data.get("extensions", {}).get("bm")
         if isinstance(bg, list):
@@ -503,7 +503,7 @@ async def send_message(request: Request, chatId: str):
     chat = await db.get("x0", f"Chats")
     chat_info = await chat.find_one({"id": chatId})
 
-    staff = [chat_info["hostId"]] + chat_info["cohostsIds"]
+    staff = [chat_info["hostId"]] + chat_info.get('cohostsIds', [])
     if chat_info["isViewMode"] and trigger_uid not in staff:
         await db.close()
         return Errors.ViewModeEnabled(timestamp() - t1)
@@ -678,7 +678,7 @@ async def delete_message(request: Request, chatId: str, messageId: str):
         chat = await db.get("x0", f"Chats")
         chat_info = await chat.find_one({"id": chatId})
         if (
-            trigger_uid not in chat_info["cohostsIds"]
+            trigger_uid not in chat_info.get('cohostsIds', [])
             and trigger_uid != chat_info["hostId"]
         ):
             return Errors.InvalidRequest(timestamp() - t1)
@@ -752,7 +752,7 @@ async def update_message(request: Request, chatId: str, messageId: str):
     chat = await db.get("x0", f"Chats")
     chat_info = await chat.find_one({"id": chatId})
 
-    staff = [chat_info["hostId"]] + chat_info["cohostsIds"]
+    staff = [chat_info["hostId"]] + chat_info.get('cohostsIds', [])
     if chat_info["isViewMode"] and trigger_uid not in staff:
         await db.close()
         return Errors.ViewModeEnabled(timestamp() - t1)
@@ -948,7 +948,7 @@ async def get_chat_members(
         )
     elif type == "co-host":
         members = chat_info["memberList"]
-        co_hosts = chat_info["cohostsIds"]
+        co_hosts = chat_info.get('cohostsIds', [])
 
         non_cohosts = []
         for i in members + co_hosts:
@@ -996,7 +996,7 @@ async def get_chat_cohosts(request: Request, chatId: str):
         await connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
-    members = chat_info["cohostsIds"]
+    members = chat_info.get('cohostsIds', [])
     g_users, xndc_users = (
         await connection.get(table="Users"),
         await connection.get("x0", "Users"),
@@ -1078,7 +1078,7 @@ async def set_cohosts(request: Request, chatId: str, uid: str):
     await chat.update_one({"id": chatId}, {"$pull": {"cohostsIds": uid}})
 
     chat_info = await chat.find_one({"id": chatId})
-    cohosts = chat_info["cohostsIds"]
+    cohosts = chat_info.get('cohostsIds', [])
     g_users, xndc_users = (
         await connection.get(table="Users"),
         await connection.get("x0", "Users"),
@@ -1241,7 +1241,7 @@ async def leave_chat(request: Request, chatId: str, userId: str, allowRejoin: in
         if userId == chat_info["hostId"]:
             await connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
-        elif uid not in chat_info["cohostsIds"] and uid != chat_info["hostId"]:
+        elif uid not in chat_info.get('cohostsIds', []) and uid != chat_info["hostId"]:
             await connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
         else:
@@ -1249,7 +1249,7 @@ async def leave_chat(request: Request, chatId: str, userId: str, allowRejoin: in
 
     if allowRejoin != 1:
         print("allow rejoin obviously not 1")
-        if uid in chat_info["cohostsIds"] or uid == chat_info["hostId"]:
+        if uid in chat_info.get('cohostsIds', []) or uid == chat_info["hostId"]:
             print("ok you have rights")
             ban = True
         else:
@@ -1364,7 +1364,7 @@ async def toggle_things(chatId: str, mode: str, parameter: str, request: Request
     table = await db.get("x0", "Chats")
     chat_info = await table.find_one({"id": chatId})
 
-    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info["cohostsIds"]:
+    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get('cohostsIds', []):
         if parameter == "view-only":
             await table.update_one(
                 {"id": chatId},
