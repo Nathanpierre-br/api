@@ -150,7 +150,10 @@ async def edit_chat(chatId: str, request: Request):
     chat_info = await table.find_one({"id": chatId})
 
     if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info["cohostsIds"]:
-        bg = data.get("extensions", {}).get("bm", [None, None])[1]
+        # bg = data.get("extensions", {}).get("bm", [None, None])[1]
+        bg = data.get("extensions", {}).get("bm")
+        if isinstance(bg, list):
+            bg = bg[1]
 
         update_chat = {}
         if data.get("content"):
