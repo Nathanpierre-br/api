@@ -486,9 +486,18 @@ async def joined_communities(request: Request):
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
 
+    uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(table="Users")
+    row1 = await table.find_one({"id": uid})
+    if row1 == None:
+        return Errors.AccountNotExist(timestamp() - t1)
+
+
     return Base.Answer(
         {
-            "communityList": [],  # "communityList": [0]
+            "communityList": row1["communityList"],  # "communityList": [0]
             "userInfoInCommunities": {},
             "showStoreBadge": True,
         },
