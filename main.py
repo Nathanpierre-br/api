@@ -15,6 +15,7 @@ from routers.logregin import logregin
 from routers.profile import profile_methods
 from routers.upload_media import upload_media
 from routers.configurations import configurations
+from routers.communities import communities
 
 # app things
 
@@ -35,6 +36,7 @@ app.include_router(logregin, prefix="/api/v1")
 app.include_router(upload_media, prefix="/api/v1")
 app.include_router(configurations, prefix="/api/v1")
 app.include_router(profile_methods, prefix="/api/v1")
+app.include_router(communities, prefix="/api/v1")
 
 app.add_middleware(BrotliMiddleware, gzip_fallback=True)
 app.add_middleware(
