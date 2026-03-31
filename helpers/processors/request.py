@@ -21,6 +21,20 @@ class RequestProcessor:
     """
 
     @staticmethod
+    def __is_mediamessage_send(path: str, headers: dict):
+        return (
+            "/s/chat/thread" in path
+            and "/message" in path
+            and any(
+                t in headers.get("Content-Type", "")
+                for t in [
+                    "application/x-www-form-urlencoded",
+                    "application/octet-stream",
+                ]
+            )
+        )
+
+    @staticmethod
     def __is_timestamp_valid(timestamp: int | str):
         """
         True if timestamp is good, False if bad
@@ -121,17 +135,9 @@ class RequestProcessor:
             # check if content_length is valid
 
             if ("media/upload" not in request.url.path) and (
-                "/s/chat/thread" not in request.url.path
-                and "/message" not in request.url.path
-                and not any(
-                    t in headers.get("Content-Type", "")
-                    for t in [
-                        "application/x-www-form-urlencoded",
-                        "application/octet-stream",
-                    ]
-                )
+                not RequestProcessor.__is_mediamessage_send(request.url.path, headers)
             ):
-                # EXPLANATIOM:
+                # EXPLANATION:
                 # sending message in android with image/voice
                 # not sending signature, we need to bypass it sadly
                 if not SignatureProcessor.Validate(
@@ -139,7 +145,17 @@ class RequestProcessor:
                 ):
                     return [False, Errors.InvalidRequest()]
 
-            if data and "media/upload" not in request.scope["path"]:
+            if (
+                data
+                and ("media/upload" not in request.scope["path"])
+                and (
+                    not RequestProcessor.__is_mediamessage_send(
+                        request.url.path, headers
+                    )
+                )
+            ):
+                # EXPLANATION:
+                # somehow also there is no timestamp on android
                 try:
                     json = loads(data)
 
