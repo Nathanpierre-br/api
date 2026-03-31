@@ -13,6 +13,8 @@ class Communities:
         ndcId: int | dict,
         connection=None,
         trigger_uid: Union[str, None] = None,
+        g_users=None,
+        x_ndcusers=None,
     ):
         if not connection:
             connection = await Database().init()
@@ -51,24 +53,23 @@ class Communities:
             "extensions": {} | data.get("extensions", {}),
             "createdTime": data.get("createdTime", "2023-01-01T12:00:00Z"),
             "updatedTime": data.get("updatedTime", "2023-01-01T12:00:00Z"),
+            "userAddedTopicList": data.get("tags", []),
+            "searchable": True,
+            "influencerList": [],
         }
 
         # db data
         """
     class Communities(Schema):
         staff = List(UUID(metadata={"as_string": True}), default=[])
-        tags = List(String(), default=[])
         """
 
         # an example json
-        {
+        """{
             "primaryLanguage": "ru",
-            "userAddedTopicList": [],
             "probationStatus": 0,
             "listedStatus": 0,
-            "searchable": true,
             "isStandaloneAppDeprecated": false,
-            "influencerList": [],
             "keywords": "keyword1, keyword2",
             "mediaList": [],
             "isStandaloneAppMonetizationEnabled": false,
@@ -108,4 +109,4 @@ class Communities:
             },
             "activeInfo": {},
             "extensions": {"communityNameAliases": ["Alias1", "Alias2"]},
-        }
+        }"""
