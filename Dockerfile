@@ -9,7 +9,7 @@ ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
     
 RUN apk update
-RUN apt add supervisor py3-opencv opencv libstdc++ --no-cache
+RUN apk add supervisor py3-opencv opencv libstdc++ --no-cache
 
 RUN uv sync
 
