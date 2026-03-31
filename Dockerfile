@@ -8,6 +8,8 @@ ENV PYTHONUNBUFFERED=1
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
 
+RUN apt-get update && apt-get install -y ca-certificates
+
 RUN uv sync
 
 CMD ["uv", "run", "supervisord", "-c", "files/supervisord.conf"]
