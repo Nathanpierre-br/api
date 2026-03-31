@@ -1,4 +1,4 @@
-FROM valkey/valkey:latest AS base
+FROM valkey/valkey:latest-alpine AS base
 
 WORKDIR /app
 COPY . .
@@ -10,7 +10,7 @@ ENV UV_LINK_MODE=copy \
     
 RUN uv sync
 
-RUN apt update
-RUN apt install supervisor -y
+RUN apk update
+RUN apt add supervisor --no-cache
 
 CMD ["supervisord", "-c", "files/supervisord.conf"]

@@ -1119,7 +1119,7 @@ async def join_chat(request: Request, chatId: str):
     connection = await Database().init()
     chat = await connection.get("x0", f"Chats")
     chat_info = await chat.find_one({"id": chatId})
-    staff = [chat_info["hostId"]] + chat_info["cohostsId"]
+    staff = [chat_info["hostId"]] + chat_info.get("cohostsId", [])
     if uid not in staff or uid not in chat_info["memberList"]:
         if not data["canMembersInvite"]:
             await connection.close()
