@@ -14,7 +14,7 @@ class Communities:
         connection=None,
         trigger_uid: Union[str, None] = None,
         g_users=None,
-        x_ndcusers=None,
+        xndc_users=None,
     ):
         if not connection:
             connection = await Database().init()
@@ -31,7 +31,7 @@ class Communities:
             host_global = await users.find_one({"id": data["agent"]})
 
         if xndc_users:
-            host_xndcId = await x_ndcusers.find_one({"id": data["agent"]})
+            host_xndcId = await xndc_users.find_one({"id": data["agent"]})
         else:
             users = await connection.get(f"x{ndcId}", "Users")
             host_xndcId = await users.find_one({"id": data["agent"]})
