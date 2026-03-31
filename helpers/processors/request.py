@@ -121,15 +121,7 @@ class RequestProcessor:
                 content_length = int(content_length)
             # check if content_length is valid
 
-            # since urlencoded is a little bit buggy (and required only when requests are empty as octets)
-            if content_type in [
-                "application/x-www-form-urlencoded",
-                "application/octet-stream",
-            ]:
-                if len(data) > 2 or content_length > 2:
-                    print("big nothing!")
-                    return [False, Errors.InvalidRequest()]
-            elif "media/upload" not in request.url.path:
+            if "media/upload" not in request.url.path:
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
