@@ -4,3 +4,4 @@ from .base import Base
 from .chats import Chat
 from .links import Links
 from .comments import Comments
+from .communities import Communities
