@@ -92,7 +92,7 @@ class RequestProcessor:
 
         # non-get request checks
         if request.method in ["POST", "DELETE"]:
-            content_type = headers.get("Content-Type") or "application/octet-stream"
+            content_type = headers.get("Content-Type")  # or "application/octet-stream"
             c_t_white_list = [
                 "image/jpg",
                 "image/jpeg",
@@ -121,16 +121,15 @@ class RequestProcessor:
                 content_length = int(content_length)
             # check if content_length is valid
 
-            if "media/upload" not in request.url.path:
+            if ("media/upload" not in request.url.path) or (
+                "/s/chat/thread" not in request.url.path
+                and "/message" not in request.url.path
+                and "application/x-www-form-urlencoded"
+                not in headers.get("Content-Type")
+            ):
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
-                    print(
-                        "invalid signature! / signature: {} / data:".format(
-                            headers.get("NDC-MSG-SIG", "")
-                        ),
-                        data,
-                    )
                     return [False, Errors.InvalidRequest()]
 
             if data and "media/upload" not in request.scope["path"]:
@@ -142,7 +141,6 @@ class RequestProcessor:
                     ):
                         return [False, Errors.ExpiredRequest()]
                 except:
-                    print("cant check timestamp!")
                     return [False, Errors.InvalidRequest()]
 
         return [True, None]
