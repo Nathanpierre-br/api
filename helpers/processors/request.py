@@ -125,7 +125,12 @@ class RequestProcessor:
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
-                    print("invalid signature!")
+                    print(
+                        "invalid signature! / signature: {} / data:".format(
+                            headers.get("NDC-MSG-SIG", "")
+                        ),
+                        data,
+                    )
                     return [False, Errors.InvalidRequest()]
 
             if data and "media/upload" not in request.scope["path"]:
