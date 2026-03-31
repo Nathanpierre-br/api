@@ -11,27 +11,30 @@ from objects import *
 # import sys
 # sys.path.append('../')
 
+
 def detect_file_ext(data: bytes) -> str | None:
     if len(data) < 12:
         return None
 
     # JPEG
-    if data.startswith(b'\xff\xd8\xff'):
+    if data.startswith(b"\xff\xd8\xff"):
         return ".jpeg"
     # PNG
-    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return ".png"
     # GIF
-    if data.startswith(b'GIF87a') or data.startswith(b'GIF89a'):
+    if data.startswith(b"GIF87a") or data.startswith(b"GIF89a"):
         return ".gif"
     # WebP
-    if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+    if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
         return ".webp"
-    
+
     return None
+
 
 upload_media = APIRouter()
 upload_media.route_class = CachableRoute
+
 
 @upload_media.post("/g/s/media/upload")
 async def upload(request: Request):
@@ -56,7 +59,7 @@ async def upload(request: Request):
     # validating imagw and getting its type
     # [note]: its still not safe,
     # but better and still fast then content-type
-    file_ext = detect_file_ext(body)    
+    file_ext = detect_file_ext(body)
     if file_ext == "":
         return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
 
@@ -96,7 +99,7 @@ async def upload_with_target(request: Request, target: str):
     # validating imagw and getting its type
     # [note]: its still not safe,
     # but better and still fast then content-type
-    file_ext = detect_file_ext(body)    
+    file_ext = detect_file_ext(body)
     if file_ext == "":
         return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
 

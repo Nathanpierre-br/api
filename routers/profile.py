@@ -106,11 +106,12 @@ async def get_visits(request: Request):
 # following
 # /g/s/user-profile/{userId}/joined?start={start}&size={size}
 @profile_methods.get("/g/s/user-profile/{uid}/joined")
-async def get_user_following(uid, request: Request, start: int = 0, size: int = 25):
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/joined")
+async def get_user_following(uid, request: Request, start: int = 0, size: int = 25, ndcId = 0):
     t1 = timestamp()
 
     db = await Database().init()
-    xndcid_table = await db.get("x0", "Users")
+    xndcid_table = await db.get(f"x{ndcId}", "Users")
     global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     following = row["following"][start : start + size]
@@ -131,11 +132,12 @@ async def get_user_following(uid, request: Request, start: int = 0, size: int = 
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/member")
-async def get_user_followers(uid, request: Request, start: int = 0, size: int = 25):
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/member")
+async def get_user_followers(uid, request: Request, start: int = 0, size: int = 25, ndcId = 0):
     t1 = timestamp()
 
     db = await Database().init()
-    xndcid_table = await db.get("x0", "Users")
+    xndcid_table = await db.get(f"x{ndcId}", "Users")
     global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     followers = row["whoFollows"][start : start + size]
@@ -325,7 +327,8 @@ async def post_on_user_wall(
 
 
 @profile_methods.post("/g/s/user-profile/{uid}/ban")
-async def ban_user(uid, request: Request):
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/ban")
+async def ban_user(uid, request: Request, ndcId = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -333,7 +336,7 @@ async def ban_user(uid, request: Request):
     target_user = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get("x0", "Users")
+    table = await db.get(f"x{ndcId}", "Users")
     gl_table = await db.get(table="Users")
     inited_user = await gl_table.find_one({"id": target_user})
     if inited_user["role"] in [555, "555", 254, "254"]:
@@ -351,7 +354,8 @@ async def ban_user(uid, request: Request):
 
 
 @profile_methods.post("/g/s/user-profile/{uid}/unban")
-async def unban_user(uid, request: Request):
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/unban")
+async def unban_user(uid, request: Request, ndcId = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -378,7 +382,8 @@ async def unban_user(uid, request: Request):
 
 
 @profile_methods.post("/g/s/user-profile/{uid}/member")
-async def follow_user(uid, request: Request):
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/member")
+async def follow_user(uid, request: Request, ndcId = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -386,7 +391,7 @@ async def follow_user(uid, request: Request):
     suid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get("x0", "Users")
+    table = await db.get(f"x{ndcId}", "Users")
     target_user = await table.find_one({"id": uid})
     inited_user = await table.find_one({"id": suid})
     if suid not in target_user["whoFollows"] or uid not in inited_user["following"]:
@@ -402,7 +407,8 @@ async def follow_user(uid, request: Request):
 
 
 @profile_methods.post("/g/s/user-profile/{uid}/member/{inited_uid}")
-async def follow_user(uid: str, inited_uid: str, request: Request):
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/member/{inited_uid}")
+async def follow_user(uid: str, inited_uid: str, request: Request, ndcId = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -412,7 +418,7 @@ async def follow_user(uid: str, inited_uid: str, request: Request):
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    table = await db.get("x0", "Users")
+    table = await db.get(f"x{ndcId}", "Users")
     target_user = await table.find_one({"id": uid})
     inited_user = await table.find_one({"id": suid})
     if suid in target_user["whoFollows"] and uid in inited_user["following"]:
@@ -424,7 +430,8 @@ async def follow_user(uid: str, inited_uid: str, request: Request):
 
 
 @profile_methods.get("/g/s/user-profile/{uid}")
-async def get_user_info(uid, request: Request):
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}")
+async def get_user_info(uid, request: Request, ndcId = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -436,7 +443,7 @@ async def get_user_info(uid, request: Request):
     row1 = await table.find_one({"id": uid})
     if row1 == None:
         return Errors.AccountNotExist(timestamp() - t1)
-    table = await db.get(database="x0", table="Users")
+    table = await db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 == None:
         return Errors.AccountNotExist(timestamp() - t1)
@@ -458,7 +465,7 @@ async def get_self_info(request: Request):
     db = await Database().init()
     table = await db.get(table="Users")
     row1 = await table.find_one({"id": uid})
-    if row1 == None:
+    if row1 is None:
         return Errors.AccountNotExist(timestamp() - t1)
     table = await db.get(database="x0", table="Users")
     row2 = await table.find_one({"id": uid})
@@ -494,10 +501,9 @@ async def joined_communities(request: Request):
     if row1 == None:
         return Errors.AccountNotExist(timestamp() - t1)
 
-
     return Base.Answer(
         {
-            "communityList": row1["communityList"],  # "communityList": [0]
+            "communityList": row1["communityList"],
             "userInfoInCommunities": {},
             "showStoreBadge": True,
         },
@@ -565,8 +571,10 @@ async def get_wallet_ads_info(request: Request):
 
 
 @profile_methods.post("/g/s/user-profile/{uid}")
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}")
 @profile_methods.post("/g/s/account/{uid}")
-async def edit_user_info(uid, request: Request):
+@profile_methods.post("/x{ndcId}/s/account/{uid}")
+async def edit_user_info(uid, request: Request, ndcId = 0):
     t1 = timestamp()
     data = await request.json()
 
@@ -603,7 +611,7 @@ async def edit_user_info(uid, request: Request):
         return Base.Answer({"exceptions": "No data provided."})
 
     db = await Database().init()
-    table = await db.get(database="x0", table="Users")
+    table = await db.get(database=f"x{ndcId}", table="Users")
 
     await table.update_one({"id": uid}, {"$set": preparedQueries})
     row2 = await table.find_one({"id": uid})

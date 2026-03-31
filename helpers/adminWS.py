@@ -2,6 +2,7 @@ from orjson import dumps
 from .config import Config
 from websockets.asyncio.client import connect
 
+
 async def send_admin_ws(victims: list | str, payload: dict | str):
     if isinstance(victims, str) and victims != "ALL":
         raise Exception("Invalid victims")

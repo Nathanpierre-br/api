@@ -13,7 +13,6 @@ mock.route_class = CachableRoute
 @mock.get("/g/s/topic/0/feed/community")
 @mock.get("/g/s/community/trending")
 @mock.get("/g/s/community/suggested")
-@mock.get("/g/s/community/search")
 async def recommended_communities_mock(request: Request):
     return Base.Answer({"communityList": [], "paging": {}, "allItemCount": 0})
 

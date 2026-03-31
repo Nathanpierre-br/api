@@ -103,8 +103,7 @@ class RequestProcessor:
                 "audio/ogg",
                 "audio/aac",
                 "audio/x-aac",
-                "audio/ogg; codecs=opus"
-                "video/mp4",
+                "audio/ogg; codecs=opusvideo/mp4",
                 "application/x-www-form-urlencoded",
                 "application/octet-stream",
                 "application/json",
