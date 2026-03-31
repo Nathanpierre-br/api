@@ -9,6 +9,9 @@ from helpers.routers.cachable import CachableRoute
 mock = APIRouter()
 mock.route_class = CachableRoute
 
+@mock.post("/g/s/avatar-frame/apply")
+async def avatar_frame_apply_mock(request: Request):
+    return Base.Answer({})
 
 @mock.get("/g/s/topic/0/feed/community")
 @mock.get("/g/s/community/trending")

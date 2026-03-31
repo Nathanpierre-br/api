@@ -487,30 +487,6 @@ async def get_user_stories(request: Request, q: Union[str, None] = None):
     )
 
 
-@profile_methods.get("/g/s/community/joined")
-async def joined_communities(request: Request, start: int = 0, size: int = 25):
-    t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-
-    uid = request.state.session["uid"]
-
-    db = await Database().init()
-    table = await db.get(table="Users")
-    row1 = await table.find_one({"id": uid})
-    if row1 == None:
-        return Errors.AccountNotExist(timestamp() - t1)
-
-    return Base.Answer(
-        {
-            "communityList": row1["communityList"][start:size],
-            "userInfoInCommunities": {},
-            "showStoreBadge": True,
-        },
-        spent_time=timestamp() - t1,
-    )
-
-
 @profile_methods.get("/g/s/wallet")
 async def get_wallet_info(request: Request):
     t1 = timestamp()

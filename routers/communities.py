@@ -14,6 +14,43 @@ from helpers.routers.cachable import CachableRoute
 communities = APIRouter()
 communities.route_class = CachableRoute
 
+# communities you currently in
+@communities.get("/g/s/community/joined")
+async def joined_communities(request: Request, start: int = 0, size: int = 25):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Base.Answer(
+            {
+                "communityList": [],
+                "userInfoInCommunities": {},
+                "showStoreBadge": True,
+            },
+            spent_time=timestamp() - t1,
+        )
+
+
+    uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(table="Users")
+    row1 = await table.find_one({"id": uid})
+    if row1 == None:
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    table = await db.get(table="Communities")
+
+    return Base.Answer(
+        {
+            "communityList": [
+                await Community.Info(item["id"], db)
+                for item in table.find({"id": {"$in": row1["communityList"][start:size]}})
+            ],
+            "userInfoInCommunities": {},
+            "showStoreBadge": True,
+        },
+        spent_time=timestamp() - t1,
+    )
+
 
 # communities search
 @communities.get("/g/s/community/search")
