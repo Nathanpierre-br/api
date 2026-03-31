@@ -25,16 +25,16 @@ class Communities:
             data = ndcId
 
         if g_users:
-            host_global = await g_users.find_one({"id": data["hostId"]})
+            host_global = await g_users.find_one({"id": data["agent"]})
         else:
             users = await connection.get(table="Users")
-            host_global = await users.find_one({"id": data["hostId"]})
+            host_global = await users.find_one({"id": data["agent"]})
 
         if xndc_users:
             host_xndcId = await x_ndcusers.find_one({"id": data["agent"]})
         else:
             users = await connection.get(f"x{ndcId}", "Users")
-            host_xndcId = await users.find_one({"id": data["hostId"]})
+            host_xndcId = await users.find_one({"id": data["agent"]})
 
         return {
             "ndcId": data["id"],
