@@ -123,7 +123,7 @@ class RequestProcessor:
             if ("media/upload" not in request.url.path) or (
                 "/s/chat/thread" not in request.url.path
                 and "/message" not in request.url.path
-                and not all(
+                and not any(
                     t in headers.get("Content-Type", "")
                     for t in [
                         "application/x-www-form-urlencoded",
@@ -140,8 +140,13 @@ class RequestProcessor:
                     print(
                         "/s/chat/thread/" not in request.url.path,
                         "/message" not in request.url.path,
-                        "application/x-www-form-urlencoded"
-                        not in headers.get("Content-Type"),
+                        not any(
+                            t in headers.get("Content-Type", "")
+                            for t in [
+                                "application/x-www-form-urlencoded",
+                                "application/octet-stream",
+                            ]
+                        ),
                         headers.get("Content-Type"),
                         "invalid sig",
                         request.url.path,
