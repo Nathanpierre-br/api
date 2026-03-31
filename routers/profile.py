@@ -107,7 +107,9 @@ async def get_visits(request: Request):
 # /g/s/user-profile/{userId}/joined?start={start}&size={size}
 @profile_methods.get("/g/s/user-profile/{uid}/joined")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}/joined")
-async def get_user_following(uid, request: Request, start: int = 0, size: int = 25, ndcId = 0):
+async def get_user_following(
+    uid, request: Request, start: int = 0, size: int = 25, ndcId=0
+):
     t1 = timestamp()
 
     db = await Database().init()
@@ -133,7 +135,9 @@ async def get_user_following(uid, request: Request, start: int = 0, size: int = 
 
 @profile_methods.get("/g/s/user-profile/{uid}/member")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}/member")
-async def get_user_followers(uid, request: Request, start: int = 0, size: int = 25, ndcId = 0):
+async def get_user_followers(
+    uid, request: Request, start: int = 0, size: int = 25, ndcId=0
+):
     t1 = timestamp()
 
     db = await Database().init()
@@ -328,7 +332,7 @@ async def post_on_user_wall(
 
 @profile_methods.post("/g/s/user-profile/{uid}/ban")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/ban")
-async def ban_user(uid, request: Request, ndcId = 0):
+async def ban_user(uid, request: Request, ndcId=0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -355,7 +359,7 @@ async def ban_user(uid, request: Request, ndcId = 0):
 
 @profile_methods.post("/g/s/user-profile/{uid}/unban")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/unban")
-async def unban_user(uid, request: Request, ndcId = 0):
+async def unban_user(uid, request: Request, ndcId=0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -383,7 +387,7 @@ async def unban_user(uid, request: Request, ndcId = 0):
 
 @profile_methods.post("/g/s/user-profile/{uid}/member")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/member")
-async def follow_user(uid, request: Request, ndcId = 0):
+async def follow_user(uid, request: Request, ndcId=0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -408,7 +412,7 @@ async def follow_user(uid, request: Request, ndcId = 0):
 
 @profile_methods.post("/g/s/user-profile/{uid}/member/{inited_uid}")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/member/{inited_uid}")
-async def follow_user(uid: str, inited_uid: str, request: Request, ndcId = 0):
+async def follow_user(uid: str, inited_uid: str, request: Request, ndcId=0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -431,7 +435,7 @@ async def follow_user(uid: str, inited_uid: str, request: Request, ndcId = 0):
 
 @profile_methods.get("/g/s/user-profile/{uid}")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}")
-async def get_user_info(uid, request: Request, ndcId = 0):
+async def get_user_info(uid, request: Request, ndcId=0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -550,7 +554,7 @@ async def get_wallet_ads_info(request: Request):
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}")
 @profile_methods.post("/g/s/account/{uid}")
 @profile_methods.post("/x{ndcId}/s/account/{uid}")
-async def edit_user_info(uid, request: Request, ndcId = 0):
+async def edit_user_info(uid, request: Request, ndcId=0):
     t1 = timestamp()
     data = await request.json()
 

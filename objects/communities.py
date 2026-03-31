@@ -11,7 +11,7 @@ class Communities:
     @staticmethod
     async def Info(
         ndcId: int | dict,
-        connection = None,
+        connection=None,
         trigger_uid: Union[str, None] = None,
     ):
         if not connection:
@@ -41,83 +41,71 @@ class Communities:
             "endpoint": data["aminoId"],
             "icon": data["icon"],
             "theme": data.get("theme", ""),
-            "status": data['status'],
-            "membersCount": 0, # todo
-            "joinType": 0, # todo,
+            "status": data["status"],
+            "membersCount": 0,  # todo
+            "joinType": 0,  # todo,
             "content": data.get("description"),
             "tagline": data.get("slogan"),
             "rules": data.get("rules"),
-            
             "communityHeat": data.get("heat", 0.00),
-            "extensions": {
-                
-            } | data.get("extensions", {}),
+            "extensions": {} | data.get("extensions", {}),
             "createdTime": data.get("createdTime", "2023-01-01T12:00:00Z"),
             "updatedTime": data.get("updatedTime", "2023-01-01T12:00:00Z"),
         }
 
         # db data
-        '''
+        """
     class Communities(Schema):
         staff = List(UUID(metadata={"as_string": True}), default=[])
         tags = List(String(), default=[])
-        '''
+        """
 
         # an example json
         {
-          "primaryLanguage": "ru",
-          "userAddedTopicList": [],
-          "probationStatus": 0,
-          "listedStatus": 0,
-          "searchable": true,
-          "isStandaloneAppDeprecated": false,
-          "influencerList": [],
-          "keywords": "keyword1, keyword2",
-          "mediaList": [],
-          "isStandaloneAppMonetizationEnabled": false,
-          "templateId": 1,
-          "promotionalMediaList": [],
-          "themePack": {
-            "themeColor": "#FFFFFF",
-            "themePackHash": "abc123hash",
-            "themePackRevision": 5,
-            "themePackUrl": "https://example.com"
-          },
-          "configuration": {
-            "appearance": {
-              "homePage": {
-                "navigation": "home-nav-data"
-              },
-              "leftSidePanel": {
-                "navigation": {
-                  "level1": "top-panel-data",
-                  "level2": "bottom-panel-data"
-                },
-                "style": {
-                  "iconColor": "#000000"
-                }
-              }
+            "primaryLanguage": "ru",
+            "userAddedTopicList": [],
+            "probationStatus": 0,
+            "listedStatus": 0,
+            "searchable": true,
+            "isStandaloneAppDeprecated": false,
+            "influencerList": [],
+            "keywords": "keyword1, keyword2",
+            "mediaList": [],
+            "isStandaloneAppMonetizationEnabled": false,
+            "templateId": 1,
+            "promotionalMediaList": [],
+            "themePack": {
+                "themeColor": "#FFFFFF",
+                "themePackHash": "abc123hash",
+                "themePackRevision": 5,
+                "themePackUrl": "https://example.com",
             },
-            "page": {
-              "customList": []
-            }
-          },
-          "advancedSettings": {
-            "defaultRankingTypeInLeaderboard": 1,
-            "frontPageLayout": 2,
-            "hasPendingReviewRequest": false,
-            "welcomeMessageEnabled": true,
-            "welcomeMessageText": "Добро пожаловать!",
-            "pollMinFullBarVoteCount": 5,
-            "catalogEnabled": true,
-            "leaderboardStyle": "classic",
-            "facebookAppIdList": [],
-            "newsfeedPages": [],
-            "joinedBaselineCollectionIdList": []
-          },
-          "activeInfo": {},
-          "extensions": {
-            "communityNameAliases": ["Alias1", "Alias2"]
-          }
+            "configuration": {
+                "appearance": {
+                    "homePage": {"navigation": "home-nav-data"},
+                    "leftSidePanel": {
+                        "navigation": {
+                            "level1": "top-panel-data",
+                            "level2": "bottom-panel-data",
+                        },
+                        "style": {"iconColor": "#000000"},
+                    },
+                },
+                "page": {"customList": []},
+            },
+            "advancedSettings": {
+                "defaultRankingTypeInLeaderboard": 1,
+                "frontPageLayout": 2,
+                "hasPendingReviewRequest": false,
+                "welcomeMessageEnabled": true,
+                "welcomeMessageText": "Добро пожаловать!",
+                "pollMinFullBarVoteCount": 5,
+                "catalogEnabled": true,
+                "leaderboardStyle": "classic",
+                "facebookAppIdList": [],
+                "newsfeedPages": [],
+                "joinedBaselineCollectionIdList": [],
+            },
+            "activeInfo": {},
+            "extensions": {"communityNameAliases": ["Alias1", "Alias2"]},
         }
-        

@@ -14,6 +14,7 @@ from helpers.routers.cachable import CachableRoute
 communities = APIRouter()
 communities.route_class = CachableRoute
 
+
 # communities you currently in
 @communities.get("/g/s/community/joined")
 async def joined_communities(request: Request, start: int = 0, size: int = 25):
@@ -27,7 +28,6 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
             },
             spent_time=timestamp() - t1,
         )
-
 
     uid = request.state.session["uid"]
 
@@ -43,7 +43,9 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
         {
             "communityList": [
                 await Community.Info(item["id"], db)
-                for item in table.find({"id": {"$in": row1["communityList"][start:size]}})
+                async for item in table.find(
+                    {"id": {"$in": row1["communityList"][start:size]}}
+                )
             ],
             "userInfoInCommunities": {},
             "showStoreBadge": True,
@@ -77,7 +79,9 @@ async def search_community(
     if len(items) > 0:
         return Base.Answer(
             {
-                "communityList": [await Community.Info(item["id"], db) for item in items],
+                "communityList": [
+                    await Community.Info(item["id"], db) for item in items
+                ],
                 "paging": {
                     "nextPageToken": b85encode(str(size + start).encode()).decode(),
                     "prevPageToken": b85encode(
@@ -94,26 +98,23 @@ async def search_community(
 
 # community join
 @communities.post("/x{ndcId}/s/community/join")
-async def join_community(
-    request: Request, ndcId: int
-):
+async def join_community(request: Request, ndcId: int):
     t1 = timestamp()
 
     # db = await Database().init()
 
     # todo
 
-    return Base.Answer({}, spent_time=timestamp()-t1)
+    return Base.Answer({}, spent_time=timestamp() - t1)
+
 
 # community leave
 @communities.post("/x{ndcId}/s/community/leave")
-async def leave_community(
-    request: Request, ndcId: int
-):
+async def leave_community(request: Request, ndcId: int):
     t1 = timestamp()
 
     # db = await Database().init()
 
     # todo
 
-    return Base.Answer({}, spent_time=timestamp()-t1)
+    return Base.Answer({}, spent_time=timestamp() - t1)
