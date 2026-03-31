@@ -4,7 +4,7 @@ from objects import *
 from fastapi import FastAPI
 from brotli_asgi import BrotliMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse, RedirectResponse
+from fastapi.responses import ORJSONResponse, JSONResponse, RedirectResponse
 
 # routers
 
@@ -19,9 +19,7 @@ from routers.communities import communities
 
 # app things
 
-app = FastAPI(
-    title="AltAmino", version="1.0.0b1", docs_url="/api/v1/docs", redoc_url=None
-)
+app = FastAPI(title="AltAmino", version="1", docs_url=None, redoc_url=None)
 
 
 @app.get("/")
@@ -57,12 +55,13 @@ async def custom_403_handler(_, __):
 @app.exception_handler(404)
 @app.exception_handler(405)
 async def custom_404_handler(_, __):
+    print("No path like: ", _, " | ", __)
     return Errors.InvalidPath()
 
 
 @app.exception_handler(500)
 async def custom_500_handler(_, __):
-    if isinstance(__.args[0], ORJSONResponse):
+    if isinstance(__.args[0], ORJSONResponse) or isinstance(__.args[0], JSONResponse):
         return __.args[0]
     print(_)
     print(__)

@@ -3,7 +3,7 @@ from typing import Callable
 from orjson import loads, dumps
 from fastapi.routing import APIRoute
 from fastapi import Request, Response
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 
 from objects.errors import Errors
 from helpers.functions import make_hash
@@ -59,7 +59,7 @@ class CachableRoute(APIRoute):
             if result:
                 result = loads(result)
 
-                return ORJSONResponse(
+                return JSONResponse(
                     loads(result["response"]),
                     result["status_code"],
                     self.main_headers,
@@ -69,6 +69,7 @@ class CachableRoute(APIRoute):
             # validating request
             valid, error = await RequestProcessor.Validate(request)
             if not valid:
+                print(error)
                 return error
 
             # processing request and caching
