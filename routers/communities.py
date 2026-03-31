@@ -42,7 +42,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
     return Base.Answer(
         {
             "communityList": [
-                await Community.Info(item["id"], db)
+                await Communities.Info(item["id"], db)
                 async for item in table.find(
                     {"id": {"$in": row1["communityList"][start:size]}}
                 )
@@ -80,7 +80,7 @@ async def search_community(
         return Base.Answer(
             {
                 "communityList": [
-                    await Community.Info(item["id"], db) for item in items
+                    await Communities.Info(item["id"], db) for item in items
                 ],
                 "paging": {
                     "nextPageToken": b85encode(str(size + start).encode()).decode(),
