@@ -111,7 +111,6 @@ class RequestProcessor:
             ]
             for item in content_type.split(","):
                 if item not in c_t_white_list:
-                    print(content_type, "is not valid")
                     return [False, Errors.InvalidRequest()]
 
             content_length = headers.get("Content-Length", "0")
@@ -124,9 +123,17 @@ class RequestProcessor:
             if ("media/upload" not in request.url.path) or (
                 "/s/chat/thread" not in request.url.path
                 and "/message" not in request.url.path
-                and "application/x-www-form-urlencoded"
-                not in headers.get("Content-Type")
+                and not all(
+                    t in headers.get("Content-Type", "")
+                    for t in [
+                        "application/x-www-form-urlencoded",
+                        "application/octet-stream",
+                    ]
+                )
             ):
+                # EXPLANATIOM:
+                # sending message in android with image/voice
+                # not sending signature, we need to bypass it sadly
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
