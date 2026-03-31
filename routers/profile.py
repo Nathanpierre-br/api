@@ -488,7 +488,7 @@ async def get_user_stories(request: Request, q: Union[str, None] = None):
 
 
 @profile_methods.get("/g/s/community/joined")
-async def joined_communities(request: Request):
+async def joined_communities(request: Request, start: int = 0, size: int = 25):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -503,7 +503,7 @@ async def joined_communities(request: Request):
 
     return Base.Answer(
         {
-            "communityList": [], # row1["communityList"],
+            "communityList": row1["communityList"][start:size],
             "userInfoInCommunities": {},
             "showStoreBadge": True,
         },
