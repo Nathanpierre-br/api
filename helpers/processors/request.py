@@ -130,6 +130,15 @@ class RequestProcessor:
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
+                    print(
+                        "/s/chat/thread/" not in request.url.path,
+                        "/message" not in request.url.path,
+                        "application/x-www-form-urlencoded"
+                        not in headers.get("Content-Type"),
+                        headers.get("Content-Type"),
+                        "invalid sig",
+                        request.url.path,
+                    )
                     return [False, Errors.InvalidRequest()]
 
             if data and "media/upload" not in request.scope["path"]:
