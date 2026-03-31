@@ -1,4 +1,4 @@
-FROM valkey/valkey:latest-alpine AS base
+FROM valkey/valkey:alpine AS base
 
 WORKDIR /app
 COPY . .
