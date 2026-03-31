@@ -120,7 +120,7 @@ class RequestProcessor:
                 content_length = int(content_length)
             # check if content_length is valid
 
-            if ("media/upload" not in request.url.path) or (
+            if ("media/upload" not in request.url.path) and (
                 "/s/chat/thread" not in request.url.path
                 and "/message" not in request.url.path
                 and not any(
@@ -137,20 +137,6 @@ class RequestProcessor:
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
-                    print(
-                        "/s/chat/thread/" not in request.url.path,
-                        "/message" not in request.url.path,
-                        not any(
-                            t in headers.get("Content-Type", "")
-                            for t in [
-                                "application/x-www-form-urlencoded",
-                                "application/octet-stream",
-                            ]
-                        ),
-                        headers.get("Content-Type"),
-                        "invalid sig",
-                        request.url.path,
-                    )
                     return [False, Errors.InvalidRequest()]
 
             if data and "media/upload" not in request.scope["path"]:
