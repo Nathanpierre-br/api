@@ -503,7 +503,7 @@ async def joined_communities(request: Request):
 
     return Base.Answer(
         {
-            "communityList": row1["communityList"],
+            "communityList": [], # row1["communityList"],
             "userInfoInCommunities": {},
             "showStoreBadge": True,
         },
