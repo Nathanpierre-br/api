@@ -40,7 +40,7 @@ async def search_community(
     if len(items) > 0:
         return Base.Answer(
             {
-                "communityList": [await Community.Info(item, db) for item in items],
+                "communityList": [await Community.Info(item["id"], db) for item in items],
                 "paging": {
                     "nextPageToken": b85encode(str(size + start).encode()).decode(),
                     "prevPageToken": b85encode(
