@@ -8,9 +8,9 @@ ENV PYTHONUNBUFFERED=1
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
     
-RUN uv sync
-
 RUN apk update
-RUN apt add supervisor --no-cache
+RUN apt add supervisor py3-opencv opencv libstdc++ --no-cache
+
+RUN uv sync
 
 CMD ["supervisord", "-c", "files/supervisord.conf"]
