@@ -8,9 +8,6 @@ ENV PYTHONUNBUFFERED=1
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
 
-RUN apt update
-RUN apt install supervisor -y
-
 RUN uv sync
 
-CMD ["supervisord", "-c", "files/supervisord.conf"]
+CMD ["uv", "run", "supervisord", "-c", "files/supervisord.conf"]
