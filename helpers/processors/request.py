@@ -111,6 +111,7 @@ class RequestProcessor:
             ]
             for item in content_type.split(","):
                 if item not in c_t_white_list:
+                    print(content_type, "is not valid")
                     return [False, Errors.InvalidRequest()]
 
             content_length = headers.get("Content-Length", "0")
@@ -126,11 +127,13 @@ class RequestProcessor:
                 "application/octet-stream",
             ]:
                 if len(data) > 2 or content_length > 2:
+                    print("big nothing!")
                     return [False, Errors.InvalidRequest()]
             elif "media/upload" not in request.url.path:
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
+                    print("invalid signature!")
                     return [False, Errors.InvalidRequest()]
 
             if data and "media/upload" not in request.scope["path"]:
@@ -142,6 +145,7 @@ class RequestProcessor:
                     ):
                         return [False, Errors.ExpiredRequest()]
                 except:
+                    print("cant check timestamp!")
                     return [False, Errors.InvalidRequest()]
 
         return [True, None]

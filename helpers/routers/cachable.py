@@ -69,7 +69,6 @@ class CachableRoute(APIRoute):
             # validating request
             valid, error = await RequestProcessor.Validate(request)
             if not valid:
-                print(error)
                 return error
 
             # processing request and caching
