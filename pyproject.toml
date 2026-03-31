@@ -12,6 +12,7 @@ dependencies = [
     "marshmallow<4.0",
     "motor>=3.7.1",
     "numpy>=2.4.3",
+    "opencv-contrib-python-headless>=4.13.0.92",
     "orjson>=3.11.7",
     "pillow>=12.1.1",
     "redis>=7.4.0",
