@@ -175,7 +175,8 @@ async def leave_community(request: Request, ndcId: int):
 # [GET] /g/s/community/{ndcId}
 
 
-@communities.get("/g/s/community/{ndcId}")
+@communities.get("/x{ndcId}/s/community/info")
+@communities.get("/g/s-{ndcId}/community/info")
 async def get_community_info(ndcId: int, request: Request):
     t1 = timestamp()
 
