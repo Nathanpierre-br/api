@@ -58,7 +58,11 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
 # communities search
 @communities.get("/g/s/community/search")
 async def search_community(
-    request: Request, q: str = "", size: int = 25, pageToken: str | None = None
+    request: Request,
+    q: str = "",
+    start: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
 ):
     t1 = timestamp()
     size = size if 0 > size > 101 else 25
@@ -68,9 +72,7 @@ async def search_community(
         try:
             start = int(b85decode(pageToken).decode())
         except:
-            start = 0
-    else:
-        start = 0
+            pass
 
     db = await Database().init()
     table = await db.get(table="Communities")

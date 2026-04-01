@@ -56,7 +56,7 @@ async def custom_403_handler(_, __):
 @app.exception_handler(404)
 @app.exception_handler(405)
 async def custom_404_handler(_, __):
-    print("No path like: ", _, " | ", __)
+    print("No path like: ", _.url.path, "(", await _.body(), ") | ", __)
     return Errors.InvalidPath()
 
 
