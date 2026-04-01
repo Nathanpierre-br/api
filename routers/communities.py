@@ -15,6 +15,24 @@ communities = APIRouter()
 communities.route_class = CachableRoute
 
 
+# get community info
+# [GET] /g/s/community/{ndcId}
+
+
+@communities.get("/g/s/community/{ndcId}")
+async def get_community_info(ndcId: int, request: Request):
+    t1 = timestamp()
+
+    db = await Database().init()
+    info = await Communities.Info(ndcId, connection=db, trigger_uid=trigger_uid)
+    await db.close()
+
+    if not info:
+        return Errors.CommunityNotFound(timestamp() - t1)
+
+    return Base.Answer({"community": info}, spent_time=timestamp() - t1)
+
+
 # communities you currently in
 @communities.get("/g/s/community/joined")
 async def joined_communities(request: Request, start: int = 0, size: int = 25):
@@ -72,38 +90,54 @@ async def search_community(
         start = 0
 
     db = await Database().init()
-    table = await db.get("x0", "Communities")
+    table = await db.get(table="Communities")
 
     query = {"name": regex_compile(r"{}".format(q), RE_IGNORECASE)}
     items = [item async for item in table.find(query).skip(start).limit(size)]
-    if len(items) > 0:
-        return Base.Answer(
-            {
-                "communityList": [
-                    await Communities.Info(item["id"], db) for item in items
-                ],
-                "paging": {
-                    "nextPageToken": b85encode(str(size + start).encode()).decode(),
-                    "prevPageToken": b85encode(
-                        ("0" if start - size <= 0 else str(start - size)).encode()
-                    ).decode(),
-                },
-                "allItemCount": len(items),
-            },
-            spent_time=timestamp() - t1,
-        )
 
-    return Base.Answer({"communityList": [], "paging": {}, "allItemCount": 0})
+    return Base.Answer(
+        {
+            "communityList": [await Communities.Info(item["id"], db) for item in items],
+            "paging": {
+                "nextPageToken": b85encode(str(size + start).encode()).decode(),
+                "prevPageToken": b85encode(
+                    ("0" if start - size <= 0 else str(start - size)).encode()
+                ).decode(),
+            },
+            "allItemCount": len(items),
+        },
+        spent_time=timestamp() - t1,
+    )
 
 
 # community join
 @communities.post("/x{ndcId}/s/community/join")
 async def join_community(request: Request, ndcId: int):
     t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-    # db = await Database().init()
+    trigger_uid = request.state.session["uid"]
 
-    # todo
+    db = await Database().init()
+    table = await db.get(table="Communities")
+    community = await table.find_one({"ndcId": ndcId})
+
+    if not community:
+        await db.close()
+        return Errors.CommunityNotFound(timestamp() - t1)
+
+    if trigger_uid in community.get("memberList", []):
+        await db.close()
+        return Errors.AlreadyJoined(timestamp() - t1)
+
+    await table.update_one(
+        {"ndcId": ndcId},
+        {
+            "$push": {"memberList": trigger_uid},
+        },
+    )
+    await db.close()
 
     return Base.Answer({}, spent_time=timestamp() - t1)
 
@@ -112,9 +146,33 @@ async def join_community(request: Request, ndcId: int):
 @communities.post("/x{ndcId}/s/community/leave")
 async def leave_community(request: Request, ndcId: int):
     t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-    # db = await Database().init()
+    trigger_uid = request.state.session["uid"]
 
-    # todo
+    db = await Database().init()
+    table = await db.get(table="Communities")
+    community = await table.find_one({"ndcId": ndcId})
 
+    if not community:
+        await db.close()
+        return Errors.CommunityNotFound(timestamp() - t1)
+
+    if trigger_uid == community.get("agent") or ndcId == 0:
+        await db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+
+    if trigger_uid not in community.get("memberList", []):
+        await db.close()
+        return Errors.NotJoined(timestamp() - t1)
+
+    await table.update_one(
+        {"ndcId": ndcId},
+        {
+            "$pull": {"memberList": trigger_uid},
+        },
+    )
+
+    await db.close()
     return Base.Answer({}, spent_time=timestamp() - t1)

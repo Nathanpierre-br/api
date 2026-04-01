@@ -42,12 +42,13 @@ class Communities:
             "link": "http://aminoapps.com/c/" + data["aminoId"],
             "endpoint": data["aminoId"],
             "icon": data["icon"],
-            "theme": data.get("theme", ""),
+            "theme": data.get("theme"),
             "status": data["status"],
             "membersCount": 0,  # todo
             "joinType": 0,  # todo,
             "content": data.get("description"),
             "tagline": data.get("slogan"),
+            "templateId": data.get("templateId", 9),
             "rules": data.get("rules"),
             "communityHeat": data.get("heat", 0.00),
             "extensions": {} | data.get("extensions", {}),
@@ -56,24 +57,17 @@ class Communities:
             "userAddedTopicList": data.get("tags", []),
             "searchable": True,
             "influencerList": [],
+            "primaryLanguage": data.get("lang", "en"),
         }
-
-        # db data
-        """
-    class Communities(Schema):
-        staff = List(UUID(metadata={"as_string": True}), default=[])
-        """
 
         # an example json
         """{
-            "primaryLanguage": "ru",
             "probationStatus": 0,
             "listedStatus": 0,
             "isStandaloneAppDeprecated": false,
             "keywords": "keyword1, keyword2",
             "mediaList": [],
             "isStandaloneAppMonetizationEnabled": false,
-            "templateId": 1,
             "promotionalMediaList": [],
             "themePack": {
                 "themeColor": "#FFFFFF",
