@@ -15,27 +15,6 @@ communities = APIRouter()
 communities.route_class = CachableRoute
 
 
-# get community info
-# [GET] /g/s/community/{ndcId}
-
-
-@communities.get("/g/s/community/{ndcId}")
-async def get_community_info(ndcId: int, request: Request):
-    t1 = timestamp()
-
-    uid = request.state.session["uid"]
-
-    db = await Database().init()
-    info = await Communities.Info(ndcId, db, uid)
-    await db.close()
-
-    if not info:
-        # return Errors.CommunityNotFound(timestamp() - t1)
-        return Errors.DataNotExist(timestamp() - t1)
-
-    return Base.Answer({"community": info}, spent_time=timestamp() - t1)
-
-
 # communities you currently in
 @communities.get("/g/s/community/joined")
 async def joined_communities(request: Request, start: int = 0, size: int = 25):
@@ -188,3 +167,24 @@ async def leave_community(request: Request, ndcId: int):
 
     await db.close()
     return Base.Answer({}, spent_time=timestamp() - t1)
+
+
+# get community info
+# [GET] /g/s/community/{ndcId}
+
+
+@communities.get("/g/s/community/{ndcId}")
+async def get_community_info(ndcId: int, request: Request):
+    t1 = timestamp()
+
+    uid = request.state.session["uid"]
+
+    db = await Database().init()
+    info = await Communities.Info(ndcId, db, uid)
+    await db.close()
+
+    if not info:
+        # return Errors.CommunityNotFound(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1)
+
+    return Base.Answer({"community": info}, spent_time=timestamp() - t1)
