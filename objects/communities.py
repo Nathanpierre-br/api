@@ -1,9 +1,4 @@
-from .user import User
 from typing import Union
-from datetime import datetime
-
-# import sys
-# sys.path.append('../')
 from helpers.database.mongo import Database
 
 
@@ -24,6 +19,7 @@ class Communities:
         else:
             data = ndcId
 
+        """
         if g_users:
             host_global = await g_users.find_one({"id": data["agent"]})
         else:
@@ -35,21 +31,30 @@ class Communities:
         else:
             users = await connection.get(f"x{ndcId}", "Users")
             host_xndcId = await users.find_one({"id": data["agent"]})
+        """
+
+        membershipStatus = 0
+        if trigger_uid and (
+            trigger_uid == data.get("agent")
+            or trigger_uid in data.get("memberList", [])
+        ):
+            membershipStatus = 1
 
         return {
             "ndcId": data["id"],
             "name": data["name"],
             "link": "http://aminoapps.com/c/" + data["aminoId"],
             "endpoint": data["aminoId"],
+            "membershipStatus": membershipStatus,
             "icon": data["icon"],
-            "theme": data.get("theme"),
+            "theme": data.get("theme", ""),
             "status": data["status"],
             "membersCount": 0,  # todo
             "joinType": 0,  # todo,
-            "content": data.get("description"),
-            "tagline": data.get("slogan"),
+            "content": data.get("description", ""),
+            "tagline": data.get("slogan", ""),
             "templateId": data.get("templateId", 9),
-            "rules": data.get("rules"),
+            "rules": data.get("rules", ""),
             "communityHeat": data.get("heat", 0.00),
             "extensions": {} | data.get("extensions", {}),
             "createdTime": data.get("createdTime", "2023-01-01T12:00:00Z"),

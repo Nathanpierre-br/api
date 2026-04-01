@@ -23,8 +23,10 @@ communities.route_class = CachableRoute
 async def get_community_info(ndcId: int, request: Request):
     t1 = timestamp()
 
+    uid = request.state.session["uid"]
+
     db = await Database().init()
-    info = await Communities.Info(ndcId, connection=db, trigger_uid=trigger_uid)
+    info = await Communities.Info(ndcId, db, uid)
     await db.close()
 
     if not info:
@@ -48,6 +50,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
         )
 
     uid = request.state.session["uid"]
+    size = size if 0 > size > 101 else 25
 
     db = await Database().init()
     table = await db.get(table="Users")
@@ -60,7 +63,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
     return Base.Answer(
         {
             "communityList": [
-                await Communities.Info(item["id"], db)
+                await Communities.Info(item, db, uid)
                 async for item in table.find(
                     {"id": {"$in": row1["communityList"][start:size]}}
                 )
