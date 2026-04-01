@@ -1,6 +1,6 @@
 from typing import Union
 from datetime import datetime, UTC
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 
 
 class Base:
@@ -12,7 +12,7 @@ class Base:
         api_message="OK",
         html_status_code: int = 200,
     ):
-        return ORJSONResponse(
+        return JSONResponse(
             {
                 "api:statuscode": api_status_code,
                 "api:duration": f"{round(spent_time + 0.001, 4)}s",

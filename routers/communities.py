@@ -30,7 +30,8 @@ async def get_community_info(ndcId: int, request: Request):
     await db.close()
 
     if not info:
-        return Errors.CommunityNotFound(timestamp() - t1)
+        # return Errors.CommunityNotFound(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1)
 
     return Base.Answer({"community": info}, spent_time=timestamp() - t1)
 
@@ -128,11 +129,15 @@ async def join_community(request: Request, ndcId: int):
 
     if not community:
         await db.close()
-        return Errors.CommunityNotFound(timestamp() - t1)
+        # return Errors.CommunityNotFound(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1)
 
     if trigger_uid in community.get("memberList", []):
         await db.close()
-        return Errors.AlreadyJoined(timestamp() - t1)
+        return Base.Answer(
+            {"api:warning": "You are already joined community."},
+            spent_time=timestamp() - t1,
+        )
 
     await table.update_one(
         {"ndcId": ndcId},
@@ -160,7 +165,8 @@ async def leave_community(request: Request, ndcId: int):
 
     if not community:
         await db.close()
-        return Errors.CommunityNotFound(timestamp() - t1)
+        # return Errors.CommunityNotFound(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1)
 
     if trigger_uid == community.get("agent") or ndcId == 0:
         await db.close()
@@ -168,7 +174,10 @@ async def leave_community(request: Request, ndcId: int):
 
     if trigger_uid not in community.get("memberList", []):
         await db.close()
-        return Errors.NotJoined(timestamp() - t1)
+        return Base.Answer(
+            {"api:warning": "You was never part of this community."},
+            spent_time=timestamp() - t1,
+        )
 
     await table.update_one(
         {"ndcId": ndcId},

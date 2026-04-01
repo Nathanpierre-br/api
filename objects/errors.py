@@ -4,6 +4,14 @@ from .base import Base
 
 
 class Errors:
+    def CantProcessData():
+        return Base.Answer(
+            api_status_code=422422,
+            html_status_code=422,
+            api_message="Can't really process it now, cat is laying on our servers.",
+            spent_time=0,
+        )
+
     @staticmethod
     def SUS(spent_time: Union[int, float] = 0):
         return Base.Answer(
@@ -63,7 +71,7 @@ class Errors:
         return Base.Answer(
             api_status_code=500,
             html_status_code=500,
-            api_message="Mail error. If this error staying too long, contact AltAmino's dev team.",
+            api_message="Error while tried send email. If this error staying too long, contact AltAmino's dev team.",
             spent_time=spent_time,
         )
 

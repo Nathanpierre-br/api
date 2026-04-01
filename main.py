@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from brotli_asgi import BrotliMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, JSONResponse, RedirectResponse
+from fastapi.exceptions import RequestValidationError
 
 # routers
 
@@ -57,6 +58,12 @@ async def custom_403_handler(_, __):
 async def custom_404_handler(_, __):
     print("No path like: ", _, " | ", __)
     return Errors.InvalidPath()
+
+
+@app.exception_handler(RequestValidationError)
+async def custom_422_handler(_, exc: RequestValidationError):
+    print(exc.errors())
+    return Errors.CantProcessData()
 
 
 @app.exception_handler(500)
