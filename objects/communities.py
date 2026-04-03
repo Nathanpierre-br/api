@@ -19,9 +19,8 @@ class Communities:
             data = ndcId
 
         # host_global = await connection.get(table="Users").find_one({"id": data["agent"]})
-        host_xndcId = await connection.get(f"x{ndcId}", "Users").find_one(
-            {"id": data["agent"]}
-        )
+        table = await connection.get(f"x{ndcId}", "Users")
+        host_xndcId = await table.find_one({"id": data["agent"]})
 
         membershipStatus = 0
         if trigger_uid and (
