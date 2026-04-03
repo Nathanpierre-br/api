@@ -13,8 +13,10 @@ links.route_class = CachableRoute
 
 
 @links.post("/g/s/link-resolution")
+@links.post("/x{ndcId}/s/link-resolution")
 @links.post("/g/s/link-translation")
-async def make_link(request: Request):
+@links.post("/x{ndcId}/s/link-translation")
+async def make_link(request: Request, ndcId: int = 0):
     t1 = timestamp()
     data = await request.json()
 
@@ -24,7 +26,7 @@ async def make_link(request: Request):
     if data["objectType"] == 0:
         check_table = await db.get(table="Users")
     elif data["objectType"] == 12:
-        check_table = await db.get("x0", "Chats")
+        check_table = await db.get(f"x{ndcId}", "Chats")
     else:
         await db.close()
         return Errors.UnimplementedPath(timestamp() - t1)
@@ -46,6 +48,7 @@ async def make_link(request: Request):
             targetCode=data.get("targetCode", 1),
             objectId=data["objectId"],
             objectType=data["objectType"],
+            ndcId=ndcId,
         )
         await links_table.insert_one(link)
     await db.close()
@@ -57,8 +60,10 @@ async def make_link(request: Request):
 
 
 @links.get("/g/s/link-resolution")
+@links.get("/x{ndcId}/s/link-resolution")
 @links.get("/g/s/link-translation")
-async def resolute_link(request: Request, q: str):
+@links.get("/x{ndcId}/s/link-translation")
+async def resolute_link(request: Request, q: str, ndcId: int = 0):
     t1 = timestamp()
 
     db = await Database().init()

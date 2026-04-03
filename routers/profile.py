@@ -39,8 +39,13 @@ async def change_aminoId(request: Request):
 
 
 @profile_methods.get("/g/s/user-profile/search")
+@profile_methods.get("/x{ndcId}/s/user-profile/search")
 async def user_search(
-    request: Request, q: str = "", size: int = 25, pageToken: str | None = None
+    request: Request,
+    q: str = "",
+    size: int = 25,
+    pageToken: str | None = None,
+    ndcId: int = 0,
 ):
     t1 = timestamp()
 
@@ -62,7 +67,10 @@ async def user_search(
         start = 0
 
     db = await Database().init()
-    g_users, xndc_users = await db.get(table="Users"), await db.get("x0", "Users")
+    g_users, xndc_users = (
+        await db.get(table="Users"),
+        await db.get(f"x{ndcId}", "Users"),
+    )
     query = {"nickname": {"$regex": regex_escape(q), "$options": "i"}}
     users = [
         item
@@ -162,8 +170,14 @@ async def get_user_followers(
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/g-comment")
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/g-comment")
 async def get_user_wall(
-    uid, request: Request, start: int = 0, size: int = 25, sort: str = "newest"
+    uid,
+    request: Request,
+    start: int = 0,
+    size: int = 25,
+    sort: str = "newest",
+    ndcId: int = [],
 ):
     t1 = timestamp()
 
@@ -173,7 +187,7 @@ async def get_user_wall(
         return list(result.items())
 
     db = await Database().init()
-    xndcid_table = await db.get("x0", "Users")
+    xndcid_table = await db.get(f"x{ndcId}", "Users")
     global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     if sort == "newest":
@@ -208,8 +222,8 @@ async def get_user_wall(
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/g-comment/{commentId}")
-@profile_methods.get("/g/s/user-profile/{uid}/g-comment/{commentId}/response")
-async def get_user_wall(uid, commentId, request: Request):
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/g-comment/{commentId}/response")
+async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0):
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
@@ -218,7 +232,7 @@ async def get_user_wall(uid, commentId, request: Request):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    xndcid_table = await db.get("x0", "Users")
+    xndcid_table = await db.get(f"x{ndcId}", "Users")
     global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     all_wall = row["wall"]
@@ -244,7 +258,10 @@ async def get_user_wall(uid, commentId, request: Request):
 
 
 @profile_methods.delete("/g/s/user-profile/{uid}/g-comment/{commentId}")
-async def delete_post_from_wall(request: Request, uid: str, commentId: str):
+@profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/g-comment/{commentId}")
+async def delete_post_from_wall(
+    request: Request, uid: str, commentId: str, ndcId: int = 0
+):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -253,7 +270,7 @@ async def delete_post_from_wall(request: Request, uid: str, commentId: str):
 
     if uid == trigger_uid:
         db = await Database().init()
-        table = await db.get("x0", "Users")
+        table = await db.get(f"x{ndcId}", "Users")
         user_info = await table.find_one({"id": uid})
 
         wall = user_info.get("wall")
@@ -275,8 +292,14 @@ async def delete_post_from_wall(request: Request, uid: str, commentId: str):
 
 
 @profile_methods.post("/g/s/user-profile/{uid}/g-comment")
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/g-comment")
 async def post_on_user_wall(
-    uid, request: Request, start: int = 0, size: int = 25, sort: str = "newest"
+    uid,
+    request: Request,
+    start: int = 0,
+    size: int = 25,
+    sort: str = "newest",
+    ndcId: int = 0,
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -292,7 +315,7 @@ async def post_on_user_wall(
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    xndcid_table = await db.get("x0", "Users")
+    xndcid_table = await db.get(f"x{ndcId}", "Users")
     global_table = await db.get(table="Users")
 
     commentUid = str(uuid4())
@@ -332,7 +355,7 @@ async def post_on_user_wall(
 
 @profile_methods.post("/g/s/user-profile/{uid}/ban")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/ban")
-async def ban_user(uid, request: Request, ndcId=0):
+async def ban_user(uid, request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -359,7 +382,7 @@ async def ban_user(uid, request: Request, ndcId=0):
 
 @profile_methods.post("/g/s/user-profile/{uid}/unban")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/unban")
-async def unban_user(uid, request: Request, ndcId=0):
+async def unban_user(uid, request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -367,7 +390,7 @@ async def unban_user(uid, request: Request, ndcId=0):
     target_user = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get("x0", "Users")
+    table = await db.get(f"x{ndcId}", "Users")
     gl_table = await db.get(table="Users")
     inited_user = await table.find_one({"id": target_user})
     if inited_user["role"] in [555, "555", 254, "254"]:
@@ -463,7 +486,8 @@ async def get_user_info(uid, request: Request, ndcId=0):
 
 
 @profile_methods.get("/g/s/account")
-async def get_self_info(request: Request):
+@profile_methods.get("/x{ndcId}/s/account")
+async def get_self_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -475,7 +499,7 @@ async def get_self_info(request: Request):
     row1 = await table.find_one({"id": uid})
     if row1 is None:
         return Errors.AccountNotExist(timestamp() - t1)
-    table = await db.get(database="x0", table="Users")
+    table = await db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 == None:
         return Errors.AccountNotExist(timestamp() - t1)
