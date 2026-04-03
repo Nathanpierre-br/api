@@ -112,13 +112,13 @@ async def join_community(request: Request, ndcId: int):
         # return Errors.CommunityNotFound(timestamp() - t1)
         return Errors.DataNotExist(timestamp() - t1)
 
+    # adding info for global info
     if trigger_uid in community.get("memberList", []):
         await db.close()
         return Base.Answer(
             {"api:warning": "You are already joined community."},
             spent_time=timestamp() - t1,
         )
-
     await table.update_one(
         {"ndcId": ndcId},
         {
@@ -126,6 +126,13 @@ async def join_community(request: Request, ndcId: int):
             "$inc": {"membersCount": 1},
         },
     )
+
+    # adding profile info if not exist
+    table = await db.get(f"x{ndcId}", "Users")
+    if not (await table.find_one({"id": trigger_uid})):
+        g_table = await db.get("x0", "Users")
+        await table.insert_one(await g_table.find_one({"id": trigger_uid}))
+
     await db.close()
 
     return Base.Answer({}, spent_time=timestamp() - t1)
