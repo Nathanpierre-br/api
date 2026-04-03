@@ -20,18 +20,25 @@ class RequestProcessor:
     Made for shorten the code in middleware.
     """
 
+    """
+        Explanation:
+        Some content-types does not send any signatures.
+        Because of it we need to ignore requests with
+        that content-types somehow.
+        We really should make a list of requests that
+        doing it to filter them, but for now simple
+        content-type check is Ok.
+        
+    """
+
     @staticmethod
-    def __is_mediamessage_send(path: str, headers: dict):
-        return (
-            "/s/chat/thread" in path
-            and "/message" in path
-            and any(
-                t in headers.get("Content-Type", "")
-                for t in [
-                    "application/x-www-form-urlencoded",
-                    "application/octet-stream",
-                ]
-            )
+    def __is_weird_content_type_request(path: str, headers: dict):
+        return any(
+            t in headers.get("Content-Type", "")
+            for t in [
+                "application/x-www-form-urlencoded",
+                "application/octet-stream",
+            ]
         )
 
     @staticmethod
@@ -135,11 +142,10 @@ class RequestProcessor:
             # check if content_length is valid
 
             if ("media/upload" not in request.url.path) and (
-                not RequestProcessor.__is_mediamessage_send(request.url.path, headers)
+                not RequestProcessor.__is_weird_content_type_request(
+                    request.url.path, headers
+                )
             ):
-                # EXPLANATION:
-                # sending message in android with image/voice
-                # not sending signature, we need to bypass it sadly
                 if not SignatureProcessor.Validate(
                     headers.get("NDC-MSG-SIG", ""), data
                 ):
@@ -154,8 +160,6 @@ class RequestProcessor:
                     )
                 )
             ):
-                # EXPLANATION:
-                # somehow also there is no timestamp on android
                 try:
                     json = loads(data)
 
