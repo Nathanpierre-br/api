@@ -155,7 +155,7 @@ class RequestProcessor:
                 data
                 and ("media/upload" not in request.scope["path"])
                 and (
-                    not RequestProcessor.__is_mediamessage_send(
+                    not RequestProcessor.__is_weird_content_type_request(
                         request.url.path, headers
                     )
                 )
