@@ -22,6 +22,7 @@ class Communities:
         # host_global = await connection.get(table="Users").find_one({"id": data["agent"]})
         table = await connection.get(f"x{ndcId}", "Users")
         host_xndcId = await table.find_one({"id": data["agent"]})
+        agent = User.OwnNonSensetiveProfile(host_xndcId, ndcId) if host_xndcId else None
 
         membershipStatus = 0
         if trigger_uid and (
@@ -31,14 +32,14 @@ class Communities:
             membershipStatus = 1
 
         return {
+            "agent": agent,
             "ndcId": data["id"],
             "name": data["name"],
-            "agent": User.OwnNonSensetiveProfile(host_xndcId, data["id"]),
             "link": "http://aminoapps.com/c/" + data["aminoId"],
             "endpoint": data["aminoId"],
             "membershipStatus": membershipStatus,
             "icon": data["icon"],
-            "status": data.get("status"),
+            "status": data["status"],
             "membersCount": data.get("membersCount", 0),
             "joinType": data.get("joinType", 0),
             "content": data.get("description", ""),
