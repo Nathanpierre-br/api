@@ -453,7 +453,11 @@ async def get_user_info(uid, request: Request, ndcId=0):
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
     return Base.Answer(
-        {"userProfile": User.GetUserInfo(row1 | row2, triggerUserId=trigger_uid)},
+        {
+            "userProfile": User.GetUserInfo(
+                row1 | row2, triggerUserId=trigger_uid, ndcId=ndcId
+            )
+        },
         spent_time=timestamp() - t1,
     )
 

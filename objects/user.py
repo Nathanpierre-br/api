@@ -44,7 +44,9 @@ class User:
         }
 
     @staticmethod
-    def OwnNonSensetiveProfile(row, ndcId: int = 0, extenstions: dict = {}):
+    def OwnNonSensetiveProfile(
+        row, ndcId: int = 0, extenstions: dict = {}, membershipStatus: int = 0
+    ):
         """
         ndcId for another communities
         triggerUserId is who triggered this shit
@@ -93,7 +95,7 @@ class User:
             "isNicknameVerified": False,
             "notificationSubscriptionStatus": 0,
             "pushEnabled": True,
-            "membershipStatus": 0,
+            "membershipStatus": membershipStatus,
             "commentsCount": len(row.get("wall", [])),
         }
 
@@ -172,8 +174,8 @@ class User:
         extenstions: dict = {},
         membershipStatus: int | None = None,
     ):
-        if membershipStatus == None:
-            if triggerUserId == None:
+        if membershipStatus is None:
+            if triggerUserId is None:
                 membershipStatus = 0
             elif (
                 triggerUserId in row["whoFollows"] and triggerUserId in row["following"]
@@ -190,7 +192,7 @@ class User:
         return {
             "iconFrameId": row.get("frame"),
             "iconFrame": (
-                None if row.get("frame") == None else User.iconFrame(row.get("frame"))
+                None if row.get("frame") is None else User.iconFrame(row.get("frame"))
             ),
             "status": row["status"],
             "uid": row["id"],

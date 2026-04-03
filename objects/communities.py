@@ -33,7 +33,7 @@ class Communities:
 
         return {
             "agent": agent,
-            "ndcId": data["id"],
+            "ndcId": ndcId,
             "name": data["name"],
             "link": "http://aminoapps.com/c/" + data["aminoId"],
             "endpoint": data["aminoId"],

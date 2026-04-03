@@ -104,34 +104,40 @@ async def join_community(request: Request, ndcId: int):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
+
     table = await db.get(table="Communities")
     community = await table.find_one({"id": ndcId})
-
     if not community:
         await db.close()
-        # return Errors.CommunityNotFound(timestamp() - t1)
         return Errors.DataNotExist(timestamp() - t1)
 
-    # adding info for global info
+    # updating community info
     if trigger_uid in community.get("memberList", []):
         await db.close()
         return Base.Answer(
             {"api:warning": "You are already joined community."},
             spent_time=timestamp() - t1,
         )
+
     await table.update_one(
-        {"ndcId": ndcId},
+        {"id": ndcId},
         {
-            "$push": {"memberList": trigger_uid},
+            "$addToSet": {"memberList": trigger_uid},
             "$inc": {"membersCount": 1},
         },
     )
+
+    # updating global user info
+    table = await db.get(table="Users")
+    await table.update_one({"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}})
 
     # adding profile info if not exist
     table = await db.get(f"x{ndcId}", "Users")
     if not (await table.find_one({"id": trigger_uid})):
         g_table = await db.get("x0", "Users")
-        await table.insert_one(await g_table.find_one({"id": trigger_uid}))
+        g_data = await g_table.find_one({"id": trigger_uid})
+        g_data["whoFollows"] = g_data["following"] = []
+        await table.insert_one(g_data)
 
     await db.close()
 
