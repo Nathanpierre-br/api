@@ -17,6 +17,7 @@ class Communities:
             data = await comms.find_one({"id": ndcId})
         else:
             data = ndcId
+            ndcId = data["id"]
 
         # host_global = await connection.get(table="Users").find_one({"id": data["agent"]})
         table = await connection.get(f"x{ndcId}", "Users")
