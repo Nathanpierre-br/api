@@ -1,6 +1,6 @@
 from pymongo import DESCENDING, ASCENDING
 from base64 import b85decode, b85encode
-from re import compile as regex_compile
+from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 from datetime import datetime
@@ -63,7 +63,7 @@ async def user_search(
 
     db = await Database().init()
     g_users, xndc_users = await db.get(table="Users"), await db.get("x0", "Users")
-    query = {"nickname": regex_compile(r"{}".format(q))}
+    query = {"nickname": {"$regex": regex_escape(q), "$options": "i"}}
     users = [
         item
         async for item in xndc_users.find(query)

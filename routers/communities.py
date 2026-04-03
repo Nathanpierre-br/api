@@ -1,6 +1,5 @@
 from base64 import b85encode, b85decode
-from re import compile as regex_compile
-from re import IGNORECASE as RE_IGNORECASE
+from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 
@@ -77,7 +76,7 @@ async def search_community(
     db = await Database().init()
     table = await db.get(table="Communities")
 
-    query = {"name": regex_compile(r"{}".format(q), RE_IGNORECASE)}
+    query = {"name": {"$regex": regex_escape(q), "$options": "i"}}
     items = [item async for item in table.find(query).skip(start).limit(size)]
 
     return Base.Answer(
@@ -106,7 +105,7 @@ async def join_community(request: Request, ndcId: int):
 
     db = await Database().init()
     table = await db.get(table="Communities")
-    community = await table.find_one({"ndcId": ndcId})
+    community = await table.find_one({"id": ndcId})
 
     if not community:
         await db.close()
@@ -124,6 +123,7 @@ async def join_community(request: Request, ndcId: int):
         {"ndcId": ndcId},
         {
             "$push": {"memberList": trigger_uid},
+            "$inc": {"membersCount": 1},
         },
     )
     await db.close()
@@ -142,7 +142,7 @@ async def leave_community(request: Request, ndcId: int):
 
     db = await Database().init()
     table = await db.get(table="Communities")
-    community = await table.find_one({"ndcId": ndcId})
+    community = await table.find_one({"id": ndcId})
 
     if not community:
         await db.close()
@@ -164,6 +164,7 @@ async def leave_community(request: Request, ndcId: int):
         {"ndcId": ndcId},
         {
             "$pull": {"memberList": trigger_uid},
+            "$inc": {"membersCount": -1},
         },
     )
 

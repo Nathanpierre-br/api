@@ -1,5 +1,6 @@
 from typing import Union
 from helpers.database.mongo import Database
+from .user import User
 
 
 class Communities:
@@ -8,8 +9,6 @@ class Communities:
         ndcId: int | dict,
         connection=None,
         trigger_uid: Union[str, None] = None,
-        g_users=None,
-        xndc_users=None,
     ):
         if not connection:
             connection = await Database().init()
@@ -19,19 +18,10 @@ class Communities:
         else:
             data = ndcId
 
-        """
-        if g_users:
-            host_global = await g_users.find_one({"id": data["agent"]})
-        else:
-            users = await connection.get(table="Users")
-            host_global = await users.find_one({"id": data["agent"]})
-
-        if xndc_users:
-            host_xndcId = await xndc_users.find_one({"id": data["agent"]})
-        else:
-            users = await connection.get(f"x{ndcId}", "Users")
-            host_xndcId = await users.find_one({"id": data["agent"]})
-        """
+        # host_global = await connection.get(table="Users").find_one({"id": data["agent"]})
+        host_xndcId = await connection.get(f"x{ndcId}", "Users").find_one(
+            {"id": data["agent"]}
+        )
 
         membershipStatus = 0
         if trigger_uid and (
@@ -43,69 +33,100 @@ class Communities:
         return {
             "ndcId": data["id"],
             "name": data["name"],
+            "agent": User.OwnNonSensetiveProfile(host_xndcId, data["id"]),
             "link": "http://aminoapps.com/c/" + data["aminoId"],
             "endpoint": data["aminoId"],
             "membershipStatus": membershipStatus,
             "icon": data["icon"],
-            "theme": data.get("theme", ""),
-            "status": data["status"],
-            "membersCount": 0,  # todo
-            "joinType": 0,  # todo,
+            "status": data.get("status"),
+            "membersCount": data.get("membersCount", 0),
+            "joinType": data.get("joinType", 0),
             "content": data.get("description", ""),
-            "tagline": data.get("slogan", ""),
+            "tagline": data.get("tagline", ""),
             "templateId": data.get("templateId", 9),
-            "rules": data.get("rules", ""),
             "communityHeat": data.get("heat", 0.00),
-            "extensions": {} | data.get("extensions", {}),
+            "extensions": {},
             "createdTime": data.get("createdTime", "2023-01-01T12:00:00Z"),
             "updatedTime": data.get("updatedTime", "2023-01-01T12:00:00Z"),
-            "userAddedTopicList": data.get("tags", []),
+            "userAddedTopicList": [],
             "searchable": True,
             "influencerList": [],
             "primaryLanguage": data.get("lang", "en"),
+            "isStandaloneAppDeprecated": False,
+            "listedStatus": data.get("listedStatus", 1),
+            "probationStatus": 0,  # idk what is it
+            "themePack": {
+                "themeColor": data.get("themeColor", "#000000"),
+                "themePackUrl": data.get("themeUrl"),
+                "themePackHash": data.get("themeHash"),
+                "themePackRevision": data.get("themeRevision"),
+            },
+            "mediaList": [],  # for description
+            "isStandaloneAppMonetizationEnabled": False,
+            "activeInfo": {},
+            "configuration": {},
         }
 
-        # an example json
-        """{
-            "probationStatus": 0,
-            "listedStatus": 0,
-            "isStandaloneAppDeprecated": false,
-            "keywords": "keyword1, keyword2",
-            "mediaList": [],
-            "isStandaloneAppMonetizationEnabled": false,
-            "promotionalMediaList": [],
-            "themePack": {
-                "themeColor": "#FFFFFF",
-                "themePackHash": "abc123hash",
-                "themePackRevision": 5,
-                "themePackUrl": "https://example.com",
-            },
-            "configuration": {
-                "appearance": {
-                    "homePage": {"navigation": "home-nav-data"},
-                    "leftSidePanel": {
-                        "navigation": {
-                            "level1": "top-panel-data",
-                            "level2": "bottom-panel-data",
-                        },
-                        "style": {"iconColor": "#000000"},
-                    },
-                },
-                "page": {"customList": []},
-            },
-            "advancedSettings": {
-                "defaultRankingTypeInLeaderboard": 1,
-                "frontPageLayout": 2,
-                "hasPendingReviewRequest": false,
-                "welcomeMessageEnabled": true,
-                "welcomeMessageText": "Добро пожаловать!",
-                "pollMinFullBarVoteCount": 5,
-                "catalogEnabled": true,
-                "leaderboardStyle": "classic",
-                "facebookAppIdList": [],
-                "newsfeedPages": [],
-                "joinedBaselineCollectionIdList": [],
-            },
-            "activeInfo": {},
-            "extensions": {"communityNameAliases": ["Alias1", "Alias2"]},
-        }"""
+    """
+    [TODO]
+    configuration!
+    """
+
+    """
+    [NOTE]
+    This is what we need to implement later.
+    Here are real examples what server sends.
+
+    userAddedTopicList:
+    {
+      "topicId": 17328,
+      "style": {
+        "backgroundColor": "#ECCA41"
+      },
+      "name": "Аниме"
+    }
+
+    influencerList:
+    basically, user with influencerInfo obj:
+    {
+      "pinned": false,
+      "createdTime": "2024-05-01T21:53:14Z",
+      "fansCount": 179,
+      "monthlyFee": 20
+    }
+
+    themePack:
+    it's easy to implement, but we don't have any
+    theme files. once we will get one on hand we
+    will add support to them:
+    {
+        "themeColor": "#34754e",
+        "themePackHash": "ea6f312f63cb8fedbe2145f7967d39cb", # ???
+        "themePackRevision": 130, # ???
+        "themePackUrl": "http://theme.aminoapps.com/x156542274-rev130.ndthemepack" # ???
+    }
+
+    communityHeadList:
+    basically list with all admins there
+    idk really why they need to do it, will not
+    add it for now
+
+    extensions:
+    also idk why we need it for now
+    {
+        "communityNameAliases": "Anime,Аниме",
+        "iTagIdList": [
+            100006
+        ]
+    }   
+
+    promotionalMediaList:
+    also no idea for now
+    [
+      [
+        100,
+        "http://cm1.aminoapps.com/8994/3f565c7f774febc4f0624a439b58f8eda8f16416_00.jpg",
+        null
+      ]
+    ]
+    """

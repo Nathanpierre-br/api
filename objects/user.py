@@ -55,23 +55,25 @@ class User:
             "modifiedTime": row["modifiedTime"],
             "createdTime": row["createdTime"],
             "role": row.get("role", 0),
-            "aminoId": row["aminoId"],
+            "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
             "mediaList": None if row["mediaList"] in [[], None] else row["mediaList"],
             "icon": None if row["icon"] == "" else row["icon"],
             "accountMembershipStatus": int(row.get("isPaidSubscriber")),
             "ndcId": ndcId,  # 0 is global
             "isGlobal": True if ndcId == 0 else False,
-            "reputation": 0 if ndcId == 0 else row["reputation"],
-            "level": 0 if ndcId == 0 else row["level"],
-            "mood": None if ndcId == 0 else row["mood"],
+            "reputation": 0,  # if ndcId == 0 else row["reputation"],
+            "level": 0,  # if ndcId == 0 else row["level"],
+            "mood": None,  # if ndcId == 0 else row["mood"],
             "content": (
-                None if row["description"] in ["", None] else row["description"].strip()
+                None
+                if row.get("description").strip() in ["", None]
+                else row.get("description", "").strip()
             ),
             "joinedCount": len(row["following"]),
             "followingStatus": 0,
             "membersCount": len(row["whoFollows"]),
-            "storiesCount": 0,  # i will NOT implement stories, fuck them
+            "storiesCount": 0,
             "blogsCount": (
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
@@ -80,17 +82,19 @@ class User:
             ),  # [TODO] when communitues will be implemented do that
             "extenstions": extenstions,
             "moodSticker": (
-                None if ndcId == 0 else row["mood"]
+                # None if ndcId == 0 else row["mood"]
+                None
             ),  # [TODO]: check wtf is this
             "consecutiveCheckInDays": (
-                None if ndcId == 0 else row["consecutiveDaysOfCheckIns"]
+                # None if ndcId == 0 else row["consecutiveDaysOfCheckIns"]
+                None
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
             "isNicknameVerified": False,
             "notificationSubscriptionStatus": 0,
             "pushEnabled": True,
             "membershipStatus": 0,
-            "commentsCount": len(row["wall"]),
+            "commentsCount": len(row.get("wall", [])),
         }
 
     @staticmethod
@@ -100,7 +104,7 @@ class User:
         ndcId: int = 0,
         extenstions: dict = {},
     ):
-        if triggerUserId == None:
+        if triggerUserId is None:
             membershipStatus = 0
         elif triggerUserId in row.get("whoFollows", []):
             membershipStatus = 1
@@ -143,10 +147,12 @@ class User:
             ),  # [TODO] when communitues will be implemented do that
             "extenstions": extenstions,
             "moodSticker": (
-                None if ndcId == 0 else row["mood"]
+                # None if ndcId == 0 else row["mood"]
+                None
             ),  # [TODO]: check wtf is this
             "consecutiveCheckInDays": (
-                None if ndcId == 0 else row["consecutiveDaysOfCheckIns"]
+                # None if ndcId == 0 else row["consecutiveDaysOfCheckIns"]
+                None
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
             "isNicknameVerified": False,

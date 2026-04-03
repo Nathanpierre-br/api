@@ -1,7 +1,7 @@
 from base64 import b85encode, b85decode, b64decode
 from pymongo import ASCENDING, DESCENDING
 from string import ascii_letters, digits
-from re import compile as regex_compile
+from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 from datetime import datetime
@@ -46,7 +46,7 @@ async def user_search(
 
     db = await Database().init()
     table = await db.get("x0", "Chats")
-    query = {"title": regex_compile(r"{}".format(q))}
+    query = {"title": {"$regex": regex_escape(q), "$options": "i"}}
     chats = [
         item
         async for item in table.find(query)
