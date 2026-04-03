@@ -69,7 +69,7 @@ class User:
             "mood": None,  # if ndcId == 0 else row["mood"],
             "content": (
                 None
-                if row.get("description").strip() in ["", None]
+                if row.get("description", "").strip() in ["", None]
                 else row.get("description", "").strip()
             ),
             "joinedCount": len(row["following"]),
