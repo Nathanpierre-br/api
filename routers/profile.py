@@ -84,7 +84,9 @@ async def user_search(
         answer = Base.Answer(
             {
                 "userProfileList": [
-                    User.GetUserInfo(await g_users.find_one({"id": item["id"]}) | item)
+                    User.GetUserInfo(
+                        await g_users.find_one({"id": item["id"]}) | item, ndcId=ndcId
+                    )
                     for item in users
                 ],
                 "paging": {
@@ -128,7 +130,8 @@ async def get_user_following(
     following_list = [
         User.GetUserInfo(
             await global_table.find_one({"id": item})
-            | await xndcid_table.find_one({"id": item})
+            | await xndcid_table.find_one({"id": item}),
+            ndcId=ndcId,
         )
         for item in following
     ]
@@ -156,7 +159,8 @@ async def get_user_followers(
     followers_list = [
         User.GetUserInfo(
             await global_table.find_one({"id": item})
-            | await xndcid_table.find_one({"id": item})
+            | await xndcid_table.find_one({"id": item}),
+            ndcId=ndcId,
         )
         for item in followers
     ]
@@ -505,12 +509,16 @@ async def get_self_info(request: Request, ndcId: int = 0):
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
     return Base.Answer(
-        {"userProfile": User.GetUserInfo(row1 | row2)}, spent_time=timestamp() - t1
+        {"userProfile": User.GetUserInfo(row1 | row2, ndcId=ndcId)},
+        spent_time=timestamp() - t1,
     )
 
 
 @profile_methods.get("/g/s/blog")
-async def get_user_stories(request: Request, q: Union[str, None] = None):
+@profile_methods.get("/x{ndcId}/s/blog")
+async def get_user_stories(
+    request: Request, q: Union[str, None] = None, ndcId: int = 0
+):
     t1 = timestamp()
 
     return Base.Answer(
@@ -520,7 +528,8 @@ async def get_user_stories(request: Request, q: Union[str, None] = None):
 
 
 @profile_methods.get("/g/s/wallet")
-async def get_wallet_info(request: Request):
+@profile_methods.get("/x{ndcId}/s/wallet")
+async def get_wallet_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -632,5 +641,6 @@ async def edit_user_info(uid, request: Request, ndcId=0):
         return Errors.AccountNotExist(timestamp() - t1)
 
     return Base.Answer(
-        {"userProfile": User.GetUserInfo(row1 | row2)}, spent_time=timestamp() - t1
+        {"userProfile": User.GetUserInfo(row1 | row2, ndcId=ndcId)},
+        spent_time=timestamp() - t1,
     )

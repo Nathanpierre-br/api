@@ -67,11 +67,7 @@ class User:
             "reputation": 0,  # if ndcId == 0 else row["reputation"],
             "level": 0,  # if ndcId == 0 else row["level"],
             "mood": None,  # if ndcId == 0 else row["mood"],
-            "content": (
-                None
-                if row.get("description", "").strip() in ["", None]
-                else row.get("description", "").strip()
-            ),
+            "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["following"]),
             "followingStatus": 0,
             "membersCount": len(row["whoFollows"]),
@@ -134,9 +130,7 @@ class User:
             "reputation": 0 if ndcId == 0 else row["reputation"],
             "level": 0 if ndcId == 0 else row["level"],
             "mood": None if ndcId == 0 else row["mood"],
-            "content": (
-                None if row["description"] in ["", None] else row["description"].strip()
-            ),
+            "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["whoFollows"]),
             "followingStatus": membershipStatus,
             "membersCount": len(row["followers"]),
@@ -217,9 +211,7 @@ class User:
             "moodSticker": (
                 None if ndcId == 0 else row["mood"]
             ),  # [TODO]: check wtf is this
-            "content": (
-                None if row["description"] in ["", None] else row["description"].strip()
-            ),
+            "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["following"]),
             "followingStatus": membershipStatus,
             "membersCount": len(row["whoFollows"]),
