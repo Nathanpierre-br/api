@@ -12,9 +12,10 @@ class Chat:
     async def GetMemberInfo(
         memberId: str, g_users, xndc_users, membershipStatus: bool = True
     ):
+        global_data = await g_users.find_one({"id": memberId}) or {}
+        xndc_data = await xndc_users.find_one({"id": memberId}) or {}
         return User.GetUserInfo(
-            await g_users.find_one({"id": memberId})
-            | await xndc_users.find_one({"id": memberId}),
+            global_data | xndc_data,
             membershipStatus=1 if membershipStatus else 2,
         )
 
@@ -62,34 +63,37 @@ class Chat:
         history_table=None,
     ):
         extensions = data.get("extensions", {})
-        if extensions == None:
+        if extensions is None:
             extensions = {}
 
         if extensions.get("replyMessageId"):
-            if history_table == None:
+            if history_table is None:
                 con = await Database().init()
                 history_table = await con.get("x0", f"_Chat:{threadId}")
-            extensions.update(
-                {
-                    "replyMessage": await Chat.LongMessage(
-                        await history_table.find_one(
-                            {"messageId": extensions["replyMessageId"]}
-                        ),
-                        threadId,
-                        g_users,
-                        xndc_users,
-                        history_table=history_table,
-                    )
-                }
+
+            reply_msg_data = await history_table.find_one(
+                {"messageId": extensions["replyMessageId"]}
             )
+            if reply_msg_data:
+                extensions.update(
+                    {
+                        "replyMessage": await Chat.LongMessage(
+                            reply_msg_data,
+                            threadId,
+                            g_users,
+                            xndc_users,
+                            history_table=history_table,
+                        )
+                    }
+                )
+
+        global_data = await g_users.find_one({"id": data["authorId"]}) or {}
+        xndc_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
 
         return {
             "includedInSummary": True,
             "uid": data["authorId"],
-            "author": User.GetUserInfo(
-                await g_users.find_one({"id": data["authorId"]})
-                | await xndc_users.find_one({"id": data["authorId"]})
-            ),
+            "author": User.GetUserInfo(global_data | xndc_data),
             "isHidden": False,
             "messageId": data["messageId"],
             "mediaType": data.get("mediaType", 0),
@@ -131,7 +135,7 @@ class Chat:
 
         messages = await connection.get(f"x{ndcId}", f"_Chat:{data['id']}")
         message = await messages.find_one({"messageId": data["lastMessageId"]})
-        if message == None:
+        if message is None:
             message = {
                 "messageId": "00000000-0000-0000-0000-000000000",
                 "authorId": "00000000-0000-0000-0000-000000000",
@@ -145,19 +149,19 @@ class Chat:
                 "extensions": {"mentionedArray": []},
             }
 
-        if g_users != None:
+        if g_users is not None:
             users = g_users
-            host_global = await users.find_one({"id": data["hostId"]})
+            host_global = await users.find_one({"id": data["hostId"]}) or {}
         else:
             users = await connection.get(table="Users")
-            host_global = await users.find_one({"id": data["hostId"]})
+            host_global = await users.find_one({"id": data["hostId"]}) or {}
 
-        if xndc_users != None:
+        if xndc_users is not None:
             users = xndc_users
-            host_xndcId = await users.find_one({"id": data["hostId"]})
+            host_xndcId = await users.find_one({"id": data["hostId"]}) or {}
         else:
             users = await connection.get(f"x{ndcId}", "Users")
-            host_xndcId = await users.find_one({"id": data["hostId"]})
+            host_xndcId = await users.find_one({"id": data["hostId"]}) or {}
 
         membershipStatus = 0
         if trigger_uid in data["memberList"]:

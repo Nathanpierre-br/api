@@ -54,7 +54,7 @@ class RequestProcessor:
         return ceil(time()) - ceil(timestamp / 1000) <= 5
 
     @staticmethod
-    async def Validate(request: Request) -> Union[bool, Optional[ORJSONResponse]]:
+    async def Validate(request: Request) -> list[Union[bool, Optional[ORJSONResponse]]]:
         """
         pass da request and it will check all possible things here
 

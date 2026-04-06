@@ -11,8 +11,6 @@ import asyncio
 
 from boto3 import resource
 
-# import sys
-# sys.path.append('../')
 from objects import *
 from helpers.config import Config
 from helpers.database.mongo import *
@@ -38,7 +36,7 @@ async def user_search(
     ndcId: int = 0,
 ):
     t1 = timestamp()
-    size = size if 0 > size > 101 else 25
+    size = size if 0 < size < 101 else 25
 
     # parse page token
     if pageToken:
@@ -276,7 +274,7 @@ async def if_chat_exists(
             {"threadList": [], "playlistInThreadList": {}}, spent_time=timestamp() - t1
         )
     elif type == "joined-me" or (start and size):
-        size = size if 0 > size > 101 else 25
+        size = size if 0 < size < 101 else 25
 
         db = await Database().init()
         table = await db.get(f"x{ndcId}", "Chats")
@@ -424,7 +422,7 @@ async def get_chat_messages(
 ):
     t1 = timestamp()
 
-    size = size if 0 > size > 101 else 25
+    size = size if 0 < size < 101 else 25
 
     # parse page token
     if pageToken:
@@ -716,7 +714,7 @@ async def delete_message(request: Request, chatId: str, messageId: str, ndcId: i
             return Errors.InvalidRequest(timestamp() - t1)
         else:
             work = True
-        if chat_info["chatType"] == [0, 1]:
+        if chat_info["chatType"] == 0 or chat_info["chatType"] == 1:
             work = True
     else:
         work = True

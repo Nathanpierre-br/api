@@ -3,11 +3,9 @@ from base64 import b85decode, b85encode
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Union
 
-# import sys
-# sys.path.append('../')
 from objects import *
 from helpers.database.mongo import *
 from helpers.routers.cachable import CachableRoute
@@ -55,7 +53,7 @@ async def user_search(
             spent_time=timestamp() - t1,
         )
 
-    size = size if 0 > size > 101 else 25
+    size = size if 0 < size < 101 else 25
 
     # parse page token
     if pageToken:
@@ -299,8 +297,9 @@ async def delete_post_from_wall(
         wall = user_info.get("wall")
         if wall.get(commentId):
             unsetDict = {f"wall.{commentId}": ""}
-            if len(wall.get(commentId, {}).get("subWMs", [])) > 0:
-                for key in commentId.get("subWMs", []):
+            sub_wms = wall.get(commentId, {}).get("subWMs", [])
+            if len(sub_wms) > 0:
+                for key in sub_wms:
                     if key in wall.keys():
                         unsetDict.update({f"wall.{key}": ""})
 
@@ -456,9 +455,9 @@ async def follow_user(uid, request: Request, ndcId=0):
 # [POST] /g/s/user-profile/632fac88-f43b-4d4c-8f89-7e8fca65323a/member
 
 
-@profile_methods.post("/g/s/user-profile/{uid}/member/{inited_uid}")
-@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/member/{inited_uid}")
-async def follow_user(uid: str, inited_uid: str, request: Request, ndcId=0):
+@profile_methods.delete("/g/s/user-profile/{uid}/member/{inited_uid}")
+@profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/member/{inited_uid}")
+async def unfollow_user(uid: str, request: Request, ndcId=0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -621,7 +620,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
     if trigger_uid != uid:
         return Errors.InvalidRequest(timestamp() - t1)
 
-    preparedQueries = {"modifiedTime": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+    preparedQueries = {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
     if isinstance(data.get("nickname"), str):
         if len(data["nickname"].strip()) == 0:
             return Errors.InvalidRequest(timestamp() - t1)

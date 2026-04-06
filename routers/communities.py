@@ -3,8 +3,6 @@ from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 
-# import sys
-# sys.path.append('../')
 from objects import *
 from helpers.config import Config
 from helpers.database.mongo import *
@@ -29,7 +27,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
         )
 
     uid = request.state.session["uid"]
-    size = size if 0 > size > 101 else 25
+    size = size if 0 < size < 101 else 25
 
     db = await Database().init()
     table = await db.get(table="Users")
@@ -64,7 +62,7 @@ async def search_community(
     pageToken: str | None = None,
 ):
     t1 = timestamp()
-    size = size if 0 > size > 101 else 25
+    size = size if 0 < size < 101 else 25
 
     # parse page token
     if pageToken:
@@ -224,7 +222,8 @@ async def get_community_guidelines(ndcId: int, request: Request):
     uid = request.state.session["uid"]
 
     db = await Database().init()
-    info = await table.find({"id": ndcId})
+    table = await db.get(table="Communities")
+    info = await table.find_one({"id": ndcId})
     await db.close()
 
     if not info:

@@ -7,8 +7,6 @@ from hashlib import blake2b
 from uuid import uuid4
 from math import ceil
 
-# import sys
-# sys.path.append('../')
 from objects import *
 from helpers.config import Config
 from helpers.functions import get_ip

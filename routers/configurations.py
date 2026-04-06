@@ -3,8 +3,6 @@ from time import time as timestamp
 from typing import Union
 from uuid import uuid4
 
-# import sys
-# sys.path.append('../')
 from objects import *
 from helpers.routers.cachable import CachableRoute
 

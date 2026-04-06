@@ -35,8 +35,8 @@ class Comments:
             "votesSum": len(row["likes"]),  # how many likes
             "subcommentsPreview": [],  # subcomments preview
             "author": User.GetUserInfo(
-                await g_users.find_one({"id": row["authorId"]})
-                | await xndcid_users.find_one({"id": row["authorId"]})
+                (await g_users.find_one({"id": row["authorId"]}) or {})
+                | (await xndcid_users.find_one({"id": row["authorId"]}) or {})
             ),
             "content": row["content"],
             "extensions": {} | extenstions,
@@ -74,8 +74,8 @@ class Comments:
             ),  # if have images i guess
             "votesSum": len(row["likes"]),  # how many likes
             "author": User.GetUserInfo(
-                await g_users.find_one({"id": row["authorId"]})
-                | await xndcid_users.find_one({"id": row["authorId"]})
+                (await g_users.find_one({"id": row["authorId"]}) or {})
+                | (await xndcid_users.find_one({"id": row["authorId"]}) or {})
             ),
             "content": row["content"],
             "extensions": {} | extenstions,

@@ -4,6 +4,7 @@ from .base import Base
 
 
 class Errors:
+    @staticmethod
     def CantProcessData():
         return Base.Answer(
             api_status_code=422422,

@@ -8,9 +8,6 @@ from boto3 import resource
 from random import choice
 from objects import *
 
-# import sys
-# sys.path.append('../')
-
 
 def detect_file_ext(data: bytes) -> str | None:
     if len(data) < 12:
@@ -61,7 +58,7 @@ async def upload(request: Request, ndcId: int = 0):
     # [note]: its still not safe,
     # but better and still fast then content-type
     file_ext = detect_file_ext(body)
-    if file_ext == "":
+    if file_ext is None:
         return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
 
     # generating filename
@@ -102,7 +99,7 @@ async def upload_with_target(request: Request, target: str, ndcId: int = 0):
     # [note]: its still not safe,
     # but better and still fast then content-type
     file_ext = detect_file_ext(body)
-    if file_ext == "":
+    if file_ext is None:
         return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
 
     # generating filename

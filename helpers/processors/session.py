@@ -51,6 +51,6 @@ class SessionProcessor:
             return None
         if isinstance(session, bytes):
             session = session.decode()
-        info = await CacheProcessor.Get(session)
+        info = await CacheProcessor.Get(session, prefix="sid=")
 
         return loads(info) if info else None

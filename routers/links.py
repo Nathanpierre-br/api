@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Request
 from time import time as timestamp
 
-# import sys
-# sys.path.append('../')
 from objects import *
 from helpers.database.mongo import *
 from helpers.generator import Generator
