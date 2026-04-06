@@ -116,7 +116,7 @@ async def get_visits(request: Request):
 # affiliations
 
 
-@configurations.get("/g/s/account/affiliations")
+@profile_methods.get("/g/s/account/affiliations")
 async def affiliations_config(request: Request):
     if not request.state.session["validsession"]:
         return Errors.InvalidSession()
