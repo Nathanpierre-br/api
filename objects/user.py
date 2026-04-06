@@ -61,7 +61,7 @@ class User:
             "nickname": row["nickname"],
             "mediaList": None if row["mediaList"] in [[], None] else row["mediaList"],
             "icon": None if row["icon"] == "" else row["icon"],
-            "accountMembershipStatus": int(row.get("isPaidSubscriber")),
+            "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
             "isGlobal": True if ndcId == 0 else False,
             "reputation": 0,  # if ndcId == 0 else row["reputation"],
@@ -88,7 +88,7 @@ class User:
                 None
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
-            "isNicknameVerified": False,
+            "isNicknameVerified": bool(row.get("isVerified", False)),
             "notificationSubscriptionStatus": 0,
             "pushEnabled": True,
             "membershipStatus": membershipStatus,

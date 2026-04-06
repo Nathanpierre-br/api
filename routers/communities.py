@@ -139,6 +139,7 @@ async def join_community(request: Request, ndcId: int):
         g_data = await g_table.find_one({"id": trigger_uid})
         g_data["whoFollows"] = g_data["following"] = []
         g_data.pop("_id")
+        g_data["wall"] = {}
         await table.insert_one(g_data)
 
     await db.close()
