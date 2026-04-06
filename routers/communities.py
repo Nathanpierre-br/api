@@ -47,7 +47,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
             ],
             "userInfoInCommunities": {
                 # experimental fix
-                f"x{item}": {"membershipStatus": 1, "id": uid}
+                item: {"membershipStatus": 1, "id": uid}
                 for item in row1["communityList"][start:size]
             },
             "showStoreBadge": False,
@@ -142,8 +142,9 @@ async def join_community(request: Request, ndcId: int):
         g_table = await db.get("x0", "Users")
         g_data = await g_table.find_one({"id": trigger_uid})
         g_data["whoFollows"] = g_data["following"] = []
-        g_data.pop("_id")
         g_data["wall"] = {}
+        for field in ["_id", "createdTime", "updatedTime"]:
+            g_data.pop(field)
         await table.insert_one(g_data)
 
     await db.close()
