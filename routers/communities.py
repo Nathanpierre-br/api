@@ -121,6 +121,17 @@ async def join_community(request: Request, ndcId: int):
             spent_time=timestamp() - t1,
         )
 
+    # adding profile info if not exist
+    table = await db.get(f"x{ndcId}", "Users")
+    if not (await table.find_one({"id": trigger_uid})):
+        g_table = await db.get("x0", "Users")
+        g_data = await g_table.find_one({"id": trigger_uid})
+        g_data["whoFollows"] = g_data["following"] = []
+        g_data["wall"] = {}
+        for field in ["_id", "createdTime", "updatedTime"]:
+            g_data.pop(field)
+        await table.insert_one(g_data)
+
     await table.update_one(
         {"id": ndcId},
         {
@@ -133,17 +144,7 @@ async def join_community(request: Request, ndcId: int):
     table = await db.get(table="Users")
     await table.update_one({"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}})
 
-    # adding profile info if not exist
-    table = await db.get(f"x{ndcId}", "Users")
-    if not (await table.find_one({"id": trigger_uid})):
-        g_table = await db.get("x0", "Users")
-        g_data = await g_table.find_one({"id": trigger_uid})
-        g_data["whoFollows"] = g_data["following"] = []
-        g_data["wall"] = {}
-        for field in ["_id", "createdTime", "updatedTime"]:
-            g_data.pop(field)
-        await table.insert_one(g_data)
-
+    # closing con
     await db.close()
 
     return Base.Answer({}, spent_time=timestamp() - t1)
@@ -246,6 +247,14 @@ async def get_community_profiles(
     size: int = 25,
     type: str = "",
 ):
+    if type == "featured":
+        return Base.Answer(
+            {
+                "userProfileCount": 0,  # temm
+                "userProfileList": [],
+            },
+        )
+
     t1 = timestamp()
     size = size if 0 < size < 101 else 25
 

@@ -275,8 +275,8 @@ async def if_chat_exists(
 
         db = await Database().init()
         table = await db.get(f"x{ndcId}", "Chats")
-        joined = await table.find({"memberList": uid}).distinct("id")
-        invited = await table.find({"invitedList": uid}).distinct("id")
+        joined = await table.find({"memberList": uid}).distinct("id") or []
+        invited = await table.find({"invitedList": uid}).distinct("id") or []
         row = (joined + invited)[start : start + size]
 
         info = Base.Answer(
