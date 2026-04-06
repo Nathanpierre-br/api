@@ -637,7 +637,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
             preparedQueries.update({"icon": data["icon"]})
 
     if data.get("mediaList"):
-        mediaList = [item[1] for item in style["mediaList"]]
+        mediaList = [item[1] for item in data["mediaList"]]
         preparedQueries.update({"mediaList": mediaList})
 
     if data.get("extensions"):
