@@ -151,6 +151,7 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
         return Errors.InvalidSession()
 
     data = await request.json()
+    print(f"editing data for chat {chatId}:", data)
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()

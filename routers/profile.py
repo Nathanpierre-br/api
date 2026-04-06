@@ -613,6 +613,8 @@ async def edit_user_info(uid, request: Request, ndcId=0):
     t1 = timestamp()
     data = await request.json()
 
+    print(f"editing profile {uid}:", data)
+
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
 
