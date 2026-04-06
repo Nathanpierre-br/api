@@ -1,6 +1,6 @@
 # API
 
-![Static Badge](https://img.shields.io/badge/branch-canary-yellow?style=for-the-badge)
+![Static Badge](https://img.shields.io/badge/branch-dev-red?style=for-the-badge)
 
 Main branch where magic happens.
 
