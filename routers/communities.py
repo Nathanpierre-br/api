@@ -271,7 +271,7 @@ async def get_community_profiles(
     return Base.Answer(
         {
             "userProfileCount": 0,  # temm
-            "userProfileList": parsed_profiles,
+            "userProfileList": items,
         },
         spent_time=timestamp() - t1,
     )
