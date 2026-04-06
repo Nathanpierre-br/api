@@ -281,8 +281,8 @@ class User:
         return {"frameId": frameId}
 
     @staticmethod
-    def MediaList(mediaList: list):
-        if len(mediaList) < 1:
+    def MediaList(mediaList: list | None):
+        if mediaList is None or len(mediaList) < 1:
             return None
         return [User.MediaItem(item) for item in mediaList]
 
