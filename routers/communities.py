@@ -23,7 +23,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
             {
                 "communityList": [],
                 "userInfoInCommunities": {},
-                "showStoreBadge": True,
+                "showStoreBadge": False,
             },
             spent_time=timestamp() - t1,
         )
@@ -48,7 +48,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                 )
             ],
             "userInfoInCommunities": {},
-            "showStoreBadge": True,
+            "showStoreBadge": False,
         },
         spent_time=timestamp() - t1,
     )
@@ -73,6 +73,7 @@ async def search_community(
         except:
             pass
 
+    uid = request.state.session["uid"]
     db = await Database().init()
     table = await db.get(table="Communities")
 
@@ -81,7 +82,9 @@ async def search_community(
 
     return Base.Answer(
         {
-            "communityList": [await Communities.Info(item["id"], db) for item in items],
+            "communityList": [
+                await Communities.Info(item["id"], db, uid) for item in items
+            ],
             "paging": {
                 "nextPageToken": b85encode(str(size + start).encode()).decode(),
                 "prevPageToken": b85encode(
@@ -137,6 +140,7 @@ async def join_community(request: Request, ndcId: int):
         g_table = await db.get("x0", "Users")
         g_data = await g_table.find_one({"id": trigger_uid})
         g_data["whoFollows"] = g_data["following"] = []
+        g_data.pop("_id")
         await table.insert_one(g_data)
 
     await db.close()
@@ -201,7 +205,30 @@ async def get_community_info(ndcId: int, request: Request):
     await db.close()
 
     if not info:
+        return Errors.DataNotExist(timestamp() - t1)
+        # return Errors.CommunityNotFound(timestamp() - t1)
+
+    return Base.Answer({"community": info}, spent_time=timestamp() - t1)
+
+
+# guidelines
+
+
+@communities.get("/x{ndcId}/s/community/guideline")
+@communities.get("/g/s-x{ndcId}/community/guideline")
+async def get_community_guidelines(ndcId: int, request: Request):
+    t1 = timestamp()
+
+    uid = request.state.session["uid"]
+
+    db = await Database().init()
+    info = await table.find({"id": ndcId})
+    await db.close()
+
+    if not info:
         # return Errors.CommunityNotFound(timestamp() - t1)
         return Errors.DataNotExist(timestamp() - t1)
 
-    return Base.Answer({"community": info}, spent_time=timestamp() - t1)
+    return Base.Answer(
+        {"communityGuideline": info.get("guideline", "")}, spent_time=timestamp() - t1
+    )
