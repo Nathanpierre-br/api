@@ -75,7 +75,7 @@ async def upload(request: Request, ndcId: int = 0):
 
 
 @upload_media.post("/g/s/media/upload/target/{target}")
-@upload_media.post("/{ndcId}/s/media/upload/target/{target}")
+@upload_media.post("/x{ndcId}/s/media/upload/target/{target}")
 async def upload_with_target(request: Request, target: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session.get("uid"):
