@@ -21,8 +21,8 @@ class User:
             "phoneNumberActivation": 0,
             "emailActivation": 1,
             "nickname": row["nickname"],
-            "mediaList": None,
-            "icon": None if row["icon"] == "" else row["icon"],
+            "mediaList": row.get("mediaList"),
+            "icon": row.get("icon"),
             "securityLevel": 3,  # idk what is it
             "phoneNumber": None,
             "membership": None,
@@ -59,11 +59,11 @@ class User:
             "role": row.get("role", 0),
             "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
-            "mediaList": None if row["mediaList"] in [[], None] else row["mediaList"],
-            "icon": None if row["icon"] == "" else row["icon"],
+            "mediaList": User.MediaList(row.get("mediaList", [])),
+            "icon": row.get("icon"),
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
-            "isGlobal": True if ndcId == 0 else False,
+            "isGlobal": ndcId == 0,
             "reputation": 0,  # if ndcId == 0 else row["reputation"],
             "level": 0,  # if ndcId == 0 else row["level"],
             "mood": None,  # if ndcId == 0 else row["mood"],
@@ -78,7 +78,15 @@ class User:
             "postsCount": (
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
-            "extenstions": extenstions,
+            "extenstions": {
+                "style": {
+                    "backgroundColor": row.get("backgroundColor"),
+                    "backgroundMediaList": User.MediaList(
+                        row.get("backgroundMediaList")
+                    ),
+                },
+            }
+            | extenstions,
             "moodSticker": (
                 # None if ndcId == 0 else row["mood"]
                 None
@@ -118,11 +126,7 @@ class User:
             "role": row.get("role", 0),
             "aminoId": row["aminoId"],
             "nickname": row["nickname"],
-            "mediaList": (
-                None
-                if row["mediaList"] in [[], None]
-                else User.MediaList(row["mediaList"])
-            ),
+            "mediaList": User.MediaList(row.get("mediaList", [])),
             "icon": None if row["icon"] == "" else row["icon"],
             "accountMembershipStatus": int(row.get("isPaidSubscriber")),
             "ndcId": ndcId,  # 0 is global
@@ -141,7 +145,15 @@ class User:
             "postsCount": (
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
-            "extenstions": extenstions,
+            "extenstions": {
+                "style": {
+                    "backgroundColor": row.get("backgroundColor"),
+                    "backgroundMediaList": User.MediaList(
+                        row.get("backgroundMediaList")
+                    ),
+                },
+            }
+            | extenstions,
             "moodSticker": (
                 # None if ndcId == 0 else row["mood"]
                 None
@@ -196,11 +208,7 @@ class User:
             "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
             "fanClubList": [],
-            "mediaList": (
-                None
-                if row["mediaList"] in [[], None]
-                else User.MediaList(row["mediaList"])
-            ),
+            "mediaList": User.MediaList(row.get("mediaList", [])),
             "icon": row.get("icon"),
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
@@ -231,13 +239,9 @@ class User:
                 },
                 "contentLanguage": "en",
                 "style": {
-                    "backgroundColor": (
-                        None if row["mediaList"] != [] else row["backgroundColor"]
-                    ),
-                    "backgroundMediaList": (
-                        User.MediaList(row["mediaList"])
-                        if row["mediaList"] != []
-                        else None
+                    "backgroundColor": row.get("backgroundColor"),
+                    "backgroundMediaList": User.MediaList(
+                        row.get("backgroundMediaList")
                     ),
                 },
                 "defaultBubbleId": "85045ed8-b05b-40de-907e-ec886889d086",
@@ -278,6 +282,8 @@ class User:
 
     @staticmethod
     def MediaList(mediaList: list):
+        if len(mediaList) < 1:
+            return None
         return [User.MediaItem(item) for item in mediaList]
 
     @staticmethod

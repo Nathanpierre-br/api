@@ -623,15 +623,23 @@ async def edit_user_info(uid, request: Request, ndcId=0):
         return Errors.InvalidRequest(timestamp() - t1)
 
     preparedQueries = {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
+
     if isinstance(data.get("nickname"), str):
         if len(data["nickname"].strip()) == 0:
             return Errors.InvalidRequest(timestamp() - t1)
         preparedQueries.update({"nickname": data["nickname"]})
+
     if isinstance(data.get("content"), str):
         preparedQueries.update({"description": data["content"]})
+
     if isinstance(data.get("icon"), str):
         if data["icon"].startswith("https://media.altamino.top/"):
             preparedQueries.update({"icon": data["icon"]})
+
+    if data.get("mediaList"):
+        mediaList = [item[1] for item in style["mediaList"]]
+        preparedQueries.update({"mediaList": mediaList})
+
     if data.get("extensions"):
         extensions = data["extensions"]
         if isinstance(extensions.get("defaultBubbleId"), str):
@@ -640,6 +648,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
             style = extensions["style"]
             if isinstance(style.get("backgroundColor"), str):
                 preparedQueries.update({"backgroundColor": style["backgroundColor"]})
+
             if isinstance(style.get("backgroundMediaList"), list):
                 mediaList = [item[1] for item in style["backgroundMediaList"]]
                 preparedQueries.update({"backgroundMediaList": mediaList})
