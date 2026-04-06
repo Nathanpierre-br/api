@@ -54,8 +54,8 @@ class Communities:
             "influencerList": [],
             "primaryLanguage": data.get("lang", "en"),
             "isStandaloneAppDeprecated": False,
-            "listedStatus": data.get("listedStatus", 1),
-            "probationStatus": 0,  # idk what is it
+            "listedStatus": data.get("listedStatus", 2),
+            "probationStatus": 0,
             "themePack": {
                 "themeColor": data.get("themeColor", "#000000"),
                 "themePackUrl": data.get("themeUrl"),
