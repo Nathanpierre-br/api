@@ -193,6 +193,7 @@ async def leave_community(request: Request, ndcId: int):
 # [GET] /g/s/community/{ndcId}
 
 
+@communities.get("/g/s/community/info")
 @communities.get("/x{ndcId}/s/community/info")
 @communities.get("/g/s-x{ndcId}/community/info")
 async def get_community_info(ndcId: int, request: Request):
@@ -214,6 +215,7 @@ async def get_community_info(ndcId: int, request: Request):
 # guidelines
 
 
+@communities.get("/g/s/community/guideline")
 @communities.get("/x{ndcId}/s/community/guideline")
 @communities.get("/g/s-x{ndcId}/community/guideline")
 async def get_community_guidelines(ndcId: int, request: Request):

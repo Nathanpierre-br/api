@@ -61,7 +61,7 @@ async def global_configs(request: Request):
 
 @configurations.get("/g/s/client-config/content-language-settings")
 async def lang_configs(request: Request):
-    return Base.Answer({"contentLanguageSettings": {"language": "en"}})
+    return Base.Answer({"contentLanguageSettings": {"language": "en", "ru"}})
 
 
 @configurations.get("/g/s/eventlog/profile")
@@ -98,7 +98,7 @@ async def eventlog_config(request: Request):
 
 @configurations.get("/g/s/community-collection/supported-languages")
 async def supported_languages_config(request: Request):
-    return Base.Answer({"supportedLanguages": ["en"]})
+    return Base.Answer({"supportedLanguages": ["en", "ru"]})
 
 
 @configurations.get("/g/s/membership")
@@ -122,11 +122,11 @@ async def appearance_configs(request: Request):
                 "backgroundMediaList": [
                     [
                         100,
-                        "https://media.altamino.top/xszXOWaCFjKjTR1UyUuxOdEk9YjCbSQhfJ6BIYfPvjBxHNNJceuiCX5Ht7gjBHM7.jpg",
+                        "https://media.altamino.top/always-static/global-background.jpg",
                         None,
                     ]
                 ],
-                "primaryColor": "#430e36",
+                "primaryColor": "#000000",
             }
         }
     )
@@ -172,11 +172,6 @@ async def client_configs(request: Request):
         {"clientConfig": {}},
         # spent_time=timestamp()-t1
     )
-
-
-@configurations.get("/g/s/account/affiliations")
-async def affiliations_config(request: Request):
-    return Base.Answer({"affiliations": [0]})
 
 
 @configurations.get("/g/s/auid")

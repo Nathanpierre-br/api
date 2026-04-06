@@ -113,6 +113,25 @@ async def get_visits(request: Request):
     return Base.Answer({"visitorsCount": 0, "unreadVisitorsCount": 0})
 
 
+# affiliations
+
+
+@configurations.get("/g/s/account/affiliations")
+async def affiliations_config(request: Request):
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
+
+    trigger_uid = request.state.session["uid"]
+    db = await Database().init()
+    table = await db.get(table="Users")
+
+    info = await table.find_one({"id": trigger_uid})
+    if info is None:
+        return Errors.AccountNotExist()
+
+    return Base.Answer({"affiliations": info.get("communityList", [])})
+
+
 # following
 # /g/s/user-profile/{userId}/joined?start={start}&size={size}
 @profile_methods.get("/g/s/user-profile/{uid}/joined")
