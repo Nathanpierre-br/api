@@ -193,7 +193,7 @@ class User:
             "modifiedTime": row["modifiedTime"],
             "createdTime": row["createdTime"],
             "role": row.get("role", 0),
-            "aminoId": row["aminoId"],
+            "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
             "fanClubList": [],
             "mediaList": (
@@ -201,15 +201,15 @@ class User:
                 if row["mediaList"] in [[], None]
                 else User.MediaList(row["mediaList"])
             ),
-            "icon": None if row["icon"] == "" else row["icon"],
+            "icon": row.get("icon"),
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
-            "reputation": 0 if ndcId == 0 else row["reputation"],
-            "level": 0 if ndcId == 0 else row["level"],
-            "mood": None if ndcId == 0 else row["mood"],
+            "reputation": 0 if ndcId == 0 else row.get("reputation", 0),
+            "level": 0 if ndcId == 0 else row.get("level", 0),
+            "mood": None if ndcId == 0 else row.get("mood"),
             "moodSticker": (
-                None if ndcId == 0 else row["mood"]
+                None if ndcId == 0 else row.get("mood")
             ),  # [TODO]: check wtf is this
             "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["following"]),
@@ -245,16 +245,16 @@ class User:
             }
             | extenstions,
             "consecutiveCheckInDays": (
-                None if ndcId == 0 else row["consecutiveDaysOfCheckIns"]
+                None if ndcId == 0 else row.get("consecutiveDaysOfCheckIns", 0)
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
-            "isNicknameVerified": False,
+            "isNicknameVerified": bool(row.get("isVerified", False)),
             "notificationSubscriptionStatus": 0,
             "pushEnabled": True,
             "membershipStatus": membershipStatus,
             "commentsCount": len(row["wall"]),
-            "itemsCount": len(row["purchasedItems"].get("frames", []))
-            + len(row["purchasedItems"].get("bubbles", [])),
+            "itemsCount": len(row.get("purchasedItems", {}).get("frames", []))
+            + len(row.get("purchasedItems", {}).get("bubbles", [])),
             "visitPrivacy": 1,
             "visitorsCount": 0,  # [TODO]: make visitors count as var in table and do smart count
         }

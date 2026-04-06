@@ -45,7 +45,11 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                     {"id": {"$in": row1["communityList"][start:size]}}
                 )
             ],
-            "userInfoInCommunities": {},
+            "userInfoInCommunities": {
+                # experimental fix
+                f"x{item}": {"membershipStatus": 1, "id": uid}
+                for item in row1["communityList"][start:size]
+            },
             "showStoreBadge": False,
         },
         spent_time=timestamp() - t1,
