@@ -68,8 +68,13 @@ async def custom_422_handler(_, exc: RequestValidationError):
 
 @app.exception_handler(500)
 async def custom_500_handler(_, __):
-    if isinstance(__.args[0], ORJSONResponse) or isinstance(__.args[0], JSONResponse):
-        return __.args[0]
-    print(_)
-    print(__)
+    try:
+        if isinstance(__.args[0], ORJSONResponse) or isinstance(
+            __.args[0], JSONResponse
+        ):
+            return __.args[0]
+    except Exception:
+        print("Not a status code that we returned!")
+
+    print("What happened:", _, "//", __)
     return Errors.InternalServerError()
