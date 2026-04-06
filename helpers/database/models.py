@@ -96,7 +96,6 @@ class Global:
         aminoId = String(required=True)
         description = String(load_default=None)
         agent = UUID(required=True, metadata={"as_string": True})
-        staff = List(UUID(metadata={"as_string": True}), load_default=[])
         tags = List(String(), load_default=[])
         heat = Float(load_default=0.00)
         slogan = String(load_default=None)

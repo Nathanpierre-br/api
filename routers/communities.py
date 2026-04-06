@@ -233,3 +233,44 @@ async def get_community_guidelines(ndcId: int, request: Request):
     return Base.Answer(
         {"communityGuideline": info.get("guideline", "")}, spent_time=timestamp() - t1
     )
+
+
+@communities.get("/x{ndcId}/s/user-profile")
+async def get_community_profiles(
+    ndcId: int,
+    request: Request,
+    start: int = 0,
+    size: int = 25,
+    type: str = "",
+):
+    t1 = timestamp()
+    size = size if 0 < size < 101 else 25
+
+    queries = {
+        "leaders": {"role": {"$in": [102, 100]}},
+        "curators": {"role": 101},
+        "recent": {},
+    }
+
+    query = queries.get(type)
+    if query is None:
+        return Errors.InvalidRequest()
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Users")
+
+    items = [
+        User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1)
+        async for item in table.find(query)
+        .skip(start)
+        .limit(size)
+        .sort({"createdTime": -1})
+    ]
+
+    return Base.Answer(
+        {
+            "userProfileCount": 0,  # temm
+            "userProfileList": parsed_profiles,
+        },
+        spent_time=timestamp() - t1,
+    )
