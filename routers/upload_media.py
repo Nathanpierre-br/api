@@ -6,7 +6,7 @@ from time import time as timestamp
 from helpers.config import Config
 from boto3 import resource
 from random import choice
-from objects import *
+from objects import Base, Errors
 
 
 def detect_file_ext(data: bytes) -> str | None:

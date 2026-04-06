@@ -1,7 +1,8 @@
-_connection = None
-
-from ..config import Config
 from redis import asyncio as aioredis
+from ..config import Config
+
+
+_connection = None
 
 
 def get():

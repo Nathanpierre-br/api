@@ -7,10 +7,11 @@ from hashlib import blake2b
 from uuid import uuid4
 from math import ceil
 
-from objects import *
+from objects import Base, Errors, User
 from helpers.config import Config
 from helpers.functions import get_ip
-from helpers.database.mongo import *
+from helpers.database.mongo import Database
+from helpers.database.models import ModelFabric, Global, Community
 from helpers.generator import Generator
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
@@ -24,12 +25,12 @@ logregin.route_class = CachableRoute
 
 @logregin.get("/verification-code/{code}")
 async def seeVerificationCode(code):
-    t1 = timestamp()
+    timestamp()
     db = await Database().init()
     table = await db.get(table="VerificationCodes")
     row = await table.find_one({"uniqueCode": code})
     await db.close()
-    if row == None:
+    if row is None:
         return Errors.InvalidVerificationCode()
     img, _, __ = ImageTools.generate_captcha(row["captchaAnswer"])
     return StreamingResponse(img)
@@ -54,7 +55,7 @@ async def requestCode(request: Request):
             or (data["type"] != 1)
         ):
             raise Exception()
-    except:
+    except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
 
     if EmailProcessor.NotWorking(reciever):
@@ -68,7 +69,7 @@ async def requestCode(request: Request):
     code_req = {"$or": [{"deviceId": data["deviceID"]}, {"email": reciever}]}
     row = await table.find_one(code_req)
     uniqueCode, captchaAnswer = None, None
-    if row != None:
+    if row is not None:
         if ceil(timestamp()) - row["timestamp"] <= 60:
             return Errors.WaitMinuteForAnotherCode(timestamp() - t1)
         else:
@@ -157,7 +158,7 @@ async def check_code(request: Request):
             )
         ):
             raise Exception()
-    except:
+    except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
 
     email = data["validationContext"]["identity"]
@@ -165,7 +166,7 @@ async def check_code(request: Request):
     db = await Database().init()
     table = await db.get(table="VerificationCodes")
     row = await table.find_one({"deviceId": data["deviceID"], "email": email})
-    if row == None:
+    if row is None:
         return Errors.UnverifiedEmail(timestamp() - t1)
     if str(data["validationContext"]["data"]["code"]) != str(row["captchaAnswer"]):
         return Errors.InvalidVerificationCode(timestamp() - t1)
@@ -209,7 +210,7 @@ async def register(request: Request):
     db = await Database().init()
     codes = await db.get(table="VerificationCodes")
     codes_row = await codes.find_one({"deviceId": data["deviceID"], "email": reciever})
-    if codes_row == None:
+    if codes_row is None:
         print("No codes")
         return Errors.UnverifiedEmail(timestamp() - t1)
     if data.get("validationContext"):
@@ -227,7 +228,7 @@ async def register(request: Request):
 
     users = await db.get(table="Users")
     row = await users.find_one({"email": data["email"]})
-    if row != None:
+    if row is not None:
         await db.close()
         return Errors.EmailWasTaken(timestamp() - t1)
 
@@ -288,7 +289,7 @@ async def register_check(request: Request):
                 raise Exception()
         else:
             raise Exception()
-    except:
+    except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
 
     return Base.Answer(spent_time=timestamp() - t1)
@@ -332,7 +333,7 @@ async def login(request: Request):
             await db.close()
             return Errors.UserBanned(timestamp() - t1)
 
-        if row == None:
+        if row is None:
             await db.close()
             return Errors.InvalidLogin(timestamp() - t1)
         else:
@@ -349,6 +350,8 @@ async def login(request: Request):
                 or "1.1.1.1"
             )
             tmstmp = ceil(timestamp())
+
+            await SessionProcessor.End(request.headers.get("NDCAUTH"))
             return Base.Answer(
                 {
                     "auid": row["id"],
@@ -370,7 +373,7 @@ async def login(request: Request):
         db = await Database().init()
         table = await db.get(table="Users")
         row = await table.find_one({"id": secretSplitted[1]})
-        if row == None:
+        if row is None:
             await db.close()
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
         if row["passwordHash"] != decodedPswdHash:
@@ -386,6 +389,7 @@ async def login(request: Request):
 
         ip = request.headers.get("X-Forwarded-For") or request.client.host or "1.1.1.1"
         tmstmp = ceil(timestamp())
+        await SessionProcessor.End(request.headers.get("NDCAUTH"))
         return Base.Answer(
             {
                 "auid": row["id"],
@@ -402,7 +406,9 @@ async def login(request: Request):
 @logregin.post("/g/s/auth/logout")
 async def logout(request: Request):
     t1 = timestamp()
-    data = await request.json()
+    await request.json()
+
+    await SessionProcessor.End(request.headers.get("NDCAUTH"))
 
     return Base.Answer(
         {"auid": request.state.session.get("uid", str(uuid4()))},

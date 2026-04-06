@@ -167,7 +167,7 @@ class RequestProcessor:
                         json.get("timestamp", 0)
                     ):
                         return [False, Errors.ExpiredRequest()]
-                except:
+                except Exception:
                     return [False, Errors.InvalidRequest()]
 
         return [True, None]

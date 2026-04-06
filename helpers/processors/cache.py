@@ -27,3 +27,11 @@ class CacheProcessor:
         """
         redis = get()
         return await redis.get(prefix + key)
+
+    @staticmethod
+    async def Delete(key: str, prefix: str = "") -> Optional[int]:
+        """
+        returning amount of deleted keys
+        """
+        redis = get()
+        return await redis.unlink(prefix + key)

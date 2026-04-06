@@ -1,6 +1,6 @@
 # import
 
-from objects import *
+from objects import Errors
 from fastapi import FastAPI
 from brotli_asgi import BrotliMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,8 +24,13 @@ app = FastAPI(title="AltAmino", version="1", docs_url=None, redoc_url=None)
 
 
 @app.get("/")
-def redirect():
+async def redirect():
     return RedirectResponse("https://altamino.top")
+
+
+@app.get("/health")
+async def health():
+    return {"alive": True}
 
 
 app.include_router(mock, prefix="/api/v1")

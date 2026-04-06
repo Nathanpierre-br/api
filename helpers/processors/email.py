@@ -35,8 +35,8 @@ class EmailProcessor:
             return False
 
         try:
-            info = get(f"https://disposable.debounce.io", {"email": email}).json()
-        except:
+            info = get("https://disposable.debounce.io", {"email": email}).json()
+        except Exception:
             info = {}
 
         return info.get("disposable", False)

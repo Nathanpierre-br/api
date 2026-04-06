@@ -1,13 +1,15 @@
-from pymongo import DESCENDING, ASCENDING
+from pymongo import DESCENDING
 from base64 import b85decode, b85encode
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 from datetime import datetime, UTC
 from typing import Union
+from uuid import uuid4
 
-from objects import *
-from helpers.database.mongo import *
+from objects import Base, Errors, User, Comments
+from helpers.database.mongo import Database
+from helpers.database.models import ModelFabric, Community
 from helpers.routers.cachable import CachableRoute
 
 profile_methods = APIRouter()
@@ -56,13 +58,8 @@ async def user_search(
     size = size if 0 < size < 101 else 25
 
     # parse page token
-    if pageToken:
-        try:
-            start = int(b85decode(pageToken).decode())
-        except:
-            start = 0
-    else:
-        start = 0
+    decoded = b85decode(pageToken or "").decode()
+    start = max(0, int(decoded) if decoded.isdigit() else 0)
 
     db = await Database().init()
     g_users, xndc_users = (
@@ -112,8 +109,6 @@ async def get_visits(request: Request):
 
 
 # affiliations
-
-
 @profile_methods.get("/g/s/account/affiliations")
 async def affiliations_config(request: Request):
     if not request.state.session["validsession"]:
@@ -191,7 +186,7 @@ async def get_user_followers(
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/g-comment")
-@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/g-comment")
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/comment")
 async def get_user_wall(
     uid,
     request: Request,
@@ -223,7 +218,7 @@ async def get_user_wall(
 
     wall_comments = []
     for _comment_id, _comment_info in all_wall_comments:
-        if _comment_info["isSubWM"] == False:
+        if _comment_info["isSubWM"] is False:
             wall_comments.append((_comment_id, _comment_info))
 
     wall_comments = wall_comments[start : start + size]
@@ -243,7 +238,7 @@ async def get_user_wall(
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/g-comment/{commentId}")
-@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/g-comment/{commentId}/response")
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/response")
 async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0):
     t1 = timestamp()
 
@@ -279,7 +274,7 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
 
 
 @profile_methods.delete("/g/s/user-profile/{uid}/g-comment/{commentId}")
-@profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/g-comment/{commentId}")
+@profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}")
 async def delete_post_from_wall(
     request: Request, uid: str, commentId: str, ndcId: int = 0
 ):
@@ -314,7 +309,7 @@ async def delete_post_from_wall(
 
 
 @profile_methods.post("/g/s/user-profile/{uid}/g-comment")
-@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/g-comment")
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment")
 async def post_on_user_wall(
     uid,
     request: Request,
@@ -333,7 +328,7 @@ async def post_on_user_wall(
     try:
         if not data["content"]:
             raise Exception()
-    except Exception as e:
+    except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
@@ -388,7 +383,7 @@ async def ban_user(uid, request: Request, ndcId: int = 0):
     table = await db.get(f"x{ndcId}", "Users")
     gl_table = await db.get(table="Users")
     inited_user = await gl_table.find_one({"id": target_user})
-    if inited_user["role"] in [555, "555", 254, "254"]:
+    if inited_user["role"] in [555, 254, 100, 102]:
         await table.update_one({"id": uid}, {"$set": {"status": 9}})
         await gl_table.update_one({"id": uid}, {"$set": {"status": 9}})
         await db.close()
@@ -415,7 +410,7 @@ async def unban_user(uid, request: Request, ndcId: int = 0):
     table = await db.get(f"x{ndcId}", "Users")
     gl_table = await db.get(table="Users")
     inited_user = await table.find_one({"id": target_user})
-    if inited_user["role"] in [555, "555", 254, "254"]:
+    if inited_user["role"] in [555, 254, 100, 102]:
         await table.update_one({"id": uid}, {"$set": {"status": 0}})
         await gl_table.update_one({"id": uid}, {"$set": {"status": 0}})
 
@@ -438,6 +433,8 @@ async def follow_user(uid, request: Request, ndcId=0):
         return Errors.InvalidSession(timestamp() - t1)
 
     suid = request.state.session["uid"]
+    if suid == uid:
+        return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Users")
@@ -463,16 +460,13 @@ async def unfollow_user(uid: str, request: Request, ndcId=0):
         return Errors.InvalidSession(timestamp() - t1)
 
     suid = request.state.session["uid"]
-    if suid != inited_uid:
+    if suid == uid:
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Users")
-    target_user = await table.find_one({"id": uid})
-    inited_user = await table.find_one({"id": suid})
-    if suid in target_user["whoFollows"] and uid in inited_user["following"]:
-        await table.update_one({"id": uid}, {"$pull": {"whoFollows": suid}})
-        await table.update_one({"id": suid}, {"$pull": {"following": uid}})
+    await table.update_one({"id": uid}, {"$pull": {"whoFollows": suid}})
+    await table.update_one({"id": suid}, {"$pull": {"following": uid}})
 
     await db.close()
     return Base.Answer(spent_time=timestamp() - t1)
@@ -490,11 +484,11 @@ async def get_user_info(uid, request: Request, ndcId=0):
     db = await Database().init()
     table = await db.get(table="Users")
     row1 = await table.find_one({"id": uid})
-    if row1 == None:
+    if row1 is None:
         return Errors.AccountNotExist(timestamp() - t1)
     table = await db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
-    if row2 == None:
+    if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
     return Base.Answer(
@@ -523,7 +517,7 @@ async def get_self_info(request: Request, ndcId: int = 0):
         return Errors.AccountNotExist(timestamp() - t1)
     table = await db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
-    if row2 == None:
+    if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
     return Base.Answer(
@@ -557,7 +551,7 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
     db = await Database().init()
     table = await db.get(table="Users")
     row = await table.find_one({"id": trigger_uid})
-    if row == None:
+    if row is None:
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
     return Base.Answer(
@@ -596,7 +590,7 @@ async def get_wallet_ads_info(request: Request):
     db = await Database().init()
     table = await db.get(table="Users")
     row = await table.find_one({"id": trigger_uid})
-    if row == None:
+    if row is None:
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
     return Base.Answer(
@@ -658,18 +652,15 @@ async def edit_user_info(uid, request: Request, ndcId=0):
 
     db = await Database().init()
     table = await db.get(database=f"x{ndcId}", table="Users")
-
     await table.update_one({"id": uid}, {"$set": preparedQueries})
-    row2 = await table.find_one({"id": uid})
-    table = await db.get(table="Users")
-    row1 = await table.find_one({"id": uid})
 
+    row2 = await table.find_one({"id": uid})
     await db.close()
 
-    if row1 == None or row2 == None:
+    if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
 
     return Base.Answer(
-        {"userProfile": User.GetUserInfo(row1 | row2, ndcId=ndcId)},
+        {"userProfile": User.GetUserInfo(row2, ndcId=ndcId)},
         spent_time=timestamp() - t1,
     )

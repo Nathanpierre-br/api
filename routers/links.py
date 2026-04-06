@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Request
 from time import time as timestamp
 
-from objects import *
-from helpers.database.mongo import *
+from objects import Base, Errors, Links
+from helpers.database.mongo import Database
+from helpers.database.models import Global, ModelFabric
 from helpers.generator import Generator
 from helpers.routers.cachable import CachableRoute
 
@@ -30,14 +31,14 @@ async def make_link(request: Request, ndcId: int = 0):
         return Errors.UnimplementedPath(timestamp() - t1)
 
     check = await check_table.find_one({"id": data["objectId"]})
-    if check == None:
+    if check is None:
         await db.close()
         return Errors.MythicData(timestamp() - t1)
 
     link = await links_table.find_one(
         {"objectId": data["objectId"], "objectType": data["objectType"]}
     )
-    if link == None:
+    if link is None:
         link = ModelFabric.Construct(
             Global.Links,
             code=(
@@ -79,7 +80,7 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
     print(link)
     await db.close()
 
-    if link == None:
+    if link is None:
         return Errors.InvalidRequest(timestamp() - t1)
 
     if link["objectType"] == 0:

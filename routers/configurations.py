@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Request
-from time import time as timestamp
 from typing import Union
 from uuid import uuid4
 
-from objects import *
+from objects import Base, Errors
 from helpers.routers.cachable import CachableRoute
 
 configurations = APIRouter()
@@ -218,7 +217,7 @@ async def modules(request: Request):
 async def banner(
     request: Request, moduleId: Union[str, None] = None, adUnitId: int = 703920
 ):
-    if moduleId == None:
+    if moduleId is None:
         return Errors.InvalidRequest()
 
     return Base.Answer(

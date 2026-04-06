@@ -1,4 +1,4 @@
-from re import findall, sub
+from re import findall
 from typing import Callable
 from orjson import loads, dumps
 from fastapi.routing import APIRoute

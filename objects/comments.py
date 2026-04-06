@@ -1,10 +1,7 @@
 from .user import User
-from typing import Union
-from datetime import datetime
 
 # import sys
 # sys.path.append('../')
-from helpers.database.mongo import Database
 
 
 class Comments:

@@ -1,5 +1,5 @@
 from base64 import b85encode, b85decode, b64decode
-from pymongo import ASCENDING, DESCENDING
+from pymongo import DESCENDING
 from string import ascii_letters, digits
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
@@ -11,9 +11,10 @@ import asyncio
 
 from boto3 import resource
 
-from objects import *
+from objects import Base, Chat, Errors
 from helpers.config import Config
-from helpers.database.mongo import *
+from helpers.database.mongo import Database
+from helpers.database.models import Community, ModelFabric
 from helpers.adminWS import send_admin_ws
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
@@ -39,13 +40,8 @@ async def user_search(
     size = size if 0 < size < 101 else 25
 
     # parse page token
-    if pageToken:
-        try:
-            start = int(b85decode(pageToken).decode())
-        except:
-            start = 0
-    else:
-        start = 0
+    decoded = b85decode(pageToken or "").decode()
+    start = max(0, int(decoded) if decoded.isdigit() else 0)
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Chats")
@@ -261,7 +257,7 @@ async def if_chat_exists(
             ],
         }
         req = await table.find_one(query)
-        if req != None:
+        if req is not None:
             r = Base.Answer(
                 {"threadList": [await Chat.Info(req["id"], db, trigger_uid=uid)]}
             )
@@ -334,7 +330,7 @@ async def create_chat(request: Request, ndcId: int = 0):
     else:
         req = None
 
-    if req != None:
+    if req is not None:
         chatId = req["id"]
         chatObj = req
     else:
@@ -426,13 +422,8 @@ async def get_chat_messages(
     size = size if 0 < size < 101 else 25
 
     # parse page token
-    if pageToken:
-        try:
-            start = int(b85decode(pageToken).decode())
-        except:
-            start = 0
-    else:
-        start = 0
+    decoded = b85decode(pageToken or "").decode()
+    start = max(0, int(decoded) if decoded.isdigit() else 0)
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
@@ -508,7 +499,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 )
             )
             or (data.get("mediaType", 0) == 110 and data["type"] != 2)
-            or (data["type"] != 0 and data.get("content") != None)
+            or (data["type"] != 0 and data.get("content") is not None)
             or (
                 data["type"] == 3
                 and (
@@ -523,7 +514,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             )
         ):
             raise Exception()
-    except:
+    except Exception:
         return Errors.InvalidMessage(timestamp() - t1)
 
     db = await Database().init()
@@ -706,7 +697,7 @@ async def delete_message(request: Request, chatId: str, messageId: str, ndcId: i
     table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
     original_message = await table.find_one({"messageId": messageId})
     if original_message["authorId"] != trigger_uid:
-        chat = await db.get(f"x{ndcId}", f"Chats")
+        chat = await db.get(f"x{ndcId}", "Chats")
         chat_info = await chat.find_one({"id": chatId})
         if (
             trigger_uid not in chat_info.get("cohostsIds", [])
@@ -762,7 +753,7 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
                 )
             )
             or (data.get("mediaType", 0) == 110 and data["type"] != 2)
-            or (data["type"] != 0 and data.get("content") != None)
+            or (data["type"] != 0 and data.get("content") is not None)
             or (
                 data["type"] == 3
                 and (
@@ -777,7 +768,7 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
             )
         ):
             raise Exception()
-    except:
+    except Exception:
         return Errors.InvalidMessage(timestamp() - t1)
 
     db = await Database().init()
@@ -1300,7 +1291,7 @@ async def leave_chat(
         else:
             print("haha you havent rights")
             ban = False
-    if ban == True and userId == uid:
+    if ban is True and userId == uid:
         print("ok ban urself is bad")
         ban = False
 
@@ -1365,7 +1356,7 @@ async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
         data = await request.json()
         if not data.get("messageId") or not data.get("createdTime"):
             raise Exception()
-    except:
+    except Exception:
         return Errors.InvalidMessage(timestamp() - t1)
 
     connection = await Database().init()

@@ -3,9 +3,8 @@ from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 
-from objects import *
-from helpers.config import Config
-from helpers.database.mongo import *
+from objects import Base, Errors, Communities, User
+from helpers.database.mongo import Database
 from helpers.routers.cachable import CachableRoute
 
 communities = APIRouter()
@@ -32,7 +31,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
     db = await Database().init()
     table = await db.get(table="Users")
     row1 = await table.find_one({"id": uid})
-    if row1 == None:
+    if row1 is None:
         return Errors.AccountNotExist(timestamp() - t1)
 
     table = await db.get(table="Communities")
@@ -70,10 +69,8 @@ async def search_community(
 
     # parse page token
     if pageToken:
-        try:
-            start = int(b85decode(pageToken).decode())
-        except:
-            pass
+        decoded = b85decode(pageToken).decode()
+        start = max(0, int(decoded) if decoded.isdigit() else 0)
 
     uid = request.state.session["uid"]
     db = await Database().init()
@@ -225,7 +222,7 @@ async def get_community_info(ndcId: int, request: Request):
 async def get_community_guidelines(ndcId: int, request: Request):
     t1 = timestamp()
 
-    uid = request.state.session["uid"]
+    request.state.session["uid"]
 
     db = await Database().init()
     table = await db.get(table="Communities")

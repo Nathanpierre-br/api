@@ -1,7 +1,6 @@
 from typing import Union
 from ..config import Config
 
-from .models import *
 import motor.motor_asyncio
 
 
@@ -17,7 +16,7 @@ class Database:
     ):
         return (
             self.__connection[database]
-            if table == None
+            if table is None
             else self.__connection[database][table]
         )
 

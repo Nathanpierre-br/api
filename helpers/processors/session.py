@@ -29,12 +29,12 @@ class SessionProcessor:
             }
         )
 
-        await CacheProcessor.Make(key, data, prefix, 86400)
+        await CacheProcessor.Make(key, data, prefix, timeout)
 
         return key
 
     @staticmethod
-    async def Get(session: str | bytes) -> dict | None:
+    async def Get(session: str | bytes | None) -> dict | None:
         """
         dict if session is valid, None if not
 
@@ -54,3 +54,15 @@ class SessionProcessor:
         info = await CacheProcessor.Get(session)
 
         return loads(info) if info else None
+
+    async def End(session: str | bytes | None):
+        """
+        end the session if it exist
+        """
+        if not session:
+            return None
+        if isinstance(session, bytes):
+            session = session.decode()
+
+        result = await CacheProcessor.Delete(session)
+        return bool(result or 0)
