@@ -61,7 +61,7 @@ async def global_configs(request: Request):
 
 @configurations.get("/g/s/client-config/content-language-settings")
 async def lang_configs(request: Request):
-    return Base.Answer({"contentLanguageSettings": {"language": "en", "ru"}})
+    return Base.Answer({"contentLanguageSettings": {"language": "en"}})
 
 
 @configurations.get("/g/s/eventlog/profile")
