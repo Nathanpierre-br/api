@@ -133,7 +133,7 @@ class Chat:
         chats = await connection.get(f"x{ndcId}", "Chats")
         data = await chats.find_one({"id": chatId})
 
-        messages = await connection.get(f"x{ndcId}", f"_Chat:{data['id']}")
+        messages = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
         message = await messages.find_one({"messageId": data["lastMessageId"]})
         if message is None:
             message = {
@@ -150,19 +150,18 @@ class Chat:
             }
 
         if g_users is not None:
-            users = g_users
-            host_global = await users.find_one({"id": data["hostId"]}) or {}
+            host_global = await g_users.find_one({"id": data["hostId"]}) or {}
         else:
-            users = await connection.get(table="Users")
-            host_global = await users.find_one({"id": data["hostId"]}) or {}
+            g_users = await connection.get(table="Users")
+            host_global = await g_users.find_one({"id": data["hostId"]}) or {}
 
         if xndc_users is not None:
-            users = xndc_users
-            host_xndcId = await users.find_one({"id": data["hostId"]}) or {}
+            host_xndcId = await xndc_users.find_one({"id": data["hostId"]}) or {}
         else:
-            users = await connection.get(f"x{ndcId}", "Users")
-            host_xndcId = await users.find_one({"id": data["hostId"]}) or {}
+            xndc_users = await connection.get(f"x{ndcId}", "Users")
+            host_xndcId = await xndc_users.find_one({"id": data["hostId"]}) or {}
 
+        users = xndc_users
         membershipStatus = 0
         if trigger_uid in data["memberList"]:
             membershipStatus = 1

@@ -130,19 +130,25 @@ async def join_community(request: Request, ndcId: int):
         g_data["wall"] = {}
         for field in ["_id", "createdTime", "updatedTime"]:
             g_data.pop(field)
-        await table.insert_one(g_data)
+        print(await table.insert_one(g_data))
 
-    await table.update_one(
-        {"id": ndcId},
-        {
-            "$addToSet": {"memberList": trigger_uid},
-            "$inc": {"membersCount": 1},
-        },
+    print(
+        await table.update_one(
+            {"id": ndcId},
+            {
+                "$addToSet": {"memberList": trigger_uid},
+                "$inc": {"membersCount": 1},
+            },
+        )
     )
 
     # updating global user info
     table = await db.get(table="Users")
-    await table.update_one({"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}})
+    print(
+        await table.update_one(
+            {"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}}
+        )
+    )
 
     # closing con
     await db.close()
