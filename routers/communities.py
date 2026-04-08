@@ -168,7 +168,7 @@ async def join_community(request: Request, ndcId: int):
         )
 
         # update global user info
-        table_global_users = await db.get("x0", "Users")
+        table_global_users = await db.get(table="Users")
         await table_global_users.update_one(
             {"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}}
         )
