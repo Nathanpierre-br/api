@@ -133,6 +133,18 @@ class Communities:
             "configuration": {
                 "page": PAGES,
                 "modules": {
+                    "post": {
+                        "enabled": True,
+                        "postType": {
+                            "publicChatRooms": {
+                                "privilege": {
+                                    "type": chat_mod.get("accessType", 5),
+                                    "minLevel": chat_mod.get("minLevel", 100),
+                                },
+                                "enabled": chat_mod.get("enabled", True),
+                            },
+                        },
+                    },
                     "chat": {
                         "enabled": chat_mod.get("enabled", True),
                         "spamProtectionEnabled": True,
@@ -145,11 +157,11 @@ class Communities:
                         "publicChat": {
                             "privilege": {
                                 "type": chat_mod.get("accessType", 5),
-                                "minLevel": chat_mod.get("minLevel", 0),
+                                "minLevel": chat_mod.get("minLevel", 100),
                             },
                             "enabled": True,
                         },
-                    }
+                    },
                 },
                 "appearance": {
                     "leftSidePanel": {
