@@ -2,9 +2,11 @@ from base64 import b85encode, b85decode
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
+# from aiofiles import open as asyncopen
 
 from objects import Base, Errors, Communities, User
 from helpers.database.mongo import Database
+from helpers.database.models import dttmn
 from helpers.routers.cachable import CachableRoute
 
 communities = APIRouter()
@@ -150,6 +152,9 @@ async def join_community(request: Request, ndcId: int):
             for field in ["_id", "createdTime", "updatedTime"]:
                 new_profile.pop(field, None)
 
+            new_profile["createdTime"] = dttmn()
+            new_profile["updatedTime"] = dttmn()
+
             await table_community_users.insert_one(new_profile)
 
         # update community
@@ -252,6 +257,15 @@ async def get_community_info(ndcId: int, request: Request):
 
 
 # guidelines
+@communities.get("/g/s/community/official-guideline")
+@communities.get("/x{ndcId}/s/community/official-guideline")
+async def get_official_guidelines(ndcId: int, request: Request):
+    try:
+        # async with asyncopen() as f:
+        #    pass
+        return Base.Answer({"officialGuideline": "fancy some more?"})
+    except Exception:
+        return Errors.InternalServerError()
 
 
 @communities.get("/g/s/community/guideline")
@@ -269,7 +283,7 @@ async def get_community_guidelines(ndcId: int, request: Request):
             return Errors.DataNotExist(timestamp() - t1)
 
         return Base.Answer(
-            {"communityGuideline": info.get("guideline", "")},
+            {"communityGuideline": info.get("guideline", ""), "mediaList": []},
             spent_time=timestamp() - t1,
         )
     finally:
