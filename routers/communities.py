@@ -56,7 +56,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                 ],
                 "userInfoInCommunities": {
                     # experimental fix
-                    str(item): {"membershipStatus": 1, "id": uid}
+                    str(item): {"membershipStatus": 1, "id": uid, "joined": True}
                     for item in row1.get("communityList", [])[start : start + size]
                 },
                 "showStoreBadge": False,

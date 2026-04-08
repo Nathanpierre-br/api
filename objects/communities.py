@@ -2,6 +2,67 @@ from typing import Union
 from helpers.database.mongo import Database
 from .user import User
 
+"""
+this is top tier bullshit
+it will be inside community db obj
+"""
+PAGES = {
+    "defaultList": [
+        {"url": "ndc://leaderboards", "alias": None, "id": "leaderboards-default"},
+        {"url": "ndc://featured", "alias": None, "id": "featured-default"},
+        {"url": "ndc://my-chats", "alias": None, "id": "chat-default"},
+        {"url": "ndc://public-chats", "alias": None, "id": "chat-public-chats"},
+        {"url": "ndc://latest-posts", "alias": None, "id": "post-latest-feed"},
+        {"url": "ndc://following-feed", "alias": None, "id": "post-following-feed"},
+        {"url": "ndc://image-posts", "alias": None, "id": "post-image-posts"},
+        {"url": "ndc://blogs", "alias": None, "id": "post-blogs"},
+        {"url": "ndc://quizzes", "alias": None, "id": "post-quizzes"},
+        {
+            "url": "ndc://quizzes/best",
+            "alias": None,
+            "id": "post-best-quizzes",
+            "parentId": "post-quizzes",
+        },
+        {
+            "url": "ndc://quizzes/trending",
+            "alias": None,
+            "id": "post-trending-quizzes",
+            "parentId": "post-quizzes",
+        },
+        {
+            "url": "ndc://quizzes/latest",
+            "alias": None,
+            "id": "post-latest-quizzes",
+            "parentId": "post-quizzes",
+        },
+        {"url": "ndc://link-posts", "alias": None, "id": "post-link-posts"},
+        {"url": "ndc://questions", "alias": None, "id": "post-questions"},
+        {"url": "ndc://polls", "alias": None, "id": "post-polls"},
+        {"url": "ndc://stories", "alias": None, "id": "post-stories"},
+        {"url": "ndc://shared-folder", "alias": None, "id": "shared-folder"},
+        {
+            "url": "ndc://shared-folder/albums",
+            "alias": None,
+            "id": "shared-folder-albums",
+            "parentId": "shared-folder",
+        },
+        {
+            "url": "ndc://shared-folder/photos",
+            "alias": None,
+            "id": "shared-folder-photos",
+            "parentId": "shared-folder",
+        },
+        {"url": "ndc://catalog", "alias": None, "id": "catalog-default"},
+        {
+            "url": "ndc://blog-categories",
+            "alias": None,
+            "id": "topic-categories-default",
+        },
+        {"url": "ndc://guidelines", "alias": None, "id": "guidelines"},
+    ],
+    "customList": [],
+}
+
 
 class Communities:
     @staticmethod
@@ -31,6 +92,10 @@ class Communities:
         ):
             membershipStatus = 1
 
+        conf = data.get("configuration", {})
+        mods = conf.get("modules", {})
+
+        chat_mod = mods.get("chat", {})
         return {
             "agent": agent,
             "ndcId": ndcId,
@@ -65,7 +130,60 @@ class Communities:
             "mediaList": [],  # for description
             "isStandaloneAppMonetizationEnabled": False,
             "activeInfo": {},
-            "configuration": {},
+            "configuration": {
+                "page": PAGES,
+                "modules": {
+                    "chat": {
+                        "enabled": chat_mod.get("enabled", True),
+                        "spamProtectionEnabled": True,
+                        "avChat": {
+                            "screeningRoomEnabled": False,
+                            "audioEnabled": True,
+                            "videoEnabled": False,
+                            "audio2Enabled": True,
+                        },
+                        "publicChat": {
+                            "privilege": {
+                                "type": chat_mod.get("accessType", 1),
+                                "minLevel": chat_mod.get("minLevel", 0),
+                            },
+                            "enabled": True,
+                        },
+                    }
+                },
+                "appearance": {
+                    "leftSidePanel": {
+                        "style": {  # there is possible to add icon, i need example community infos
+                            "iconColor": None,
+                        },
+                        "navigation": {
+                            "level1": conf.get(
+                                "sidepanelTopNav",
+                                [
+                                    {"id": "guidelines"},
+                                    {"id": "chat-default"},
+                                    {"id": "leaderboards-default"},
+                                ],
+                            ),
+                            "level2": conf.get("sidepanelBottomNav", []),
+                        },
+                    },
+                    "homePage": {
+                        "navigation": conf.get(
+                            "homepageNav",
+                            [{"id": "chat-public-chats", "isStartPage": True}],
+                        )
+                    },
+                },
+            },
+            "advancedSettings": {
+                "pollMinFullBarVoteCount": 10,
+                "welcomeMessageEnabled": data.get("welcomeMessageEnabled", False),
+                "welcomeMessageText": data.get("welcomeMessage", ""),
+                "catalogEnabled": True,  # ???
+                "defaultRankingTypeInLeaderboard": 1,
+                "frontPageLayout": conf.get("frontPageLayout", 1),
+            },
         }
 
     """
@@ -127,7 +245,7 @@ class Communities:
       [
         100,
         "http://cm1.aminoapps.com/8994/3f565c7f774febc4f0624a439b58f8eda8f16416_00.jpg",
-        null
+        None
       ]
     ]
     """

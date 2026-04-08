@@ -40,7 +40,7 @@ async def global_configs(request: Request):
                         "enabled": True,
                         "spamProtectionEnabled": True,
                         "avChat": {
-                            "screeningRoomEnabled": True,
+                            "screeningRoomEnabled": False,
                             "audioEnabled": True,
                             "videoEnabled": False,
                             "audio2Enabled": True,
