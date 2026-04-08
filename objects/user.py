@@ -78,7 +78,9 @@ class User:
             "postsCount": (
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
+            "backgroundColor": row.get("backgroundColor"),
             "extenstions": {
+                "backgroundColor": row.get("backgroundColor"),
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
                     "backgroundMediaList": User.MediaList(

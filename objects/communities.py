@@ -138,8 +138,22 @@ class Communities:
                         "postType": {
                             "publicChatRooms": {
                                 "privilege": {
-                                    "type": chat_mod.get("accessType", 5),
-                                    "minLevel": chat_mod.get("minLevel", 100),
+                                    "type": chat_mod.get("accessType", 1),
+                                    "minLevel": chat_mod.get("minLevel"),
+                                },
+                                "enabled": chat_mod.get("enabled", True),
+                            },
+                            "liveMode": {
+                                "privilege": {
+                                    "type": chat_mod.get("accessType", 1),
+                                    "minLevel": chat_mod.get("minLevel"),
+                                },
+                                "enabled": chat_mod.get("enabled", True),
+                            },
+                            "screeningRoom": {
+                                "privilege": {
+                                    "type": chat_mod.get("accessType", 1),
+                                    "minLevel": chat_mod.get("minLevel"),
                                 },
                                 "enabled": chat_mod.get("enabled", True),
                             },
@@ -156,8 +170,8 @@ class Communities:
                         },
                         "publicChat": {
                             "privilege": {
-                                "type": chat_mod.get("accessType", 5),
-                                "minLevel": chat_mod.get("minLevel", 100),
+                                "type": chat_mod.get("accessType", 1),
+                                "minLevel": chat_mod.get("minLevel"),
                             },
                             "enabled": True,
                         },
