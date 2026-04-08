@@ -157,8 +157,8 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
     if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
         "cohostsIds", []
     ):
-        # bg = data.get("extensions", {}).get("bm", [None, None])[1]
-        bg = data.get("extensions", {}).get("bm")
+        ext = data.get("extensions", {})
+        bg = ext.get("bm")
         if isinstance(bg, list):
             bg = bg[1]
 
@@ -171,12 +171,13 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
             update_chat.update({"icon": data["icon"]})
         if bg:
             update_chat.update({"background": bg})
-        if data.get("extensions", {}).get("pinAnnouncement"):
-            update_chat.update(
-                {"pinAnnouncement": data["extensions"]["pinAnnouncement"]}
-            )
-        if data.get("extensions", {}).get("announcement"):
-            update_chat.update({"announcement": data["extensions"]["announcement"]})
+
+        update_chat.update(
+            {
+                "pinAnnouncement": ext.get("pinAnnouncement", False),
+                "announcement": ext.get("announcement"),
+            }
+        )
 
         print(update_chat)
 
@@ -677,6 +678,12 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 
     await db.close()
     return answer
+
+
+# get message
+# GET /g/s/chat/thread/434cd5b4-a984-42c4-8375-46c1c6e0803d/message/3c10a84c-c9af-4ab1-84fe-ea0c8d5f2f0f
+
+# neee to think abput security
 
 
 # delete message

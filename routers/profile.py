@@ -489,10 +489,6 @@ async def get_user_info(uid, request: Request, ndcId=0):
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
 
-    print(
-        {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)}
-    )
-
     return Base.Answer(
         {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)},
         spent_time=timestamp() - t1,
@@ -638,12 +634,14 @@ async def edit_user_info(uid, request: Request, ndcId=0):
             pass  # [TODO]: implement default bubble id
         if extensions.get("style"):
             style = extensions["style"]
-            if style.get("backgroundColor") is not None:
-                preparedQueries.update({"backgroundColor": style["backgroundColor"]})
 
+            # background!
+            preparedQueries.update({"backgroundColor": style.get("backgroundColor")})
             if isinstance(style.get("backgroundMediaList"), list):
                 mediaList = [item[1] for item in style["backgroundMediaList"]]
                 preparedQueries.update({"backgroundMediaList": mediaList})
+            else:
+                preparedQueries.update({"backgroundMediaList": None})
 
     if len(preparedQueries) == 0:
         return Base.Answer({"exceptions": "No data provided."})
