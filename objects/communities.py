@@ -144,7 +144,7 @@ class Communities:
                         },
                         "publicChat": {
                             "privilege": {
-                                "type": chat_mod.get("accessType", 1),
+                                "type": chat_mod.get("accessType", 5),
                                 "minLevel": chat_mod.get("minLevel", 0),
                             },
                             "enabled": True,
