@@ -482,21 +482,19 @@ async def get_user_info(uid, request: Request, ndcId=0):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(table="Users")
-    row1 = await table.find_one({"id": uid})
-    if row1 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+
     table = await db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
     await db.close()
+
+    print(
+        {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)}
+    )
+
     return Base.Answer(
-        {
-            "userProfile": User.GetUserInfo(
-                row1 | row2, triggerUserId=trigger_uid, ndcId=ndcId
-            )
-        },
+        {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)},
         spent_time=timestamp() - t1,
     )
 
@@ -640,7 +638,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
             pass  # [TODO]: implement default bubble id
         if extensions.get("style"):
             style = extensions["style"]
-            if isinstance(style.get("backgroundColor"), str):
+            if style.get("backgroundColor") is not None:
                 preparedQueries.update({"backgroundColor": style["backgroundColor"]})
 
             if isinstance(style.get("backgroundMediaList"), list):
