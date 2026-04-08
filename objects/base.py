@@ -22,3 +22,17 @@ class Base:
             | data,
             status_code=html_status_code,
         )
+
+    @staticmethod
+    def LiveLayerTopic(
+        topic_name: str,
+        users_count: int = 0,
+        users_list: list = [],
+        media_list: list | None = None,
+    ):
+        return {
+            "topic": topic_name,
+            "userProfileCount": users_count,
+            "userProfileList": users_list,
+            "mediaList": media_list,
+        }

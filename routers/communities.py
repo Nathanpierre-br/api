@@ -340,6 +340,7 @@ async def get_community_profiles(
         "leaders": {"role": {"$in": [102, 100]}},
         "curators": {"role": 101},
         "recent": {},
+        "summary": {},
     }
 
     query = queries.get(type)
@@ -367,3 +368,26 @@ async def get_community_profiles(
         )
     finally:
         await db.close()
+
+
+@communities.get("/g/s/user-group/{userGroupType}")
+@communities.get("/x{ndcId}/s/user-group/{userGroupType}")
+async def get_user_groups(request: Request, userGroupType: str, ndcId: int = 0):
+    # dont reallt know why they need em except featured users
+    return Base.Answer({"userProfileList": []})
+
+
+@communities.get("/g/s/live-layer")
+@communities.get("/x{ndcId}/s/live-layer")
+async def live_layer(request: Request, ndcId: int = 0, topic: str | None = None):
+    if topic is not None:
+        return Base.LiveLayerTopic(topic) | Base.Answer()
+
+    return Base.Answer(
+        {
+            "liveLayerList": [
+                Base.LiveLayerTopic(f"ndtopic:x{ndcId}:{t}")
+                for t in ["online-members", "watching"]
+            ]
+        }
+    )

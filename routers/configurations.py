@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from objects import Base, Errors
 from helpers.routers.cachable import CachableRoute
+from helpers.decorators.validauth import validauth_required
 
 configurations = APIRouter()
 configurations.route_class = CachableRoute
@@ -62,6 +63,7 @@ async def lang_configs(request: Request):
 
 
 @configurations.get("/g/s/eventlog/profile")
+@validauth_required
 async def eventlog_config(request: Request):
     if not request.state.session["validsession"]:
         return Errors.InvalidSession()
@@ -129,11 +131,17 @@ async def appearance_configs(request: Request):
     )
 
 
-@configurations.get("/g/s/reminder/check")
-async def reminder_configs(request: Request):
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession()
+@configurations.get("/g/s/user-profile/reminder-stat")
+@configurations.get("/x{ndcId}/s/user-profile/reminder-stat")
+@validauth_required
+async def reminder_stats(request: Request, ndcId: int = 0):
+    return Base.Answer()
 
+
+@configurations.get("/g/s/reminder/check")
+@configurations.get("/x{ndcId}/s/reminder/check")
+@validauth_required
+async def reminder_configs(request: Request, ndcId: int = 0):
     return Base.Answer(
         {
             "reminderCheckResult": {
@@ -148,10 +156,9 @@ async def reminder_configs(request: Request):
 
 
 @configurations.get("/g/s/reminder/full-check")
-async def full_reminder_configs(request: Request):
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession()
-
+@configurations.get("/x{ndcId}/s/reminder/full-check")
+@validauth_required
+async def full_reminder_configs(request: Request, ndcId: int = 0):
     return Base.Answer({"reminderFullCheckResult": {"hasReminder": False}})
 
 
@@ -193,7 +200,7 @@ async def modules(request: Request):
                     "status": 0,
                     "style": "BannerSizeTop",
                     "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
-                    "moduleName": "Top Banner EN",
+                    "moduleName": "Top Banner",
                     "contentVariety": 0,
                     "customizable": True,
                     "ext": {"adUnitId": "703920"},
@@ -208,7 +215,7 @@ async def modules(request: Request):
                     "visibility": 1,
                 }
             ],
-            "showStoreBadge": True,
+            "showStoreBadge": False,
         }
     )
 
@@ -228,7 +235,7 @@ async def banner(
                     "objectId": "2",
                     "imageUrl": "https://media.altamino.top/always-static/welcome.jpg",
                     "adCampaignId": 2,
-                    "deepLink": "ndc://community/0",
+                    "deepLink": "ndc://community/1",
                     "strategyInfo": '{"scenarioType": "banner-703920", "objectId": "804584", "imageUrl": "https://media.altamino.top/always-static/welcome.jpg", "landingUrl": "ndc://community/0", "reqId": "852e7230-6135-4cd2-89ea-e860417f6c48", "adUnitId": 703920, "uiPos": 3, "objectType": "ad_campaign"}',
                     "objectType": 153,
                 },

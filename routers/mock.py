@@ -8,8 +8,20 @@ mock = APIRouter()
 mock.route_class = CachableRoute
 
 
+@mock.post("/x{ndcId}/s/community/stats/user-active-time")
+async def count_user_active_time(request: Request, ndcId: int = 0):
+    """
+    I dont really wanna trust users and allow minutes farming.
+    That's why it's mock
+
+    proof me wrong
+    """
+    return Base.Answer({})
+
+
 @mock.post("/g/s/avatar-frame/apply")
-async def avatar_frame_apply_mock(request: Request):
+@mock.post("/x{ndcId}/s/avatar-frame/apply")
+async def avatar_frame_apply_mock(request: Request, ndcId: int = 0):
     return Base.Answer({})
 
 
