@@ -5,6 +5,7 @@ from time import time as timestamp
 # from aiofiles import open as asyncopen
 
 from objects import Base, Errors, Communities, User
+from helpers.aioyaml import aioyaml
 from helpers.database.mongo import Database
 from helpers.database.models import dttmn
 from helpers.routers.cachable import CachableRoute
@@ -266,11 +267,25 @@ async def get_community_info(ndcId: int, request: Request):
 # guidelines
 @communities.get("/g/s/community/official-guideline")
 @communities.get("/x{ndcId}/s/community/official-guideline")
-async def get_official_guidelines(ndcId: int, request: Request):
+async def get_official_guidelines(ndcId: int, request: Request, language: str = "en"):
     try:
-        # async with asyncopen() as f:
-        #    pass
-        return Base.Answer({"officialGuideline": "fancy some more?"})
+        file = await aioyaml("files/guidelines.yaml")
+        language = language.lower() if language.lower() in ["ru", "en"] else "en"
+        # we should also think about not hardcoding ndc langs
+        guideline = file[language]
+    except Exception as e:
+        print("Cant get official guidelines via yaml!:", e)
+        guideline = "[b]Oh no!\nSomething went wrong. Please try again later."
+        # maybe do not hardcode strings? we can parse ndclang, lookup i18n...
+
+        return Base.Answer(
+            {
+                "communityGuideline": {
+                    "content": guideline,
+                    "mediaList": [],
+                }
+            },
+        )
     except Exception:
         return Errors.InternalServerError()
 
@@ -290,7 +305,12 @@ async def get_community_guidelines(ndcId: int, request: Request):
             return Errors.DataNotExist(timestamp() - t1)
 
         return Base.Answer(
-            {"communityGuideline": info.get("guideline", ""), "mediaList": []},
+            {
+                "communityGuideline": {
+                    "content": info.get("guideline", ""),
+                    "mediaList": [],
+                }
+            },
             spent_time=timestamp() - t1,
         )
     finally:
