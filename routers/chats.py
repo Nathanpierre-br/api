@@ -291,6 +291,24 @@ async def if_chat_exists(
 
         await db.close()
         return info
+    elif type == "public-all":
+        size = size if 0 < size < 101 else 25
+
+        db = await Database().init()
+        table = await db.get(f"x{ndcId}", "Chats")
+        items = [
+            await Chat.Info(item, db, trigger_uid=uid)
+            for item in await table.find()
+            .skip(start)
+            .limit(size)
+            .sort("timestamp", DESCENDING)
+        ]
+
+        await db.close()
+        return Base.Answer(
+            {"threadList": items},
+            spent_time=timestamp() - t1,
+        )
     else:
         return Errors.InvalidRequest(timestamp() - t1)
 

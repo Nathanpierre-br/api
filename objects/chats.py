@@ -121,7 +121,7 @@ class Chat:
 
     @staticmethod
     async def Info(
-        chatId: str,
+        chatId: str | dict,
         connection=None,
         ndcId: int = 0,
         trigger_uid: Union[str, None] = None,
@@ -130,8 +130,12 @@ class Chat:
     ):
         if not connection:
             connection = await Database().init()
-        chats = await connection.get(f"x{ndcId}", "Chats")
-        data = await chats.find_one({"id": chatId})
+
+        if isinstance(chatId, str):
+            chats = await connection.get(f"x{ndcId}", "Chats")
+            data = await chats.find_one({"id": chatId})
+        else:
+            data = chatId
 
         messages = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
         message = await messages.find_one({"messageId": data["lastMessageId"]})

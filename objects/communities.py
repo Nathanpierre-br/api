@@ -162,7 +162,7 @@ class Communities:
                                 [
                                     {"id": "guidelines"},
                                     {"id": "chat-default"},
-                                    {"id": "leaderboards-default"},
+                                    {"id": "chat-public-chats"},
                                 ],
                             ),
                             "level2": conf.get("sidepanelBottomNav", []),
