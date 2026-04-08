@@ -149,25 +149,22 @@ async def join_community(request: Request, ndcId: int):
             new_profile["whoFollows"] = []
             new_profile["following"] = []
             new_profile["wall"] = {}
-            for field in ["_id", "createdTime", "updatedTime"]:
+            for field in ["_id", "createdTime", "modifiedTime"]:
                 new_profile.pop(field, None)
 
-            new_profile["createdTime"] = dttmn()
-            new_profile["updatedTime"] = dttmn()
+            new_timestamp = dttmn()
+            new_profile["createdTime"] = new_timestamp
+            new_profile["modifiedTime"] = new_timestamp
 
             await table_community_users.insert_one(new_profile)
 
         # update community
         await table_communities.update_one(
             {"id": ndcId},
-            {
-                "$set": {
-                    "memberList": {"$setUnion": ["$membersList", [trigger_uid]]},
-                    "membersCount": {
-                        "$size": {"$setUnion": ["$membersList", [trigger_uid]]}
-                    },
-                }
-            },
+            [
+                {"$set": {"memberList": {"$setUnion": ["$memberList", [trigger_uid]]}}},
+                {"$set": {"membersCount": {"$size": "$memberList"}}},
+            ],
         )
 
         # update global user info
@@ -213,10 +210,14 @@ async def leave_community(request: Request, ndcId: int):
         # Update community: remove member
         await table_communities.update_one(
             {"id": ndcId},
-            {
-                "$pull": {"memberList": trigger_uid},
-                "$inc": {"membersCount": -1},
-            },
+            [
+                {
+                    "$set": {
+                        "memberList": {"$setDifference": ["$memberList", [trigger_uid]]}
+                    }
+                },
+                {"$set": {"membersCount": {"$size": "$memberList"}}},
+            ],
         )
 
         # Update global user info: remove community from communityList
