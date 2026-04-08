@@ -220,10 +220,16 @@ async def leave_community(request: Request, ndcId: int):
             ],
         )
 
-        # Update global user info: remove community from communityList
-        table_global_users = await db.get("x0", "Users")
+        # update global user info
+        table_global_users = await db.get(table="Users")
         await table_global_users.update_one(
             {"id": trigger_uid}, {"$pull": {"communityList": ndcId}}
+        )
+
+        # update community user info
+        table_global_users = await db.get(f"x{ndcId}", "Users")
+        await table_global_users.update_one(
+            {"id": trigger_uid}, {"$set": {"role": 0, "status": 1}}
         )
 
         return Base.Answer({}, spent_time=timestamp() - t1)
