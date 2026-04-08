@@ -30,7 +30,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
 
     db = await Database().init()
     try:
-        table = await db.get("x0", "Users")
+        table = await db.get(table="Users")
         row1 = await table.find_one({"id": uid})
         if row1 is None:
             return Errors.AccountNotExist(timestamp() - t1)
