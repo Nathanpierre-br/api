@@ -379,10 +379,16 @@ async def get_user_groups(request: Request, userGroupType: str, ndcId: int = 0):
 
 @communities.get("/g/s/live-layer")
 @communities.get("/x{ndcId}/s/live-layer")
-async def live_layer(request: Request, ndcId: int = 0, topic: str | None = None):
+async def live_layer_topic(request: Request, ndcId: int = 0, topic: str | None = None):
     if topic is not None:
-        return Base.LiveLayerTopic(topic) | Base.Answer()
+        return Base.Answer(Base.LiveLayerTopic(topic))
 
+    return Errors.InvalidRequest()
+
+
+@communities.get("/g/s/live-layer/homepage")
+@communities.get("/x{ndcId}/s/live-layer/homepage")
+async def live_layer(request: Request, ndcId: int = 0, topic: str | None = None):
     return Base.Answer(
         {
             "liveLayerList": [
