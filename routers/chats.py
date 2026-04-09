@@ -96,20 +96,19 @@ async def get_recommended_chats(request: Request, ndcId: int = 0):
     trigger_uid = request.state.session.get("uid")
     con = await Database().init()
     if ndcId == 0:
-        answer = {
-            "threadList": [
-                await Chat.Info(
-                    "e92cde26-3067-457f-930a-0be3b99dc9b5",
-                    trigger_uid=trigger_uid,
-                    connection=con,
-                ),
-                await Chat.Info(
-                    "0f668f3a-c5f5-42e0-b552-58b270e7841c",
-                    trigger_uid=trigger_uid,
-                    connection=con,
-                ),
-            ]
-        }
+        chats = [
+            await Chat.Info(
+                "e92cde26-3067-457f-930a-0be3b99dc9b5",
+                trigger_uid=trigger_uid,
+                connection=con,
+            ),
+            await Chat.Info(
+                "0f668f3a-c5f5-42e0-b552-58b270e7841c",
+                trigger_uid=trigger_uid,
+                connection=con,
+            ),
+        ]
+        answer = {"threadList": [c for c in chats if c is not None]}
     else:
         answer = {"threadList": []}
     await con.close()
@@ -355,7 +354,8 @@ async def create_chat(request: Request, ndcId: int = 0):
     else:
         chatId = str(uuid4())
         if data["type"] == 2:
-            bg = data.get("extensions", {}).get("bm", [None, None])[1]
+            bm = data.get("extensions", {}).get("bm") or [None, None]
+            bg = bm[1] if len(bm) > 1 else None
             chatObj = ModelFabric.Construct(
                 Community.Chats,
                 chatType=data["type"],

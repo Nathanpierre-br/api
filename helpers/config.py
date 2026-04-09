@@ -22,9 +22,13 @@ class Config:
     SMTP_USER = environ.get("SMTP_USER")
     SMTP_PSWD = environ.get("SMTP_PSWD")
     SMTP_SNDR = environ.get("SMTP_SNDR")
+    SMTP_STARTTLS = environ.get("SMTP_STARTTLS", "True").lower() in ["true", "1"]
 
-    API_DOMAIN = environ.get("API_DOMAIN")
+    API_DOMAIN = environ.get("API_DOMAIN", "service.altamino.top")
+    API_BASE_URL = environ.get("API_BASE_URL", f"https://{API_DOMAIN}")
+
     SITE_DOMAIN = environ.get("SITE_DOMAIN")
+    SITE_BASE_URL = environ.get("SITE_BASE_URL", f"https://{SITE_DOMAIN}")
 
     WS_LINK = environ.get("WS_LINK")
     WS_ADMIN_KEY = environ.get("WS_ADMIN_KEY")
