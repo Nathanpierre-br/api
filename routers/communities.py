@@ -9,6 +9,7 @@ from helpers.aioyaml import aioyaml
 from helpers.database.mongo import Database
 from helpers.database.models import dttmn
 from helpers.routers.cachable import CachableRoute
+from helpers.decorators.validauth import validauth_required
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -399,3 +400,16 @@ async def live_layer(request: Request, ndcId: int = 0, topic: str | None = None)
             ]
         }
     )
+
+
+# looks like this request allows precheck if you can do it
+# for now it will be mocked
+# GET /api/v1/x1/s/user-profile/de838eb4-312c-4ba0-9d81-9aad3fc984e1/compose-eligible-check?objectType=chat-thread&objectSubtype=public
+@communities.get("/x{ndcId}/s/user-profile/{uid}/compose-eligible-check")
+@validauth_required
+async def compose_eligible_check(request: Request, ndcId: int, uid: str):
+    trigger_uid = request.state.session["uid"]
+    if trigger_uid != uid:
+        return Errors.InvalidRequest()
+
+    return Base.Answer()
