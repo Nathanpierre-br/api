@@ -132,7 +132,7 @@ class Communities:
             "activeInfo": {},
             "configuration": {
                 "page": PAGES,
-                "modules": {
+                "module": {
                     "post": {
                         "enabled": True,
                         "postType": {
@@ -204,8 +204,8 @@ class Communities:
             },
             "advancedSettings": {
                 "pollMinFullBarVoteCount": 10,
-                "welcomeMessageEnabled": data.get("welcomeMessageEnabled", False),
-                "welcomeMessageText": data.get("welcomeMessage", ""),
+                "welcomeMessageEnabled": conf.get("welcomeMessageEnabled", False),
+                "welcomeMessageText": conf.get("welcomeMessage", ""),
                 "catalogEnabled": True,  # ???
                 "defaultRankingTypeInLeaderboard": 1,
                 "frontPageLayout": conf.get("frontPageLayout", 1),
