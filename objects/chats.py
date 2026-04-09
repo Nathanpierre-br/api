@@ -8,6 +8,19 @@ from helpers.database.mongo import Database
 
 
 class Chat:
+    BoilerplateMessage = {
+        "messageId": "00000000-0000-0000-0000-000000000",
+        "authorId": "00000000-0000-0000-0000-000000000",
+        "messageType": 100,
+        "clientRefId": 0,
+        "content": "",
+        "mediaType": 0,
+        "mediaValue": None,
+        "timestamp": 0,
+        "createdTime": "1970-01-01T00:00:00Z",
+        "extensions": {"mentionedArray": []},
+    }
+
     @staticmethod
     async def GetMemberInfo(
         memberId: str, g_users, xndc_users, membershipStatus: bool = True
@@ -137,21 +150,14 @@ class Chat:
         else:
             data = chatId
 
-        messages = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
-        message = await messages.find_one({"messageId": data["lastMessageId"]})
-        if message is None:
-            message = {
-                "messageId": "00000000-0000-0000-0000-000000000",
-                "authorId": "00000000-0000-0000-0000-000000000",
-                "messageType": 100,
-                "clientRefId": 0,
-                "content": "",
-                "mediaType": 0,
-                "mediaValue": None,
-                "timestamp": 0,
-                "createdTime": "1970-01-01T00:00:00Z",
-                "extensions": {"mentionedArray": []},
-            }
+        try:
+            messages = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+            message = await messages.find_one({"messageId": data["lastMessageId"]})
+            if message is None:
+                message = Chat.BoilerplateMessage
+        except Exception as e:
+            message = Chat.BoilerplateMessage
+            print("Can't get message for chat:", e)
 
         if g_users is not None:
             host_global = await g_users.find_one({"id": data["hostId"]}) or {}
