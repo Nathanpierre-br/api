@@ -150,6 +150,9 @@ class Chat:
         else:
             data = chatId
 
+        if data is None:
+            return None # because /s/live-layer/public-chats returns error on custom apis
+
         try:
             messages = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
             message = await messages.find_one({"messageId": data["lastMessageId"]})

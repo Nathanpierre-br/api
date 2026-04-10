@@ -1,3 +1,4 @@
+from helpers.config import Config
 from objects.errors import Errors
 from .device import DeviceProcessor
 from .session import SessionProcessor
@@ -93,7 +94,7 @@ class RequestProcessor:
         if headers.get("Host") not in [
             "service.narvii.com",
             "service.aminoapps.com",
-            "service.altamino.top",
+            Config.API_DOMAIN,
         ]:
             return [False, Errors.SUS()]
 

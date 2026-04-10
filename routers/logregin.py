@@ -105,14 +105,14 @@ async def requestCode(request: Request):
             port=Config.SMTP_PORT,
             username=Config.SMTP_USER,
             password=Config.SMTP_PSWD,
-            use_starttls=True,
+            use_starttls=Config.SMTP_STARTTLS,
         )
         email.send(
             sender=Config.SMTP_SNDR,
             subject="Confirmation code for AltAmino",
             receivers=[reciever],
             html=text.replace(
-                "[LINK]", f"{Config.API_DOMAIN}/api/v1/verification-code/{uniqueCode}"
+                "[LINK]", f"{Config.API_BASE_URL}/api/v1/verification-code/{uniqueCode}"
             ),
             body_images={"IMAGE": c_img},
         )
