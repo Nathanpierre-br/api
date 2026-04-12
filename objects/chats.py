@@ -68,6 +68,7 @@ class Chat:
         data: dict,
         threadId: str,
         xndc_users,
+        ndcId: int = 0,
         mentionedArray: list = [],
         history_table=None,
     ):
@@ -78,7 +79,7 @@ class Chat:
         if extensions.get("replyMessageId"):
             if history_table is None:
                 con = await Database().init()
-                history_table = await con.get("x0", f"_Chat:{threadId}")
+                history_table = await con.get(f"x{ndcId}", f"_Chat:{threadId}")
 
             reply_msg_data = await history_table.find_one(
                 {"messageId": extensions["replyMessageId"]}
@@ -90,6 +91,7 @@ class Chat:
                             reply_msg_data,
                             threadId,
                             xndc_users,
+                            ndcId=ndcId,
                             history_table=history_table,
                         )
                     }
