@@ -1087,7 +1087,7 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
         await connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
-    xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
+    xndc_users = await connection.get(f"x{ndcId}", "Users")
     answer = Base.Answer(
         {
             "userProfileList": [
@@ -1128,7 +1128,7 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
 
     chat_info = await chat.find_one({"id": chatId})
     cohosts = chat_info.get("cohostsIds", [])
-    xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
+    xndc_users = await connection.get(f"x{ndcId}", "Users")
     answer = Base.Answer(
         {
             "userProfileList": [
@@ -1236,7 +1236,7 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         content=None,
     )
     await table.insert_one(message)
-    xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
+    xndc_users = await connection.get(f"x{ndcId}", "Users")
     messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
     ws_send_obj = {
         "t": 1000,
@@ -1329,7 +1329,7 @@ async def leave_chat(
             | isBan,
         )
 
-        xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
+        xndc_users = await connection.get(f"x{ndcId}", "Users")
         messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
         ws_send_obj = {
             "t": 1000,
@@ -1435,7 +1435,7 @@ async def toggle_things(
                 {"id": chatId}, {"$set": {"lastMessageId": messageId}}
             )
 
-            xndc_users = (await db.get(f"x{ndcId}", "Users"),)
+            xndc_users = await db.get(f"x{ndcId}", "Users")
             messageObj = await Chat.LongMessage(
                 message, chatId, xndc_users, ndcId=ndcId
             )
