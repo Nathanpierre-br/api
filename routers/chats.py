@@ -308,7 +308,7 @@ async def if_chat_exists(
         table = await db.get(f"x{ndcId}", "Chats")
         items = [
             await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
-            async for item in table.find({"chatType": 0})
+            async for item in table.find({"chatType": 2})
             .skip(start)
             .limit(size)
             .sort("timestamp", DESCENDING)
