@@ -22,11 +22,12 @@ class Chat:
     }
 
     @staticmethod
-    async def GetMemberInfo(memberId: str, xndc_users, membershipStatus: bool = True):
+    async def GetMemberInfo(
+        memberId: str, xndc_users, membershipStatus: bool = True, ndcId: int = 0
+    ):
         xndc_data = await xndc_users.find_one({"id": memberId}) or {}
         return User.GetUserInfo(
-            xndc_data,
-            membershipStatus=1 if membershipStatus else 2,
+            xndc_data, membershipStatus=1 if membershipStatus else 2, ndcId=ndcId
         )
 
     @staticmethod
