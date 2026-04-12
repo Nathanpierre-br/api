@@ -144,7 +144,9 @@ class Chat:
             data = chatId
 
         if data is None:
-            return None # because /s/live-layer/public-chats returns error on custom apis
+            return (
+                None  # because /s/live-layer/public-chats returns error on custom apis
+            )
 
         try:
             messages = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
@@ -174,7 +176,9 @@ class Chat:
             "membersQuota": 9999,
             "membersSummary": [
                 Chat.Member_ShortInfo(i)
-                async for i in xndc_users.find({"id": {"$in": data["memberList"]}}).limit(10)
+                async for i in xndc_users.find(
+                    {"id": {"$in": data["memberList"]}}
+                ).limit(10)
             ],
             "threadId": data["id"],
             "keywords": None,
