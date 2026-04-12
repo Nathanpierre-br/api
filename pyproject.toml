@@ -21,8 +21,13 @@ dependencies = [
     "redis>=7.4.0",
     "redmail>=0.6.0",
     "requests>=2.32.5",
-    "ruff>=0.15.7",
     "supervisor>=4.3.0",
     "uvicorn>=0.42.0",
     "websockets>=16.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.10",
+    "ty>=0.0.29",
 ]

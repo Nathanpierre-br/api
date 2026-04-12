@@ -193,7 +193,7 @@ async def get_user_wall(
     start: int = 0,
     size: int = 25,
     sort: str = "newest",
-    ndcId: int = [],
+    ndcId: int = 0,
 ):
     t1 = timestamp()
 
