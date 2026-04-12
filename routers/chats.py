@@ -45,7 +45,7 @@ async def user_search(
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Chats")
-    query = {"type": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
+    query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
     chats = [
         item
         async for item in table.find(query)
@@ -308,11 +308,12 @@ async def if_chat_exists(
         table = await db.get(f"x{ndcId}", "Chats")
         items = [
             await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
-            async for item in table.find({"type": 0})
+            async for item in table.find({"chatType": 0})
             .skip(start)
             .limit(size)
             .sort("timestamp", DESCENDING)
         ]
+        print(items)
 
         await db.close()
         return Base.Answer(

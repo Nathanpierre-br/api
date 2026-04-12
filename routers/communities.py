@@ -47,23 +47,21 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
         table = await db.get(table="Communities")
         cl_needed = row1.get("communityList", [])[start : start + size]
 
-        result = (
-            {
-                "communityList": [
-                    await Communities.Info(item, db, uid)
-                    async for item in table.find({"id": {"$in": cl_needed}})
-                ],
-                "userInfoInCommunities": {
-                    # experimental fix
-                    str(item): User.OwnNonSensetiveProfile(
-                        row2, ndcId=item, membershipStatus=1
-                    )
-                    | {"joined": True}
-                    for item in cl_needed
-                },
-                "showStoreBadge": False,
+        result = {
+            "communityList": [
+                await Communities.Info(item, db, uid)
+                async for item in table.find({"id": {"$in": cl_needed}})
+            ],
+            "userInfoInCommunities": {
+                # experimental fix
+                str(item): User.OwnNonSensetiveProfile(
+                    row2, ndcId=item, membershipStatus=1
+                )
+                | {"joined": True}
+                for item in cl_needed
             },
-        )
+            "showStoreBadge": False,
+        }
     finally:
         await db.close()
 
@@ -289,15 +287,7 @@ async def get_official_guidelines(ndcId: int, request: Request, language: str = 
 
         return Base.Answer(
             {
-                "officialGuideline": {
-                    "content": guideline,
-                    "mediaList": [],
-                },
                 "guideline": {
-                    "content": guideline,
-                    "mediaList": [],
-                },
-                "communityGuideline": {
                     "content": guideline,
                     "mediaList": [],
                 },
