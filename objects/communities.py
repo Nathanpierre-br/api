@@ -8,56 +8,56 @@ it will be inside community db obj
 """
 PAGES = {
     "defaultList": [
-        {"url": "ndc://leaderboards", "alias": None, "id": "leaderboards-default"},
-        {"url": "ndc://featured", "alias": None, "id": "featured-default"},
+        #        {"url": "ndc://leaderboards", "alias": None, "id": "leaderboards-default"},
+        #        {"url": "ndc://featured", "alias": None, "id": "featured-default"},
         {"url": "ndc://my-chats", "alias": None, "id": "chat-default"},
         {"url": "ndc://public-chats", "alias": None, "id": "chat-public-chats"},
         {"url": "ndc://latest-posts", "alias": None, "id": "post-latest-feed"},
-        {"url": "ndc://following-feed", "alias": None, "id": "post-following-feed"},
-        {"url": "ndc://image-posts", "alias": None, "id": "post-image-posts"},
-        {"url": "ndc://blogs", "alias": None, "id": "post-blogs"},
-        {"url": "ndc://quizzes", "alias": None, "id": "post-quizzes"},
-        {
-            "url": "ndc://quizzes/best",
-            "alias": None,
-            "id": "post-best-quizzes",
-            "parentId": "post-quizzes",
-        },
-        {
-            "url": "ndc://quizzes/trending",
-            "alias": None,
-            "id": "post-trending-quizzes",
-            "parentId": "post-quizzes",
-        },
-        {
-            "url": "ndc://quizzes/latest",
-            "alias": None,
-            "id": "post-latest-quizzes",
-            "parentId": "post-quizzes",
-        },
-        {"url": "ndc://link-posts", "alias": None, "id": "post-link-posts"},
-        {"url": "ndc://questions", "alias": None, "id": "post-questions"},
-        {"url": "ndc://polls", "alias": None, "id": "post-polls"},
-        {"url": "ndc://stories", "alias": None, "id": "post-stories"},
-        {"url": "ndc://shared-folder", "alias": None, "id": "shared-folder"},
-        {
-            "url": "ndc://shared-folder/albums",
-            "alias": None,
-            "id": "shared-folder-albums",
-            "parentId": "shared-folder",
-        },
-        {
-            "url": "ndc://shared-folder/photos",
-            "alias": None,
-            "id": "shared-folder-photos",
-            "parentId": "shared-folder",
-        },
-        {"url": "ndc://catalog", "alias": None, "id": "catalog-default"},
-        {
-            "url": "ndc://blog-categories",
-            "alias": None,
-            "id": "topic-categories-default",
-        },
+        #        {"url": "ndc://following-feed", "alias": None, "id": "post-following-feed"},
+        #        {"url": "ndc://image-posts", "alias": None, "id": "post-image-posts"},
+        #        {"url": "ndc://blogs", "alias": None, "id": "post-blogs"},
+        #        {"url": "ndc://quizzes", "alias": None, "id": "post-quizzes"},
+        #        {
+        #            "url": "ndc://quizzes/best",
+        #            "alias": None,
+        #            "id": "post-best-quizzes",
+        #            "parentId": "post-quizzes",
+        #        },
+        #        {
+        #            "url": "ndc://quizzes/trending",
+        #            "alias": None,
+        #            "id": "post-trending-quizzes",
+        #            "parentId": "post-quizzes",
+        #        },
+        #        {
+        #            "url": "ndc://quizzes/latest",
+        #            "alias": None,
+        #            "id": "post-latest-quizzes",
+        #            "parentId": "post-quizzes",
+        #        },
+        #        {"url": "ndc://link-posts", "alias": None, "id": "post-link-posts"},
+        #        {"url": "ndc://questions", "alias": None, "id": "post-questions"},
+        #        {"url": "ndc://polls", "alias": None, "id": "post-polls"},
+        #        {"url": "ndc://stories", "alias": None, "id": "post-stories"},
+        #        {"url": "ndc://shared-folder", "alias": None, "id": "shared-folder"},
+        #        {
+        #            "url": "ndc://shared-folder/albums",
+        #            "alias": None,
+        #            "id": "shared-folder-albums",
+        #            "parentId": "shared-folder",
+        #        },
+        #        {
+        #            "url": "ndc://shared-folder/photos",
+        #            "alias": None,
+        #            "id": "shared-folder-photos",
+        #            "parentId": "shared-folder",
+        #        },
+        #        {"url": "ndc://catalog", "alias": None, "id": "catalog-default"},
+        #        {
+        #            "url": "ndc://blog-categories",
+        #            "alias": None,
+        #            "id": "topic-categories-default",
+        #        },
         {"url": "ndc://guidelines", "alias": None, "id": "guidelines"},
     ],
     "customList": [],
@@ -210,6 +210,8 @@ class Communities:
                 "defaultRankingTypeInLeaderboard": 1,
                 "frontPageLayout": conf.get("frontPageLayout", 1),
             },
+            "communityHeadList": [],
+            "promotionalMediaList": None,
         }
 
     """
@@ -241,14 +243,12 @@ class Communities:
     }
 
     themePack:
-    it's easy to implement, but we don't have any
-    theme files. once we will get one on hand we
-    will add support to them:
+    wtf is hash and how it calculated
     {
         "themeColor": "#34754e",
         "themePackHash": "ea6f312f63cb8fedbe2145f7967d39cb", # ???
-        "themePackRevision": 130, # ???
-        "themePackUrl": "http://theme.aminoapps.com/x156542274-rev130.ndthemepack" # ???
+        "themePackRevision": 130,
+        "themePackUrl": "http://theme.aminoapps.com/x156542274-rev130.ndthemepack"
     }
 
     communityHeadList:

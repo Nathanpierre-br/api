@@ -297,7 +297,7 @@ async def if_chat_exists(
         table = await db.get(f"x{ndcId}", "Chats")
         items = [
             await Chat.Info(item, db, trigger_uid=uid)
-            async for item in table.find({"type": 2})
+            async for item in table.find({"type": 0})
             .skip(start)
             .limit(size)
             .sort("timestamp", DESCENDING)
@@ -369,7 +369,7 @@ async def create_chat(request: Request, ndcId: int = 0):
                     else "https://media.altamino.top/default-chat-room-background/10_00.png"
                 ),
                 title=data.get("title", "Unnamed chat"),
-                description=data.get("content"),
+                description=data.get("content", ""),
                 icon=data.get("icon"),
             )
         else:
@@ -404,20 +404,16 @@ async def create_chat(request: Request, ndcId: int = 0):
             )
         )
 
-    g_users, xndc_users = (
-        await db.get(table="Users"),
-        await db.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = await db.get(f"x{ndcId}", "Users")
     history = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
     await history.insert_many(messages)
     await table.update_one({"id": chatId}, {"$set": {"lastMessageId": lastMsgId}})
 
     chatInfo_obj = await Chat.Info(
-        chatId, db, trigger_uid=trigger_uid, g_users=g_users, xndc_users=xndc_users
+        chatId, db, trigger_uid=trigger_uid, xndc_users=xndc_users
     )
     messages_obj = [
-        await Chat.LongMessage(message, chatId, g_users, xndc_users)
-        for message in messages
+        await Chat.LongMessage(message, chatId, xndc_users) for message in messages
     ]
 
     await db.close()
@@ -453,17 +449,14 @@ async def get_chat_messages(
         .limit(size)
         .sort("timestamp", DESCENDING)
     ]
-    g_users, xndc_users = (
-        await db.get(table="Users"),
-        await db.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = await db.get(f"x{ndcId}", "Users")
 
     if len(messages) > 0:
         answer = Base.Answer(
             {
                 "messageList": [
                     await Chat.LongMessage(
-                        message, chatId, g_users, xndc_users, history_table=table
+                        message, chatId, xndc_users, history_table=table
                     )
                     for message in messages
                 ],
@@ -659,10 +652,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         mediaLink = f"ndcsticker://{data['stickerId']}"
 
     messageId = str(uuid4())
-    g_users, xndc_users = (
-        await db.get(table="Users"),
-        await db.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = await db.get(f"x{ndcId}", "Users")
     table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
     message = ModelFabric.Construct(
         Community.Message,
@@ -678,7 +668,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     await table.insert_one(message)
     await chat.update_one({"id": chatId}, {"$set": {"lastMessageId": messageId}})
 
-    messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
+    messageObj = await Chat.LongMessage(message, chatId, xndc_users)
     answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
 
     ws_send_obj = {
@@ -919,10 +909,8 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
         mediaLink = f"ndcsticker://{data['stickerId']}"
 
     messageId = str(uuid4())
-    g_users, xndc_users = (
-        await db.get(table="Users"),
-        await db.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = await db.get(f"x{ndcId}", "Users")
+
     table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
     message = ModelFabric.Construct(
         Community.Message,
@@ -938,7 +926,7 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
     await table.insert_one(message)
     await chat.update_one({"id": chatId}, {"$set": {"lastMessageId": messageId}})
 
-    messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
+    messageObj = await Chat.LongMessage(message, chatId, xndc_users)
     answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
 
     ws_send_obj = {
@@ -980,10 +968,8 @@ async def get_chat_members(
     connection = await Database().init()
     chat = await connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
-    g_users, xndc_users = (
-        await connection.get(table="Users"),
-        await connection.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = await connection.get(f"x{ndcId}", "Users")
+
     if type == "default":
         members = chat_info["memberList"]
         invited = chat_info["invitedList"]
@@ -994,7 +980,6 @@ async def get_chat_members(
                 "memberList": [
                     await Chat.GetMemberInfo(
                         member,
-                        g_users,
                         xndc_users,
                         True if member in members else False,
                     )
@@ -1017,7 +1002,7 @@ async def get_chat_members(
         answer = Base.Answer(
             {
                 "memberList": [
-                    await Chat.GetMemberInfo(member, g_users, xndc_users, True)
+                    await Chat.GetMemberInfo(member, xndc_users, True)
                     for member in non_cohosts
                 ]
             },
@@ -1051,16 +1036,12 @@ async def get_chat_cohosts(request: Request, chatId: str, ndcId: int = 0):
         return Errors.NotEnoughRights(timestamp() - t1)
 
     members = chat_info.get("cohostsIds", [])
-    g_users, xndc_users = (
-        await connection.get(table="Users"),
-        await connection.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = await connection.get(f"x{ndcId}", "Users")
 
     answer = Base.Answer(
         {
             "userProfileList": [
-                await Chat.GetMemberInfo(member, g_users, xndc_users, True)
-                for member in members
+                await Chat.GetMemberInfo(member, xndc_users, True) for member in members
             ]
         },
         spent_time=timestamp() - t1,
@@ -1091,15 +1072,11 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
         await connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
-    g_users, xndc_users = (
-        await connection.get(table="Users"),
-        await connection.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
     answer = Base.Answer(
         {
             "userProfileList": [
-                await Chat.GetMemberInfo(member, g_users, xndc_users, True)
-                for member in cohosts
+                await Chat.GetMemberInfo(member, xndc_users, True) for member in cohosts
             ]
         },
         spent_time=timestamp() - t1,
@@ -1135,15 +1112,11 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
 
     chat_info = await chat.find_one({"id": chatId})
     cohosts = chat_info.get("cohostsIds", [])
-    g_users, xndc_users = (
-        await connection.get(table="Users"),
-        await connection.get(f"x{ndcId}", "Users"),
-    )
+    xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
     answer = Base.Answer(
         {
             "userProfileList": [
-                await Chat.GetMemberInfo(member, g_users, xndc_users, True)
-                for member in cohosts
+                await Chat.GetMemberInfo(member, xndc_users, True) for member in cohosts
             ]
         },
         spent_time=timestamp() - t1,
@@ -1246,11 +1219,8 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         content=None,
     )
     await table.insert_one(message)
-    g_users, xndc_users = (
-        await connection.get(table="Users"),
-        await connection.get(f"x{ndcId}", "Users"),
-    )
-    messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
+    xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
+    messageObj = await Chat.LongMessage(message, chatId, xndc_users)
     ws_send_obj = {
         "t": 1000,
         "o": {
@@ -1342,11 +1312,8 @@ async def leave_chat(
             | isBan,
         )
 
-        g_users, xndc_users = (
-            await connection.get(table="Users"),
-            await connection.get(f"x{ndcId}", "Users"),
-        )
-        messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
+        xndc_users = (await connection.get(f"x{ndcId}", "Users"),)
+        messageObj = await Chat.LongMessage(message, chatId, xndc_users)
         ws_send_obj = {
             "t": 1000,
             "o": {
@@ -1451,11 +1418,8 @@ async def toggle_things(
                 {"id": chatId}, {"$set": {"lastMessageId": messageId}}
             )
 
-            g_users, xndc_users = (
-                await db.get(table="Users"),
-                await db.get(f"x{ndcId}", "Users"),
-            )
-            messageObj = await Chat.LongMessage(message, chatId, g_users, xndc_users)
+            xndc_users = (await db.get(f"x{ndcId}", "Users"),)
+            messageObj = await Chat.LongMessage(message, chatId, xndc_users)
             ws_send_obj = {
                 "t": 1000,
                 "o": {

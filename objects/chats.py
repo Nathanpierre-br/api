@@ -22,13 +22,10 @@ class Chat:
     }
 
     @staticmethod
-    async def GetMemberInfo(
-        memberId: str, g_users, xndc_users, membershipStatus: bool = True
-    ):
-        global_data = await g_users.find_one({"id": memberId}) or {}
+    async def GetMemberInfo(memberId: str, xndc_users, membershipStatus: bool = True):
         xndc_data = await xndc_users.find_one({"id": memberId}) or {}
         return User.GetUserInfo(
-            global_data | xndc_data,
+            xndc_data,
             membershipStatus=1 if membershipStatus else 2,
         )
 
@@ -70,7 +67,6 @@ class Chat:
     async def LongMessage(
         data: dict,
         threadId: str,
-        g_users,
         xndc_users,
         mentionedArray: list = [],
         history_table=None,
@@ -93,20 +89,18 @@ class Chat:
                         "replyMessage": await Chat.LongMessage(
                             reply_msg_data,
                             threadId,
-                            g_users,
                             xndc_users,
                             history_table=history_table,
                         )
                     }
                 )
 
-        global_data = await g_users.find_one({"id": data["authorId"]}) or {}
         xndc_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
 
         return {
             "includedInSummary": True,
             "uid": data["authorId"],
-            "author": User.GetUserInfo(global_data | xndc_data),
+            "author": User.GetUserInfo(xndc_data),
             "isHidden": False,
             "messageId": data["messageId"],
             "mediaType": data.get("mediaType", 0),
@@ -138,7 +132,6 @@ class Chat:
         connection=None,
         ndcId: int = 0,
         trigger_uid: Union[str, None] = None,
-        g_users=None,
         xndc_users=None,
     ):
         if not connection:
@@ -161,12 +154,6 @@ class Chat:
         except Exception as e:
             message = Chat.BoilerplateMessage
             print("Can't get message for chat:", e)
-
-        if g_users is not None:
-            host_global = await g_users.find_one({"id": data["hostId"]}) or {}
-        else:
-            g_users = await connection.get(table="Users")
-            host_global = await g_users.find_one({"id": data["hostId"]}) or {}
 
         if xndc_users is not None:
             host_xndcId = await xndc_users.find_one({"id": data["hostId"]}) or {}
@@ -235,7 +222,7 @@ class Chat:
             "condition": 1 if data["chatType"] == 2 else 0,
             "icon": data.get("icon"),
             "latestActivityTime": message["createdTime"],
-            "author": User.GetUserInfo(host_global | host_xndcId),
+            "author": User.GetUserInfo(host_xndcId),
             "extensions": {
                 "viewOnly": data.get("isViewMode", False),
                 "coHost": data["cohostsIds"],

@@ -34,7 +34,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
 
     db = await Database().init()
     try:
-        table = await db.get(table="Users")
+        table = await db.get("x0", "Users")
         row1 = await table.find_one({"id": uid})
         if row1 is None:
             return Errors.AccountNotExist(timestamp() - t1)
@@ -57,7 +57,10 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                 ],
                 "userInfoInCommunities": {
                     # experimental fix
-                    str(item): {"membershipStatus": 1, "id": uid, "joined": True}
+                    str(item): User.OwnNonSensetiveProfile(
+                        row1, ndcId=item, membershipStatus=1
+                    )
+                    | {"joined": True}
                     for item in row1.get("communityList", [])[start : start + size]
                 },
                 "showStoreBadge": False,
