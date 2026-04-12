@@ -38,6 +38,12 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
         if row1 is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
+        # experimental ios freezing fix: giving full profile info
+        table = await db.get("x0", "Users")
+        row2 = await table.find_one({"id": uid})
+        if row2 is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
         table = await db.get(table="Communities")
         cl_needed = row1.get("communityList", [])[start : start + size]
 
@@ -50,7 +56,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                 "userInfoInCommunities": {
                     # experimental fix
                     str(item): User.OwnNonSensetiveProfile(
-                        row1, ndcId=item, membershipStatus=1
+                        row2, ndcId=item, membershipStatus=1
                     )
                     | {"joined": True}
                     for item in cl_needed
