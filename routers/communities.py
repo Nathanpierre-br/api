@@ -2,7 +2,6 @@ from base64 import b85encode, b85decode
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
-# from aiofiles import open as asyncopen
 
 from objects import Base, Errors, Communities, User
 from helpers.aioyaml import aioyaml
@@ -41,7 +40,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
 
         table = await db.get(table="Communities")
 
-        return Base.Answer(
+        result = Base.Answer(
             {
                 "communityList": [
                     await Communities.Info(item, db, uid)
@@ -69,6 +68,9 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
         )
     finally:
         await db.close()
+
+    print(result)
+    return result
 
 
 # communities search
@@ -286,7 +288,7 @@ async def get_official_guidelines(ndcId: int, request: Request, language: str = 
 
         return Base.Answer(
             {
-                "communityGuideline": {
+                "officialGuideline": {
                     "content": guideline,
                     "mediaList": [],
                 }
