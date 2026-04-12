@@ -33,26 +33,19 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
 
     db = await Database().init()
     try:
-        table = await db.get("x0", "Users")
+        table = await db.get(table="Users")
         row1 = await table.find_one({"id": uid})
         if row1 is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
         table = await db.get(table="Communities")
+        cl_needed = row1.get("communityList", [])[start : start + size]
 
-        result = Base.Answer(
+        result = (
             {
                 "communityList": [
                     await Communities.Info(item, db, uid)
-                    async for item in table.find(
-                        {
-                            "id": {
-                                "$in": row1.get("communityList", [])[
-                                    start : start + size
-                                ]
-                            }
-                        }
-                    )
+                    async for item in table.find({"id": {"$in": cl_needed}})
                 ],
                 "userInfoInCommunities": {
                     # experimental fix
@@ -60,17 +53,19 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                         row1, ndcId=item, membershipStatus=1
                     )
                     | {"joined": True}
-                    for item in row1.get("communityList", [])[start : start + size]
+                    for item in cl_needed
                 },
                 "showStoreBadge": False,
             },
-            spent_time=timestamp() - t1,
         )
     finally:
         await db.close()
 
-    print(result)
-    return result
+    # print(result)
+    return Base.Answer(
+        result,
+        spent_time=timestamp() - t1,
+    )
 
 
 # communities search
@@ -291,7 +286,15 @@ async def get_official_guidelines(ndcId: int, request: Request, language: str = 
                 "officialGuideline": {
                     "content": guideline,
                     "mediaList": [],
-                }
+                },
+                "guideline": {
+                    "content": guideline,
+                    "mediaList": [],
+                },
+                "communityGuideline": {
+                    "content": guideline,
+                    "mediaList": [],
+                },
             },
         )
     except Exception:
