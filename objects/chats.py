@@ -161,7 +161,6 @@ class Chat:
             xndc_users = await connection.get(f"x{ndcId}", "Users")
             host_xndcId = await xndc_users.find_one({"id": data["hostId"]}) or {}
 
-        users = xndc_users
         membershipStatus = 0
         if trigger_uid in data["memberList"]:
             membershipStatus = 1
@@ -175,7 +174,7 @@ class Chat:
             "membersQuota": 9999,
             "membersSummary": [
                 Chat.Member_ShortInfo(i)
-                async for i in users.find({"id": {"$in": data["memberList"]}}).limit(10)
+                async for i in xndc_users.find({"id": {"$in": data["memberList"]}}).limit(10)
             ],
             "threadId": data["id"],
             "keywords": None,
