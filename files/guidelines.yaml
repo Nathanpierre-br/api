@@ -1,6 +1,82 @@
 ru: |
-  Тест!
-  Fancy some more?
+  AltAmino – проект, который пытается возродить Amino, имитируя оригинальные сервера. Проект написан с нуля и находится в далеко не стабильной версии, так что стоит ожидать баги, ошибки, а также периодические падения серверов. 
+  
+  Так как платформа изначально была 13+, то и мы будем придерживаться такого рейтинга, и именно относительно его мы и построили общие для всех сообществ (включая глобального) правила. 
+  
+  Мы не отвечаем за тех, кому меньше 13 (в Европейском союзе - 16) лет и можем даже заблокировать аккаунт такого пользователя, если потребуется.
+  
+  [B]NSFW / 18+ контент
+  
+  Всё, что расценивается как NSFW / 18+ контент, строго запрещено. Это касается не только медиаконтента (аудио, видео, фото), но и текста. 
+  
+  За контент такого содержания мы будем крайне строго карать.
+  
+  [B]Запрещённый контент
+  
+  Любой экстремистский, пропагандистский, суицидальный, политический и/или террористический контент и контент, который может навредить здоровью человека, распространяет запрещённые вещества или предметы, призывает действиям экстремистского, суицидального и другого запрещённого характера, а также любой другой контент, общепризнанный как запрещённый и/или экстремистский строго запрещён.
+  
+  Пользователей, что выкладывают данный контент, ожидает перманентная блокировка (включая последующие аккаунты). Если контент крайне серьезный, мы можем сообщить интернет-провайдеру, что с их IP адреса совершаются такие действия. 
+  
+  [B]Спам, реклама
+  
+  Объединим в этом пункте понятия "спам" и "реклама" в одно целое, так как эти вещи всё равно никто не любит. 
+  Автоматизированная реклама и спам (т.е. рейды, спам, реклама ботами и похожее) запрещено, а IP адреса рискуют быть заблокированными и получить жалобу на спам в Spamhaus.
+  
+  Обратите внимание! Мы не блокируем VPN, прокси, датацентры и подобное, так как прекрасно понимаем, что Интернет не везде достаточно свободный.
+  
+  Обратите внимание! Мы не запрещаем ботов и можем даже одобрять аккаунты ботов, выдавая верификацию аккаунта и звание. Однако это не значит, что надо пользоваться ботами и скриптами (автоматизацией), что наносит вред как платформе, так и сообществам, чатам, пользователям и так далее! 
+  
+  [B]Непристойное поведение
+  
+  Агрессия, угрозы, оскорбления и/или непристойное поведение не приветствуются. Пожалуйста, будьте хотя бы нейтральны к друг другу! Вы все такие же люди в реальности и повода принижать честь и достоинство других реально не имеет смысла. 
+  
+  К непристойному поведению также можно отнести непрофессионализм администрации сообществ. Например: игнорирование участников и/или выдача наказаний участникам без весомых причин, низкая активность, несоблюдение собственных и общих правил, игнорирование или выдумка нарушений...
+  
+  [B]Конфиденциальность участников
+  
+  Без разрешения участника запрещено распространение любой личной о нём информации вне зависимости от причин. Мы такое не приветствуем и будем делать всё, чтобы привлечь к ответственности доксеров.
+  
+  [B]Нелегальные действия
+  
+  Нарушение авторского права, гэмблинг, казино, ставки, лотереи и всё, что требует любого вложения средств, строго запрещено.
 en: |
-  Hello!
-  Fancy some more?
+  AltAmino is a project that aims to revive Amino by simulating the original servers. The project is written from scratch and is in a far-from-stable version, so you should expect bugs, errors, and periodic server downtime.
+  
+  Since the platform was originally 13+, we will adhere to that rating as well, and it is based on this that we have built common rules for all communities (including the global one).
+  
+  We are not responsible for those under 13 years of age (16 years in the European Union), and we may even block such a user's account if necessary.
+  
+  [B]NSFW / 18+ content
+  
+  Anything considered NSFW / 18+ content is strictly prohibited. This applies not only to media content (audio, video, photos) but also to text.
+  
+  We will punish content of this nature extremely strictly.
+  
+  [B]Prohibited content
+  
+  Any extremist, propaganda, suicidal, political, and/or terrorist content, as well as content that may harm human health, distribute prohibited substances or items, incite extremist, suicidal, or other prohibited actions, as well as any other content generally recognized as prohibited and/or extremist, is strictly forbidden.
+  
+  Users who post such content will face a permanent ban (including subsequent accounts). If the content is extremely serious, we may report to the Internet Service Provider that such actions are being committed from their IP address.
+  
+  [B]Spam, advertising
+  
+  We will combine the concepts of "spam" and "advertising" into one point, as nobody likes these things anyway.
+  Automated advertising and spam (i.e., raids, spam, bot advertising, and similar) are prohibited, and IP addresses risk being blocked and reported for spam to Spamhaus.
+  
+  Please note! We do not block VPNs, proxies, data centers, and the like, as we perfectly understand that the Internet is not free enough everywhere.
+  
+  Please note! We do not prohibit bots and may even approve bot accounts by granting them account verification and a title. However, this does not mean that you should use bots and scripts (automation) that harm the platform, communities, chats, users, and so on!
+  
+  [B]Inappropriate behavior
+  
+  Aggression, threats, insults, and/or inappropriate behavior are not welcome. Please at least be neutral toward each other! You are all human beings in reality, and there is no real point in demeaning the honor and dignity of others.
+  
+  Inappropriate behavior can also include unprofessionalism by community administration. For example: ignoring members and/or punishing members without valid reasons, low activity, failure to comply with one's own or general rules, ignoring or inventing violations...
+  
+  [B]Member privacy
+  
+  Sharing any personal information about a member without their permission is prohibited, regardless of the reasons. We do not welcome this and will do everything possible to hold doxxers accountable.
+  
+  [B]Illegal activities
+  
+  Copyright infringement, gambling, casinos, betting, lotteries, and anything that requires any financial investment is strictly prohibited.
