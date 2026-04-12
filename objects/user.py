@@ -29,7 +29,7 @@ class User:
             "advancedSettings": {"analyticsEnabled": 0},
             "email": row["email"],
             "extensions": {
-                "contentLanguage": "en",
+                "contentLanguage": row.get("lang", "en"),
                 "adsFlags": 2147483647,  # change to hide ads
                 "adsLevel": 2,  # change to hide ads
                 "deviceInfo": {
@@ -126,7 +126,7 @@ class User:
             "modifiedTime": row["modifiedTime"],
             "createdTime": row["createdTime"],
             "role": row.get("role", 0),
-            "aminoId": row["aminoId"],
+            "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
             "mediaList": User.MediaList(row.get("mediaList", [])),
             "icon": None if row["icon"] == "" else row["icon"],

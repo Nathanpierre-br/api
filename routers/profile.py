@@ -487,8 +487,12 @@ async def get_user_info(uid, request: Request, ndcId=0):
     row2 = await table.find_one({"id": uid})
     if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
-    await db.close()
 
+    if ndcId == 0:
+        table = await db.get(table="Users")
+        row2 = (await table.find_one({"id": uid}) or {}) | row2
+
+    await db.close()
     return Base.Answer(
         {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)},
         spent_time=timestamp() - t1,

@@ -80,6 +80,7 @@ async def search_community(
     start: int = 0,
     size: int = 25,
     pageToken: str | None = None,
+    language: str = "en",
 ):
     t1 = timestamp()
     size = size if 0 < size < 101 else 25
@@ -97,7 +98,7 @@ async def search_community(
     try:
         table = await db.get(table="Communities")
 
-        query = {"name": {"$regex": regex_escape(q), "$options": "i"}}
+        query = {"name": {"$regex": regex_escape(q), "$options": "i"}, "lang": language}
         items = [item async for item in table.find(query).skip(start).limit(size)]
 
         return Base.Answer(
@@ -285,16 +286,14 @@ async def get_official_guidelines(ndcId: int, request: Request, language: str = 
         guideline = "[b]Oh no!\nSomething went wrong. Please try again later."
         # maybe do not hardcode strings? we can parse ndclang, lookup i18n...
 
-        return Base.Answer(
-            {
-                "guideline": {
-                    "content": guideline,
-                    "mediaList": [],
-                },
+    return Base.Answer(
+        {
+            "officialGuideline": {
+                "content": guideline,
+                "mediaList": [],
             },
-        )
-    except Exception:
-        return Errors.InternalServerError()
+        },
+    )
 
 
 @communities.get("/g/s/community/guideline")
