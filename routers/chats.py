@@ -693,9 +693,8 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             "membershipStatus": 1,
         },
     }
-    asyncio.get_event_loop().create_task(
-        send_admin_ws(chat_info["memberList"], ws_send_obj)
-    )
+    target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+    asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
 
     await db.close()
     return answer
@@ -951,9 +950,8 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
             "membershipStatus": 1,
         },
     }
-    asyncio.get_event_loop().create_task(
-        send_admin_ws(chat_info["memberList"], ws_send_obj)
-    )
+    target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+    asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
 
     await db.close()
     return answer
@@ -1247,9 +1245,8 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
             "membershipStatus": 1,
         },
     }
-    asyncio.get_event_loop().create_task(
-        send_admin_ws(chat_info["memberList"], ws_send_obj)
-    )
+    target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+    asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
 
     await connection.close()
     return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
@@ -1340,9 +1337,9 @@ async def leave_chat(
                 "membershipStatus": 1,
             },
         }
-        asyncio.get_event_loop().create_task(
-            send_admin_ws(chat_info["memberList"], ws_send_obj)
-        )
+
+        target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+        asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
 
     await connection.close()
     return Base.Answer({"membershipStatus": 0}, spent_time=timestamp() - t1)
@@ -1448,9 +1445,8 @@ async def toggle_things(
                     "membershipStatus": 1,
                 },
             }
-            asyncio.get_event_loop().create_task(
-                send_admin_ws(chat_info["memberList"], ws_send_obj)
-            )
+            target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+            asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
         elif parameter == "members-can-invite":
             await table.update_one(
                 {"id": chatId},
