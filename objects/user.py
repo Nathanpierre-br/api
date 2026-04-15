@@ -59,6 +59,7 @@ class User:
             "role": row.get("role", 0),
             "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
+            "tagList": row.get("tagList", []),
             "mediaList": User.MediaList(row.get("mediaList", [])),
             "icon": row.get("icon"),
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
@@ -80,6 +81,7 @@ class User:
             ),  # [TODO] when communitues will be implemented do that
             "backgroundColor": row.get("backgroundColor"),
             "extenstions": {
+                "customTitles": row.get("titles", []),
                 "backgroundColor": row.get("backgroundColor"),
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
@@ -128,6 +130,7 @@ class User:
             "role": row.get("role", 0),
             "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
+            "tagList": row.get("tagList", []),
             "mediaList": User.MediaList(row.get("mediaList", [])),
             "icon": None if row["icon"] == "" else row["icon"],
             "accountMembershipStatus": int(row.get("isPaidSubscriber")),
@@ -148,6 +151,7 @@ class User:
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
             "extenstions": {
+                "customTitles": row.get("titles", []),
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
                     "backgroundMediaList": User.MediaList(
@@ -209,6 +213,7 @@ class User:
             "role": row.get("role", 0),
             "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
+            "tagList": row.get("tagList", []),
             "fanClubList": [],
             "mediaList": User.MediaList(row.get("mediaList", [])),
             "icon": row.get("icon"),
@@ -233,6 +238,7 @@ class User:
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
             "extenstions": {
+                "customTitles": row.get("titles", []),
                 "privilegeOfCommentOnUserProfile": row["allowanceWriteToWall"],
                 "privilegeOfChatInviteRequest": row["allowanceWriteToPM"],
                 "coverAnimation": "none",
