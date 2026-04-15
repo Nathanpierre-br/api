@@ -49,7 +49,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
 
         result = {
             "communityList": [
-                await Communities.Info(item, db, uid)
+                await Communities.Info(item, db, uid) | {"membershipStatus": 1}
                 async for item in table.find({"id": {"$in": cl_needed}})
             ],
             "userInfoInCommunities": {
@@ -57,7 +57,7 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                 str(item): User.OwnNonSensetiveProfile(
                     row2, ndcId=item, membershipStatus=1
                 )
-                | {"joined": True}
+                | {"joined": True, "membershipStatus": 1, "accountMembershipStatus": 1}
                 for item in cl_needed
             },
             "showStoreBadge": False,

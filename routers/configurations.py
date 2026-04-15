@@ -227,27 +227,31 @@ async def banner(
     if moduleId is None:
         return Errors.InvalidRequest()
 
-    return Base.Answer(
-        {
-            "paging": {},
-            "itemList": [
-                {
-                    "objectId": "2",
-                    "imageUrl": "https://media.altamino.top/always-static/welcome.jpg",
-                    "adCampaignId": 2,
-                    "deepLink": "ndc://community/1",
-                    "strategyInfo": '{"scenarioType": "banner-703920", "objectId": "804584", "imageUrl": "https://media.altamino.top/always-static/welcome.jpg", "landingUrl": "ndc://community/0", "reqId": "852e7230-6135-4cd2-89ea-e860417f6c48", "adUnitId": 703920, "uiPos": 3, "objectType": "ad_campaign"}',
-                    "objectType": 153,
-                },
-                {
-                    "objectId": "1",
-                    "imageUrl": "https://media.altamino.top/always-static/warning.jpg",
-                    "adCampaignId": 1,
-                    "deepLink": "ndc://membership",
-                    "strategyInfo": '{"scenarioType": "banner-703920", "objectId": "804584", "imageUrl": "https://media.altamino.top/always-static/warning.jpg", "landingUrl": "ndc://membership", "reqId": "f41f605a-4d81-4361-b571-19443ce136bf", "adUnitId": 703920, "uiPos": 2, "objectType": "ad_campaign"}',
-                    "objectType": 153,
-                },
-            ],
-            "allItemCount": 1,
-        }
-    )
+    if moduleId == "1c4ea74e-b500-4c72-821f-0677a5078bdc":
+        return Base.Answer(
+            {
+                "paging": {},
+                "itemList": [
+                    {
+                        "objectId": "2",
+                        "imageUrl": "https://media.altamino.top/always-static/welcome.jpg",
+                        "adCampaignId": 2,
+                        "deepLink": "ndc://e",
+                        "strategyInfo": '{"scenarioType": "banner-703920", "objectId": "804584", "imageUrl": "https://media.altamino.top/always-static/welcome.jpg", "landingUrl": "ndc://community/0", "reqId": "852e7230-6135-4cd2-89ea-e860417f6c48", "adUnitId": 703920, "uiPos": 3, "objectType": "ad_campaign"}',
+                        "objectType": 153,
+                    },
+                    {
+                        "objectId": "1",
+                        "imageUrl": "https://media.altamino.top/always-static/warning.jpg",
+                        "adCampaignId": 1,
+                        "deepLink": "ndc://e",
+                        "strategyInfo": '{"scenarioType": "banner-703920", "objectId": "804584", "imageUrl": "https://media.altamino.top/always-static/warning.jpg", "landingUrl": "ndc://membership", "reqId": "f41f605a-4d81-4361-b571-19443ce136bf", "adUnitId": 703920, "uiPos": 2, "objectType": "ad_campaign"}',
+                        "objectType": 153,
+                    },
+                ],
+                "allItemCount": 2,
+            }
+        )
+
+    else:
+        return Errors.DataNotExist()

@@ -45,7 +45,11 @@ async def useless_chat_search_mock(request: Request):
 
 
 @mock.get("/g/s/sticker-collection")
-async def stickers_mock(request: Request):
+async def stickers_mock(
+    request: Request, type: str | None = None, includeStickers: bool = False
+):
+    if type == "my-active-collection":
+        return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
     return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
 
 

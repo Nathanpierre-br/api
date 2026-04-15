@@ -14,6 +14,13 @@ class Config:
     S3_BUCKET_NAME = environ.get("S3_BUCKET_NAME")
     MEDIA_BASE_URL = environ.get("MEDIA_BASE_URL")
 
+    # i think it can be static
+    # why you need to change them?
+    S3_VOICES_FOLDER = "user-uploads/voices/"
+    S3_PHOTOS_FOLDER = "user-uploads/images/"
+    S3_VIDEOS_FOLDER = "user-uploads/videos/"
+    S3_STICKERS_FOLDER = "user-uploads/stickers/"
+
     MAX_FILE_SIZE = int(environ.get("MAX_FILE_SIZE", 5000000))
     MAX_TEXT_SIZE = int(environ.get("MAX_TEXT_SIZE", 2000))
 

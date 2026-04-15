@@ -703,7 +703,45 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 # get message
 # GET /g/s/chat/thread/434cd5b4-a984-42c4-8375-46c1c6e0803d/message/3c10a84c-c9af-4ab1-84fe-ea0c8d5f2f0f
 
-# neee to think abput security
+
+@chats.get("/g/s/chat/thread/{chatId}/message/{messageId}")
+@chats.get("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}")
+async def get_message(request: Request, chatId: str, messageId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    chat_table = await db.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one({"id": chatId})
+
+    if not chat_info:
+        await db.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+    if chat_info.get("chatType") != 2:
+        if trigger_uid not in chat_info.get("memberList", []):
+            await db.close()
+            return Errors.NotEnoughRights(spent_time=timestamp() - t1)
+
+    message_table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    message_data = await message_table.find_one({"messageId": messageId})
+
+    if not message_data:
+        await db.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+    xndc_users = await db.get(f"x{ndcId}", "Users")
+
+    message_obj = await Chat.LongMessage(
+        message_data, chatId, xndc_users, ndcId=ndcId, history_table=message_table
+    )
+
+    answer = Base.Answer({"message": message_obj}, spent_time=timestamp() - t1)
+    await db.close()
+    return answer
 
 
 # delete message
