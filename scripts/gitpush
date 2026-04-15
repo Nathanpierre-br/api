@@ -15,7 +15,7 @@ uv run ruff format .
 echo -e '\n\e[1;34mCommiting everything...\e[0m\n'
 
 git add --all
-git commit -a -m "$1"
+git commit -a -m "$1" -S
 
 echo -e '\n\e[1;34mPushing to origin...\e[0m\n'
 

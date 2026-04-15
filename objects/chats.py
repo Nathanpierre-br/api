@@ -32,11 +32,16 @@ class Chat:
 
     @staticmethod
     def Member_ShortInfo(
-        data: dict, role: Union[int, None] = None, is_invited: bool = False
+        data: dict,
+        role: Union[int, None] = None,
+        is_invited: bool = False,
+        ndcId: int = 0,
     ):
         return {
             "status": data["status"],
             "uid": data["id"],
+            "ndcId": ndcId,
+            "isGlobal": ndcId == 0,
             "membershipStatus": int(is_invited),
             "role": role or data.get("role", 0),
             "nickname": data["nickname"],
@@ -110,6 +115,7 @@ class Chat:
             "content": data["content"],
             "clientRefId": data.get("clientRefId", 0),
             "threadId": threadId,
+            "ndcId": ndcId,
             "createdTime": data["createdTime"],
             "extensions": {"mentionedArray": mentionedArray} | extensions,
             "type": data["messageType"],
@@ -245,5 +251,6 @@ class Chat:
                 "pinAnnouncement": data["pinAnnouncement"],
             },
             "ndcId": ndcId,
+            "isGlobal": ndcId == 0,
             "createdTime": data["createdTime"],
         }
