@@ -268,9 +268,14 @@ async def get_community_info(ndcId: int, request: Request):
         if not info:
             return Errors.DataNotExist(timestamp() - t1)
 
-        print(info)
-
-        return Base.Answer({"community": info}, spent_time=timestamp() - t1)
+        return Base.Answer(
+            {
+                "community": info,
+                "isCurrentUserJoined": bool(info.get("membershipStatus", 0)),
+                "currentUserInfo": {"id": uid},
+            },
+            spent_time=timestamp() - t1,
+        )
     finally:
         await db.close()
 
