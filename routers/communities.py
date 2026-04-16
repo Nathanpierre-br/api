@@ -16,7 +16,9 @@ communities.route_class = CachableRoute
 
 # communities you currently in
 @communities.get("/g/s/community/joined")
-async def joined_communities(request: Request, start: int = 0, size: int = 25):
+async def joined_communities(
+    request: Request, start: int = 0, size: int = 25, pageToken: str | None = None
+):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Base.Answer(
@@ -27,6 +29,14 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
             },
             spent_time=timestamp() - t1,
         )
+
+    # parse page token
+    if pageToken:
+        try:
+            decoded = b85decode(pageToken).decode()
+            start = max(0, int(decoded) if decoded.isdigit() else 0)
+        except Exception:
+            pass
 
     uid = request.state.session["uid"]
     size = size if 0 < size < 101 else 25
@@ -59,6 +69,13 @@ async def joined_communities(request: Request, start: int = 0, size: int = 25):
                 )
                 | {"joined": True, "membershipStatus": 1, "accountMembershipStatus": 1}
                 for item in cl_needed
+            },
+            "tags": "fancysomemore",
+            "paging": {
+                "nextPageToken": b85encode(str(size + start).encode()).decode(),
+                "prevPageToken": b85encode(
+                    ("0" if start - size <= 0 else str(start - size)).encode()
+                ).decode(),
             },
             "showStoreBadge": False,
         }
