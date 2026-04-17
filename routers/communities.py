@@ -289,7 +289,12 @@ async def get_community_info(ndcId: int, request: Request):
             {
                 "community": info,
                 "isCurrentUserJoined": bool(info.get("membershipStatus", 0)),
-                "currentUserInfo": {"id": uid},
+                "currentUserInfo": {
+                    "userProfile": {
+                        "id": uid,
+                        "membershipStatus": info.get("membershipStatus", 0),
+                    },
+                },
             },
             spent_time=timestamp() - t1,
         )

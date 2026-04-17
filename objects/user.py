@@ -8,7 +8,7 @@ class User:
             "username": None,
             "status": row["status"],
             "uid": row["id"],
-            "modifiedTime": row["modifiedTime"],
+            "updatedTime": row["modifiedTime"],
             "createdTime": row["createdTime"],
             "twitterID": None,
             "googleID": None,
@@ -45,7 +45,7 @@ class User:
 
     @staticmethod
     def OwnNonSensetiveProfile(
-        row, ndcId: int = 0, extenstions: dict = {}, membershipStatus: int = 0
+        row, ndcId: int = 0, extensions: dict = {}, membershipStatus: int = 0
     ):
         """
         ndcId for another communities
@@ -54,7 +54,7 @@ class User:
         return {
             "status": row["status"],
             "uid": row["id"],
-            "modifiedTime": row["modifiedTime"],
+            "updatedTime": row["modifiedTime"],
             "createdTime": row["createdTime"],
             "role": row.get("role", 0),
             "aminoId": row.get("aminoId"),
@@ -80,7 +80,7 @@ class User:
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
             "backgroundColor": row.get("backgroundColor"),
-            "extenstions": {
+            "extensions": {
                 "customTitles": row.get("titles", []),
                 "backgroundColor": row.get("backgroundColor"),
                 "style": {
@@ -90,7 +90,7 @@ class User:
                     ),
                 },
             }
-            | extenstions,
+            | extensions,
             "moodSticker": (
                 # None if ndcId == 0 else row["mood"]
                 None
@@ -112,7 +112,7 @@ class User:
         row,
         triggerUserId: Union[str, None] = None,
         ndcId: int = 0,
-        extenstions: dict = {},
+        extensions: dict = {},
     ):
         if triggerUserId is None:
             membershipStatus = 0
@@ -125,7 +125,7 @@ class User:
         return {
             "status": row["status"],
             "uid": row["id"],
-            "modifiedTime": row["modifiedTime"],
+            "updatedTime": row["modifiedTime"],
             "createdTime": row["createdTime"],
             "role": row.get("role", 0),
             "aminoId": row.get("aminoId"),
@@ -150,7 +150,7 @@ class User:
             "postsCount": (
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
-            "extenstions": {
+            "extensions": {
                 "customTitles": row.get("titles", []),
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
@@ -159,7 +159,7 @@ class User:
                     ),
                 },
             }
-            | extenstions,
+            | extensions,
             "moodSticker": (
                 # None if ndcId == 0 else row["mood"]
                 None
@@ -183,7 +183,7 @@ class User:
         row,
         ndcId: int = 0,
         triggerUserId: Union[str, None] = None,
-        extenstions: dict = {},
+        extensions: dict = {},
         membershipStatus: int | None = None,
     ):
         if membershipStatus is None:
@@ -208,7 +208,7 @@ class User:
             ),
             "status": row["status"],
             "uid": row["id"],
-            "modifiedTime": row["modifiedTime"],
+            "updatedTime": row["modifiedTime"],
             "createdTime": row["createdTime"],
             "role": row.get("role", 0),
             "aminoId": row.get("aminoId"),
@@ -237,7 +237,7 @@ class User:
             "postsCount": (
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
-            "extenstions": {
+            "extensions": {
                 "customTitles": row.get("titles", []),
                 "privilegeOfCommentOnUserProfile": row["allowanceWriteToWall"],
                 "privilegeOfChatInviteRequest": row["allowanceWriteToPM"],
@@ -255,7 +255,7 @@ class User:
                 "defaultBubbleId": "85045ed8-b05b-40de-907e-ec886889d086",
                 "iconFrameId": "f3f280c5-a41a-4aa8-933a-4d740d67804e",
             }
-            | extenstions,
+            | extensions,
             "consecutiveCheckInDays": (
                 None if ndcId == 0 else row.get("consecutiveDaysOfCheckIns", 0)
             ),  # [TODO] when communitues will be implemented do that
