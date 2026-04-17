@@ -113,7 +113,7 @@ class Communities:
             "communityHeat": data.get("heat", 0.00),
             "extensions": {},
             "createdTime": data.get("createdTime", "2023-01-01T12:00:00Z"),
-            "updatedTime": data.get("updatedTime", "2023-01-01T12:00:00Z"),
+            "modifiedTime": data.get("modifiedTime", "2023-01-01T12:00:00Z"),
             "userAddedTopicList": [],
             "searchable": True,
             "influencerList": [],
