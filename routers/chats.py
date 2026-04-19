@@ -13,7 +13,12 @@ from boto3 import resource
 
 from objects import Base, Chat, Errors
 from helpers.config import Config
-from helpers.functions import parse_page_token, calculate_page_tokens
+from helpers.functions import (
+    parse_page_token,
+    calculate_page_tokens,
+    detect_file_ext,
+    is_app_link,
+)
 from helpers.database.mongo import Database
 from helpers.database.models import Community, ModelFabric
 from helpers.adminWS import send_admin_ws
@@ -154,6 +159,7 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
         bg = ext.get("bm")
         if isinstance(bg, list):
             bg = bg[1]
+        # TODO: verify image url
 
         update_chat = {}
         if data.get("content"):
@@ -192,6 +198,72 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
     else:
         await db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
+
+
+# set background
+# [POST] /api/v1/g/s/chat/thread/.../member/.../background
+@chats.post("/g/s/chat/thread/{chatId}/member/{uid}/background")
+@chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/{uid}/background")
+async def edit_background_chat(chatId: str, request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
+
+    data = await request.json()
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Chats")
+    chat_info = await table.find_one({"id": chatId})
+
+    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
+        "cohostsIds", []
+    ):
+        bg = None
+
+        if len(data.get("media", [])) > 2:
+            bg = data["media"][1]
+            if not is_app_link(bg):
+                return Errors.InvalidMediaContent()
+
+        elif data.get("mediaUploadValue"):
+            value = data["mediaUploadValue"]
+
+            s3 = resource(
+                service_name=Config.S3_SERVICE_NAME,
+                aws_access_key_id=Config.S3_ACCESS_KEY,
+                aws_secret_access_key=Config.S3_SECRET_ACCESS_KEY,
+                endpoint_url=Config.S3_ENDPOINT_URL,
+            )
+            image_bytes = b64decode(value)
+            filetype = detect_file_ext(image_bytes[:128])
+            if filetype is None:
+                return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+            filename = (
+                Config.S3_IMAGES_FOLDER
+                + "".join([choice(ascii_letters + digits) for _ in range(64)])
+                + filetype
+            )
+            body = ImageTools.compress(b64decode(value), filetype[1:])
+            s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
+            bg = Config.MEDIA_BASE_URL + filename
+
+        if bg:
+            await table.update_one({"id": chatId}, {"$set": {"background": bg}})
+
+        answer = Base.Answer(
+            {
+                "thread": await Chat.Info(
+                    chatId, trigger_uid=trigger_uid, connection=db, ndcId=ndcId
+                )
+            },
+            spent_time=timestamp() - t1,
+        )
+
+        await db.close()
+        return answer
+
+    return Errors.NotEnoughRights()
 
 
 # delete chat
@@ -239,13 +311,6 @@ async def if_chat_exists(
     if type == "exist-single" and q:
         db = await Database().init()
         table = await db.get(f"x{ndcId}", "Chats")
-        query = {
-            "chatType": 0,
-            "$or": [
-                {"memberList": {"$all": [uid, q]}},
-                {"invitedList": {"$all": [uid, q]}},
-            ],
-        }
         query = {
             "chatType": 0,
             "$or": [
@@ -305,7 +370,25 @@ async def if_chat_exists(
             .limit(size)
             .sort("timestamp", DESCENDING)
         ]
-        print(items)
+
+        await db.close()
+        return Base.Answer(
+            {"threadList": items},
+            spent_time=timestamp() - t1,
+        )
+    elif type == "public-keyword":
+        size = size if 0 < size < 101 else 25
+
+        db = await Database().init()
+        table = await db.get(f"x{ndcId}", "Chats")
+        query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
+        items = [
+            await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
+            async for item in table.find(query)
+            .skip(start)
+            .limit(size)
+            .sort("timestamp", DESCENDING)
+        ]
 
         await db.close()
         return Base.Answer(
@@ -560,20 +643,13 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 endpoint_url=Config.S3_ENDPOINT_URL,
             )
             if data["mediaType"] == 100:
-                filetype_dict = {
-                    "image/jpg": ".jpg",
-                    "image/jpeg": ".jpeg",
-                    "image/png": ".png",
-                    "image/webp": ".webp",
-                    "image/gif": ".gif",
-                }
-                filetype = filetype_dict.get(
-                    data.get("mediaUploadValueContentType"), ""
-                )
-                if filetype == "":
+                image_bytes = b64decode(data["mediaUploadValue"])
+                filetype = detect_file_ext(image_bytes)
+                if filetype is None:
                     return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
                 filename = (
-                    "".join([choice(ascii_letters + digits) for _ in range(64)])
+                    Config.S3_IMAGES_FOLDER
+                    + "".join([choice(ascii_letters + digits) for _ in range(64)])
                     + filetype
                 )
                 body = ImageTools.compress(
@@ -583,8 +659,9 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 mediaLink = Config.MEDIA_BASE_URL + filename
             elif data["mediaType"] == 110:
                 filename = (
-                    "".join([choice(ascii_letters + digits) for _ in range(64)])
-                    + ".aac"
+                    Config.S3_VOICES_FOLDER
+                    + "".join([choice(ascii_letters + digits) for _ in range(64)])
+                    + ".aac"  # TODO: add support to opus/ogg/mp3/m4a
                 )
                 extensions = extensions | {"duration": 0.00}
                 s3.Bucket(Config.S3_BUCKET_NAME).put_object(
@@ -611,22 +688,16 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             aws_secret_access_key=Config.S3_SECRET_ACCESS_KEY,
             endpoint_url=Config.S3_ENDPOINT_URL,
         )
-        filetype_dict = {
-            "image/jpg": ".jpg",
-            "image/jpeg": ".jpeg",
-            "image/png": ".png",
-            "image/webp": ".webp",
-            "image/gif": ".gif",
-        }
-        filetype = filetype_dict.get(linksnippet.get("mediaUploadValueContentType"), "")
-        if filetype == "":
+        image_bytes = b64decode(linksnippet["mediaUploadValue"])
+        filetype = detect_file_ext(body)
+        if filetype is None:
             return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
         filename = (
-            "".join([choice(ascii_letters + digits) for _ in range(64)]) + filetype
+            Config.S3_IMAGES_FOLDER
+            + "".join([choice(ascii_letters + digits) for _ in range(64)])
+            + filetype
         )
-        body = ImageTools.compress(
-            b64decode(linksnippet["mediaUploadValue"]), filetype[1:]
-        )
+        body = ImageTools.compress(image_bytes, filetype[1:])
         s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
         mediaLink = Config.MEDIA_BASE_URL + filename
         del data["extensions"]["linkSnippetList"]
@@ -854,30 +925,22 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
                 endpoint_url=Config.S3_ENDPOINT_URL,
             )
             if data["mediaType"] == 100:
-                filetype_dict = {
-                    "image/jpg": ".jpg",
-                    "image/jpeg": ".jpeg",
-                    "image/png": ".png",
-                    "image/webp": ".webp",
-                    "image/gif": ".gif",
-                }
-                filetype = filetype_dict.get(
-                    data.get("mediaUploadValueContentType"), ""
-                )
-                if filetype == "":
+                image_bytes = b64decode(data["mediaUploadValue"])
+                filetype = detect_file_ext(image_bytes)
+                if filetype is None:
                     return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
                 filename = (
-                    "".join([choice(ascii_letters + digits) for _ in range(64)])
+                    Config.S3_IMAGES_FOLDER
+                    + "".join([choice(ascii_letters + digits) for _ in range(64)])
                     + filetype
                 )
-                body = ImageTools.compress(
-                    b64decode(data["mediaUploadValue"]), filetype[1:]
-                )
+                body = ImageTools.compress(image_bytes, filetype[1:])
                 s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
                 mediaLink = Config.MEDIA_BASE_URL + filename
             elif data["mediaType"] == 110:
                 filename = (
-                    "".join([choice(ascii_letters + digits) for _ in range(64)])
+                    Config.S3_VOICES_FOLDER
+                    + "".join([choice(ascii_letters + digits) for _ in range(64)])
                     + ".aac"
                 )
                 extensions = extensions | {"duration": 0.00}
@@ -905,22 +968,16 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
             aws_secret_access_key=Config.S3_SECRET_ACCESS_KEY,
             endpoint_url=Config.S3_ENDPOINT_URL,
         )
-        filetype_dict = {
-            "image/jpg": ".jpg",
-            "image/jpeg": ".jpeg",
-            "image/png": ".png",
-            "image/webp": ".webp",
-            "image/gif": ".gif",
-        }
-        filetype = filetype_dict.get(linksnippet.get("mediaUploadValueContentType"), "")
-        if filetype == "":
+        image_bytes = b64decode(linksnippet["mediaUploadValue"])
+        filetype = detect_file_ext(image_bytes)
+        if filetype is None:
             return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
         filename = (
-            "".join([choice(ascii_letters + digits) for _ in range(64)]) + filetype
+            Config.S3_IMAGES_FOLDER
+            + "".join([choice(ascii_letters + digits) for _ in range(64)])
+            + filetype
         )
-        body = ImageTools.compress(
-            b64decode(linksnippet["mediaUploadValue"]), filetype[1:]
-        )
+        body = ImageTools.compress(image_bytes, filetype[1:])
         s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
         mediaLink = Config.MEDIA_BASE_URL + filename
         del data["extensions"]["linkSnippetList"]

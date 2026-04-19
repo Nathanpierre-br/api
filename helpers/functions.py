@@ -1,7 +1,43 @@
 from fastapi import Request
 from hashlib import blake2s
 from base64 import b85decode, b85encode
+from urllib.parse import urlparse
 from .generator import Generator
+from .config import Config
+
+
+def is_app_link(url: str) -> bool:
+    """
+    to avoid external links
+    """
+    if not url:
+        return False
+
+    try:
+        parsed = urlparse(url)
+        return parsed.netloc == Config.API_DOMAIN
+    except Exception:
+        return False
+
+
+def detect_file_ext(data: bytes) -> str | None:
+    if len(data) < 12:
+        return None
+
+    # JPEG
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpeg"
+    # PNG
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    # GIF
+    if data.startswith(b"GIF87a") or data.startswith(b"GIF89a"):
+        return ".gif"
+    # WebP
+    if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+        return ".webp"
+
+    return None
 
 
 def parse_page_token(pageToken: str | None, start: int) -> int:

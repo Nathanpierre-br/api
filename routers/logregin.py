@@ -434,13 +434,14 @@ async def dev_device(request: Request):
 
 
 @logregin.post("/g/s/device")
-async def device(request: Request):
+@logregin.post("/x{ndcId}/s/device")
+async def device(request: Request, ndcId: int = 0):
     t1 = timestamp()
 
     uid = request.state.session.get("uid")
     if uid:
         db = await Database().init()
-        table = await db.get(table="Users")
+        table = await db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
         await db.close()
         if row["status"] == 9:

@@ -639,6 +639,8 @@ async def edit_user_info(uid, request: Request, ndcId=0):
         extensions = data["extensions"]
         if isinstance(extensions.get("defaultBubbleId"), str):
             pass  # [TODO]: implement default bubble id
+        if extensions.get("contentLanguage", "en") in ["ru", "en"]:
+            preparedQueries.update({"lang": extensions["contentLanguage"]})
         if extensions.get("style"):
             style = extensions["style"]
 

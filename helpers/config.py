@@ -16,10 +16,10 @@ class Config:
 
     # i think it can be static
     # why you need to change them?
-    S3_VOICES_FOLDER = "user-uploads/voices/"
-    S3_PHOTOS_FOLDER = "user-uploads/images/"
-    S3_VIDEOS_FOLDER = "user-uploads/videos/"
-    S3_STICKERS_FOLDER = "user-uploads/stickers/"
+    S3_UPLOADS_FOLDER = "user-uploads/"
+    S3_IMAGES_FOLDER = S3_UPLOADS_FOLDER + "images/"
+    S3_VOICES_FOLDER = S3_UPLOADS_FOLDER + "voices/"
+    S3_NDCTHEMES_FOLDER = "ndc-themes/"
 
     MAX_FILE_SIZE = int(environ.get("MAX_FILE_SIZE", 5000000))
     MAX_TEXT_SIZE = int(environ.get("MAX_TEXT_SIZE", 2000))
