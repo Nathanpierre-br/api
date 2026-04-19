@@ -70,7 +70,7 @@ class Communities:
             "enabled": module_data.get("enabled", True),
             "privilege": {
                 "type": module_data.get("accessType", 1),
-                "minLevel": module_data("minLevel", 3),
+                "minLevel": module_data.get("minLevel", 3),
             },
         }
 
