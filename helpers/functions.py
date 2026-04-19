@@ -15,7 +15,7 @@ def is_app_link(url: str) -> bool:
 
     try:
         parsed = urlparse(url)
-        return parsed.netloc == Config.API_DOMAIN
+        return parsed.hostname == Config.SITE_DOMAIN
     except Exception:
         return False
 
