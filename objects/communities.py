@@ -4,18 +4,17 @@ from .user import User
 
 """
 this is top tier bullshit
-it will be inside community db obj
 """
 PAGES = {
     "defaultList": [
         #        {"url": "ndc://leaderboards", "alias": None, "id": "leaderboards-default"},
-        #        {"url": "ndc://featured", "alias": None, "id": "featured-default"},
+        {"url": "ndc://featured", "alias": None, "id": "featured-default"},
         {"url": "ndc://my-chats", "alias": None, "id": "chat-default"},
         {"url": "ndc://public-chats", "alias": None, "id": "chat-public-chats"},
         {"url": "ndc://latest-posts", "alias": None, "id": "post-latest-feed"},
-        #        {"url": "ndc://following-feed", "alias": None, "id": "post-following-feed"},
-        #        {"url": "ndc://image-posts", "alias": None, "id": "post-image-posts"},
-        #        {"url": "ndc://blogs", "alias": None, "id": "post-blogs"},
+        {"url": "ndc://following-feed", "alias": None, "id": "post-following-feed"},
+        {"url": "ndc://image-posts", "alias": None, "id": "post-image-posts"},
+        {"url": "ndc://blogs", "alias": None, "id": "post-blogs"},
         #        {"url": "ndc://quizzes", "alias": None, "id": "post-quizzes"},
         #        {
         #            "url": "ndc://quizzes/best",
@@ -36,8 +35,8 @@ PAGES = {
         #            "parentId": "post-quizzes",
         #        },
         #        {"url": "ndc://link-posts", "alias": None, "id": "post-link-posts"},
-        #        {"url": "ndc://questions", "alias": None, "id": "post-questions"},
-        #        {"url": "ndc://polls", "alias": None, "id": "post-polls"},
+        {"url": "ndc://questions", "alias": None, "id": "post-questions"},
+        {"url": "ndc://polls", "alias": None, "id": "post-polls"},
         #        {"url": "ndc://stories", "alias": None, "id": "post-stories"},
         #        {"url": "ndc://shared-folder", "alias": None, "id": "shared-folder"},
         #        {
@@ -65,6 +64,16 @@ PAGES = {
 
 
 class Communities:
+    @staticmethod
+    def ModuleInfo(module_data: dict):
+        return {
+            "enabled": module_data.get("enabled", True),
+            "privilege": {
+                "type": module_data.get("accessType", 1),
+                "minLevel": module_data("minLevel", 3),
+            },
+        }
+
     @staticmethod
     async def Info(
         ndcId: int | dict,
@@ -96,6 +105,10 @@ class Communities:
         mods = conf.get("modules", {})
 
         chat_mod = mods.get("chat", {})
+        blog_mod = mods.get("blog", {})
+        poll_mod = mods.get("poll", {})
+        image_mod = mods.get("image", {})
+        question_mod = mods.get("question", {})
         return {
             "agent": agent,
             "ndcId": ndcId,
@@ -136,27 +149,11 @@ class Communities:
                     "post": {
                         "enabled": True,
                         "postType": {
-                            "publicChatRooms": {
-                                "privilege": {
-                                    "type": chat_mod.get("accessType", 1),
-                                    "minLevel": chat_mod.get("minLevel"),
-                                },
-                                "enabled": chat_mod.get("enabled", True),
-                            },
-                            "liveMode": {
-                                "privilege": {
-                                    "type": chat_mod.get("accessType", 1),
-                                    "minLevel": chat_mod.get("minLevel"),
-                                },
-                                "enabled": chat_mod.get("enabled", True),
-                            },
-                            "screeningRoom": {
-                                "privilege": {
-                                    "type": chat_mod.get("accessType", 1),
-                                    "minLevel": chat_mod.get("minLevel"),
-                                },
-                                "enabled": chat_mod.get("enabled", True),
-                            },
+                            "publicChatRooms": Communities.ModuleInfo(chat_mod),
+                            "blog": Communities.ModuleInfo(blog_mod),
+                            "poll": Communities.ModuleInfo(poll_mod),
+                            "image": Communities.ModuleInfo(image_mod),
+                            "question": Communities.ModuleInfo(question_mod),
                         },
                     },
                     "chat": {
@@ -168,13 +165,7 @@ class Communities:
                             "videoEnabled": False,
                             "audio2Enabled": True,
                         },
-                        "publicChat": {
-                            "privilege": {
-                                "type": chat_mod.get("accessType", 1),
-                                "minLevel": chat_mod.get("minLevel"),
-                            },
-                            "enabled": True,
-                        },
+                        "publicChat": Communities.ModuleInfo(chat_mod),
                     },
                 },
                 "appearance": {

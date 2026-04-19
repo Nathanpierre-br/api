@@ -15,8 +15,10 @@ def is_app_link(url: str) -> bool:
 
     try:
         parsed = urlparse(url)
+        print(parsed.hostname, Config.SITE_DOMAIN)
         return parsed.hostname == Config.SITE_DOMAIN
-    except Exception:
+    except Exception as e:
+        print(e)
         return False
 
 
