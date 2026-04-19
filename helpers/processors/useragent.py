@@ -63,6 +63,15 @@ class UserAgentProcessor:
         "iPhone15,5",
         "iPhone16,1",
         "iPhone16,2",
+        "iPhone17,1",
+        "iPhone17,2",
+        "iPhone17,3",
+        "iPhone17,4",
+        "iPhone17,5",
+        "iPhone18,1",
+        "iPhone18,2",
+        "iPhone18,3",
+        "iPhone18,4",
         # ipod
         "iPod9,1",
         # ipads
@@ -104,8 +113,6 @@ class UserAgentProcessor:
         "iPad11,7",
         "iPad12,1",
         "iPad12,2",
-        "iPad14,1",
-        "iPad14,2",
         "iPad13,1",
         "iPad13,2",
         "iPad13,4",
@@ -120,6 +127,8 @@ class UserAgentProcessor:
         "iPad13,17",
         "iPad13,18",
         "iPad13,19",
+        "iPad14,1",
+        "iPad14,2",
         "iPad14,3",
         "iPad14,4",
         "iPad14,5",
@@ -132,6 +141,12 @@ class UserAgentProcessor:
         "iPad16,4",
         "iPad16,5",
         "iPad16,6",
+        "iPad15,3",
+        "iPad15,4",
+        "iPad15,5",
+        "iPad15,6",
+        "iPad15,7",
+        "iPad15,8",
     ]
 
     @staticmethod
