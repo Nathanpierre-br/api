@@ -72,6 +72,7 @@ class UserAgentProcessor:
         "iPhone18,2",
         "iPhone18,3",
         "iPhone18,4",
+        "iPhone18,5",
         # ipod
         "iPod9,1",
         # ipads
