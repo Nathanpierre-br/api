@@ -113,14 +113,18 @@ class RequestProcessor:
             request.state.session = {"validsession": False}
 
         # non-get request checks
-        if request.method in ["POST", "DELETE"]:
-            content_type = headers.get("Content-Type")  # or "application/octet-stream"
+        if request.method in ["POST", "PUT"]:
+            content_type = headers.get(
+                "Content-Type", ""
+            )  # or "application/octet-stream"
             c_t_white_list = [
                 "image/jpg",
                 "image/jpeg",
                 "image/png",
                 "image/webp",
                 "image/gif",
+                "audio/mpeg",
+                "audio/mp3",
                 "audio/mp4",
                 "audio/ogg",
                 "audio/aac",
