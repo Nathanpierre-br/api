@@ -8,7 +8,9 @@ class EmailProcessor:
     You don't really want to use temp emails in social network don't you?
     """
 
-    CANT_SEND_HERE = ["icloud.com"]
+    CANT_SEND_HERE = [
+        # "icloud.com"
+    ]
 
     @staticmethod
     def NotWorking(email: str) -> bool:
