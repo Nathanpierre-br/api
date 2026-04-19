@@ -1,6 +1,39 @@
 from fastapi import Request
 from hashlib import blake2s
+from base64 import b85decode, b85encode
 from .generator import Generator
+
+
+def parse_page_token(pageToken: str | None, start: int) -> int:
+    """
+    start param is important since it will fallback to it when pagetoken is invalid
+    """
+
+    try:
+        decoded = b85decode(pageToken).decode()
+        return max(0, int(decoded) if decoded.isdigit() else 0)
+    except Exception:
+        return start
+
+
+def calculate_page_tokens(start: int, size: int, data: list) -> dict:
+    """
+    data param is important since
+    if there is no data or len(data) < size
+    it will return empty nextPageToken
+    to stop infinite loop of getting data
+    """
+    prevPageCalc = "0" if start - size <= 0 else str(start - size)
+    nextPageCalc = str(size + start)
+
+    return {
+        "prevPageToken": str2b85(prevPageCalc),
+        "nextPageToken": None if len(data) < size else str2b85(nextPageCalc),
+    }
+
+
+def str2b85(data: str) -> str:
+    return b85encode(data.encode()).decode()
 
 
 def get_ip(request: Request) -> str:

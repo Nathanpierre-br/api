@@ -1,10 +1,10 @@
-from base64 import b85encode, b85decode
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 
 from objects import Base, Errors, Communities, User
 from helpers.aioyaml import aioyaml
+from helpers.functions import parse_page_token, calculate_page_tokens
 from helpers.database.mongo import Database
 from helpers.database.models import dttmn
 from helpers.routers.cachable import CachableRoute
@@ -32,11 +32,7 @@ async def joined_communities(
 
     # parse page token
     if pageToken:
-        try:
-            decoded = b85decode(pageToken).decode()
-            start = max(0, int(decoded) if decoded.isdigit() else 0)
-        except Exception:
-            pass
+        start = parse_page_token(pageToken, start)
 
     uid = request.state.session["uid"]
     size = size if 0 < size < 101 else 25
@@ -57,11 +53,12 @@ async def joined_communities(
         table = await db.get(table="Communities")
         cl_needed = row1.get("communityList", [])[start : start + size]
 
+        communityList = [
+            await Communities.Info(item, db, uid) | {"membershipStatus": 1}
+            async for item in table.find({"id": {"$in": cl_needed}})
+        ]
         result = {
-            "communityList": [
-                await Communities.Info(item, db, uid) | {"membershipStatus": 1}
-                async for item in table.find({"id": {"$in": cl_needed}})
-            ],
+            "communityList": communityList,
             "userInfoInCommunities": {
                 # experimental fix
                 str(item): User.OwnNonSensetiveProfile(
@@ -71,12 +68,7 @@ async def joined_communities(
                 for item in cl_needed
             },
             "tags": "fancysomemore",
-            "paging": {
-                "nextPageToken": b85encode(str(size + start).encode()).decode(),
-                "prevPageToken": b85encode(
-                    ("0" if start - size <= 0 else str(start - size)).encode()
-                ).decode(),
-            },
+            "paging": calculate_page_tokens(start, size, communityList),
             "showStoreBadge": False,
         }
     finally:
@@ -104,11 +96,7 @@ async def search_community(
 
     # parse page token
     if pageToken:
-        try:
-            decoded = b85decode(pageToken).decode()
-            start = max(0, int(decoded) if decoded.isdigit() else 0)
-        except Exception:
-            pass
+        start = parse_page_token(pageToken, start)
 
     uid = request.state.session["uid"]
     db = await Database().init()
@@ -117,18 +105,11 @@ async def search_community(
 
         query = {"name": {"$regex": regex_escape(q), "$options": "i"}, "lang": language}
         items = [item async for item in table.find(query).skip(start).limit(size)]
-
+        communityList = [await Communities.Info(item["id"], db, uid) for item in items]
         return Base.Answer(
             {
-                "communityList": [
-                    await Communities.Info(item["id"], db, uid) for item in items
-                ],
-                "paging": {
-                    "nextPageToken": b85encode(str(size + start).encode()).decode(),
-                    "prevPageToken": b85encode(
-                        ("0" if start - size <= 0 else str(start - size)).encode()
-                    ).decode(),
-                },
+                "communityList": communityList,
+                "paging": calculate_page_tokens(start, size, communityList),
                 "allItemCount": len(items),
             },
             spent_time=timestamp() - t1,
