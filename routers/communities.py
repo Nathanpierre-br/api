@@ -439,3 +439,11 @@ async def compose_eligible_check(request: Request, ndcId: int, uid: str):
         return Errors.InvalidRequest()
 
     return Base.Answer()
+
+
+# leaders choice
+@communities.get("/g/s/community/kindred")
+@communities.get("/x{ndcId}/s/community/kindred")
+@communities.get("/g/s-x{ndcId}/community/kindred")
+async def get_leaders_choice(ndcId: int, request: Request):
+    return Base.Answer()
