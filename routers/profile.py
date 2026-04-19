@@ -217,7 +217,7 @@ async def get_user_wall(
     wall_comments = wall_comments[start : start + size]
     wc_list = [
         await Comments.Parent(
-            item[1], item[0], uid, global_table, xndcid_table, trigger_uid
+            item[1], item[0], uid, global_table, xndcid_table, trigger_uid, ndcId=ndcId
         )
         for item in wall_comments
     ]
@@ -253,7 +253,14 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
 
     wc_list = [
         await Comments.Son(
-            item[1], item[0], commentId, uid, global_table, xndcid_table, trigger_uid
+            item[1],
+            item[0],
+            commentId,
+            uid,
+            global_table,
+            xndcid_table,
+            trigger_uid,
+            ndcId=ndcId,
         )
         for item in certain_wall
     ]
@@ -266,6 +273,7 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
 # /g/s/user-profile/8cee99d4-1b19-42b5-8e21-7c196dbe0aae/g-comment/{commentId}
 
 
+@profile_methods.delete("/g/s/user-profile/{uid}/comment/{commentId}")
 @profile_methods.delete("/g/s/user-profile/{uid}/g-comment/{commentId}")
 @profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}")
 async def delete_post_from_wall(
@@ -301,6 +309,7 @@ async def delete_post_from_wall(
 # /g/s/user-profile/8cee99d4-1b19-42b5-8e21-7c196dbe0aae/g-comment
 
 
+@profile_methods.post("/g/s/user-profile/{uid}/comment")
 @profile_methods.post("/g/s/user-profile/{uid}/g-comment")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment")
 async def post_on_user_wall(
@@ -349,10 +358,11 @@ async def post_on_user_wall(
             global_table,
             xndcid_table,
             trigger_uid,
+            ndcId=ndcId,
         )
     await xndcid_table.update_one({"id": uid}, {"$set": {f"wall.{commentUid}": wm}})
     commentObj = await Comments.Parent(
-        wm, commentUid, uid, global_table, xndcid_table, trigger_uid
+        wm, commentUid, uid, global_table, xndcid_table, trigger_uid, ndcId=ndcId
     )
 
     await db.close()
