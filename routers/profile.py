@@ -1,5 +1,4 @@
 from pymongo import DESCENDING
-from base64 import b85decode, b85encode
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
@@ -8,6 +7,7 @@ from typing import Union
 from uuid import uuid4
 
 from objects import Base, Errors, User, Comments
+from helpers.functions import parse_page_token, calculate_page_tokens
 from helpers.database.mongo import Database
 from helpers.database.models import ModelFabric, Community
 from helpers.routers.cachable import CachableRoute
@@ -58,8 +58,7 @@ async def user_search(
     size = size if 0 < size < 101 else 25
 
     # parse page token
-    decoded = b85decode(pageToken or "").decode()
-    start = max(0, int(decoded) if decoded.isdigit() else 0)
+    start = parse_page_token(pageToken, 0)
 
     db = await Database().init()
     g_users, xndc_users = (
@@ -74,22 +73,16 @@ async def user_search(
         .limit(size)
         .sort("timestamp", DESCENDING)
     ]
+    userProfileList = [
+        User.GetUserInfo(await g_users.find_one({"id": item["id"]}) | item, ndcId=ndcId)
+        for item in users
+    ]
 
     if len(users) > 0:
         answer = Base.Answer(
             {
-                "userProfileList": [
-                    User.GetUserInfo(
-                        await g_users.find_one({"id": item["id"]}) | item, ndcId=ndcId
-                    )
-                    for item in users
-                ],
-                "paging": {
-                    "nextPageToken": b85encode(str(size + start).encode()).decode(),
-                    "prevPageToken": b85encode(
-                        ("0" if start - size <= 0 else str(start - size)).encode()
-                    ).decode(),
-                },
+                "userProfileList": userProfileList,
+                "paging": calculate_page_tokens(start, size, userProfileList),
                 "userProfileCount": await xndc_users.count_documents(query),
             },
             spent_time=timestamp() - t1,

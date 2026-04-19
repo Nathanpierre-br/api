@@ -81,13 +81,6 @@ async def newusercoupon_mock(request: Request):
     return Base.Answer({"couponMappingList": []})
 
 
-@mock.get("/g/s/chat/thread-check/human-readable")
-async def humanreadable_mock(request: Request):
-    return Base.Answer(
-        {"treatedNdcIds": [0], "threadCheckResultInCommunities": {"0": []}}
-    )
-
-
 @mock.get("/g/s/announcement")
 async def announcement_mock(request: Request, size: int = 1, language: str = "en"):
     return Base.Answer({"blogList": []})

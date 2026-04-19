@@ -1,4 +1,4 @@
-from base64 import b85encode, b85decode, b64decode
+from base64 import b64decode
 from pymongo import DESCENDING
 from string import ascii_letters, digits
 from re import escape as regex_escape
@@ -13,6 +13,7 @@ from boto3 import resource
 
 from objects import Base, Chat, Errors
 from helpers.config import Config
+from helpers.functions import parse_page_token, calculate_page_tokens
 from helpers.database.mongo import Database
 from helpers.database.models import Community, ModelFabric
 from helpers.adminWS import send_admin_ws
@@ -39,9 +40,7 @@ async def user_search(
     t1 = timestamp()
     size = size if 0 < size < 101 else 25
 
-    # parse page token
-    decoded = b85decode(pageToken or "").decode()
-    start = max(0, int(decoded) if decoded.isdigit() else 0)
+    start = parse_page_token(pageToken, 0)
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Chats")
@@ -53,24 +52,17 @@ async def user_search(
         .limit(size)
         .sort("timestamp", DESCENDING)
     ]
-
+    threadList = [await Chat.Info(item["id"], db, ndcId=ndcId) for item in chats]
     if len(chats) > 0:
         answer = Base.Answer(
             {
                 "threadListWrapper": {
-                    "threadList": [
-                        await Chat.Info(item["id"], db, ndcId=ndcId) for item in chats
-                    ],
+                    "threadList": threadList,
                     "userInfoInThread": {
                         item["id"]: {"userProfileCount": 0, "userProfileList": []}
                         for item in chats
                     },
-                    "paging": {
-                        "nextPageToken": b85encode(str(size + start).encode()).decode(),
-                        "prevPageToken": b85encode(
-                            ("0" if start - size <= 0 else str(start - size)).encode()
-                        ).decode(),
-                    },
+                    "paging": calculate_page_tokens(start, size, threadList),
                     "playlistInThreadList": {},
                 },
                 "communityInfoMapping": {},
@@ -450,8 +442,7 @@ async def get_chat_messages(
     size = size if 0 < size < 101 else 25
 
     # parse page token
-    decoded = b85decode(pageToken or "").decode()
-    start = max(0, int(decoded) if decoded.isdigit() else 0)
+    start = parse_page_token(pageToken, 0)
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
@@ -463,22 +454,17 @@ async def get_chat_messages(
         .sort("timestamp", DESCENDING)
     ]
     xndc_users = await db.get(f"x{ndcId}", "Users")
-
+    messageList = [
+        await Chat.LongMessage(
+            message, chatId, xndc_users, history_table=table, ndcId=ndcId
+        )
+        for message in messages
+    ]
     if len(messages) > 0:
         answer = Base.Answer(
             {
-                "messageList": [
-                    await Chat.LongMessage(
-                        message, chatId, xndc_users, history_table=table, ndcId=ndcId
-                    )
-                    for message in messages
-                ],
-                "paging": {
-                    "nextPageToken": b85encode(str(size + start).encode()).decode(),
-                    "prevPageToken": b85encode(
-                        ("0" if start - size <= 0 else str(start - size)).encode()
-                    ).decode(),
-                },
+                "messageList": messageList,
+                "paging": calculate_page_tokens(start, size, messageList),
             },
             spent_time=timestamp() - t1,
         )

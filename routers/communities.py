@@ -14,6 +14,18 @@ communities = APIRouter()
 communities.route_class = CachableRoute
 
 
+@communities.get("/g/s/chat/thread-check/human-readable")
+async def humanreadable(request: Request, ndcIds: str = ""):
+    chunks = ndcIds.split(",")
+
+    return Base.Answer(
+        {
+            "treatedNdcIds": [int(chunk) for chunk in chunks],
+            "threadCheckResultInCommunities": {chunk: [] for chunk in chunks},
+        }
+    )
+
+
 # communities you currently in
 @communities.get("/g/s/community/joined")
 async def joined_communities(
