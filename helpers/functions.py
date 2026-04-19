@@ -13,14 +13,14 @@ def is_app_link(url: str) -> bool:
     if not url:
         return False
 
-    try:
-        parsed = urlparse(url)
-        print(
-            parsed.hostname, Config.SITE_DOMAIN, parsed.hostname == Config.SITE_DOMAIN
-        )
-        return parsed.hostname == Config.SITE_DOMAIN
-    except Exception:
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    parsed = urlparse(url).hostname
+    if not parsed:
         return False
+
+    return parsed == Config.SITE_DOMAIN or parsed.endswith("." + Config.SITE_DOMAIN)
 
 
 def detect_file_ext(data: bytes) -> str | None:
