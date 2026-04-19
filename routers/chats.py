@@ -689,7 +689,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             endpoint_url=Config.S3_ENDPOINT_URL,
         )
         image_bytes = b64decode(linksnippet["mediaUploadValue"])
-        filetype = detect_file_ext(body)
+        filetype = detect_file_ext(image_bytes)
         if filetype is None:
             return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
         filename = (

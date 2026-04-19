@@ -113,7 +113,7 @@ class Communities:
             "agent": agent,
             "ndcId": ndcId,
             "name": data["name"],
-            "link": "http://aminoapps.com/c/" + data["aminoId"],
+            "link": "http://altamino.top/c/" + data["aminoId"],
             "endpoint": data["aminoId"],
             "membershipStatus": membershipStatus,
             "icon": data["icon"],
