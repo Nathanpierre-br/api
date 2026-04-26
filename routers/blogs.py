@@ -44,6 +44,8 @@ async def get_blogs(
         .sort("createdTime", DESCENDING)
     ]
 
+    print(blogs)
+
     blogList = [
         await Blog.Info(
             item, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
@@ -51,12 +53,13 @@ async def get_blogs(
         for item in blogs
     ]
 
+    print(blogList)
+
     await db.close()
     return Base.Answer(
         {
             "blogList": blogList,
             "paging": calculate_page_tokens(start, size, blogList),
-            "communityInfoMapping": {},
         },
         spent_time=timestamp() - t1,
     )
@@ -90,11 +93,22 @@ async def post_blog(request: Request, ndcId: int = 0):
         user_in_community = await xndcid_users.find_one({"id": trigger_uid})
         if not user_in_community:
             await db.close()
-            return Errors.NoPermission(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1)
+    else:
+        return Errors.NotEnoughRights(timestamp() - t1)
 
-    # [MEDIA LIST CHECK SPACE START]
-
-    # [MEDIA LIST CHECK SPACE END]
+    style = extensions.get("style", {})
+    useful_extensions = {
+        "commentAllowance": extensions.get("privilegeOfCommentOnPost", 1),
+        "style": {},
+    }
+    for k in [
+        "backgroundMediaList",
+        "backgroundColor",
+        "coverMediaIndexList",
+        "coverMediaList",
+    ]:
+        useful_extensions["style"].update({k: style[k]})
 
     blogId = str(uuid4())
     blog_data = ModelFabric.Construct(
@@ -104,7 +118,7 @@ async def post_blog(request: Request, ndcId: int = 0):
         title=title,
         content=content,
         blogType=blog_type,
-        extensions=extensions,
+        extensions=useful_extensions,
     )
 
     table = await db.get(f"x{ndcId}", "Blogs")
