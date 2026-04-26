@@ -108,7 +108,7 @@ async def post_blog(request: Request, ndcId: int = 0):
         "coverMediaIndexList",
         "coverMediaList",
     ]:
-        useful_extensions["style"].update({k: style[k]})
+        useful_extensions["style"].update({k: style.get(k)})
 
     blogId = str(uuid4())
     blog_data = ModelFabric.Construct(
