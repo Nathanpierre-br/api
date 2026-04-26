@@ -22,6 +22,52 @@ async def get_recommended_blogs(request: Request, ndcId: int):
     return Base.Answer({"blogList": []})
 
 
+@blog_methods.get("/x{ndcId}/s/feed/blog-all")
+@blog_methods.get("/g/s/feed/blog-all")
+async def get_latest_blog_posts(
+    request: Request,
+    ndcId: int = 0,
+    pageToken: str | None = None,
+    start: int = 0,
+    size: int = 5,
+    q: Union[str, None] = None,
+):
+    t1 = timestamp()
+    size = size if 0 < size < 101 else 25
+    start = parse_page_token(pageToken, start)
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+
+    query = {}
+    if q:
+        query["title"] = {"$regex": regex_escape(q), "$options": "i"}
+
+    blogs = [
+        item
+        async for item in table.find(query)
+        .skip(start)
+        .limit(size)
+        .sort("createdTime", DESCENDING)
+    ]
+
+    blogList = [
+        await Blog.Info(
+            item, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
+        )
+        for item in blogs
+    ]
+
+    await db.close()
+    return Base.Answer(
+        {
+            "blogList": blogList,
+            "paging": calculate_page_tokens(start, size, blogList),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
 @blog_methods.get("/g/s/blog")
 @blog_methods.get("/x{ndcId}/s/blog")
 async def get_blogs(
@@ -39,7 +85,7 @@ async def get_blogs(
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Blogs")
 
-    query = {}
+    query = {"blogType": 0}
     if q:
         query["title"] = {"$regex": regex_escape(q), "$options": "i"}
 
