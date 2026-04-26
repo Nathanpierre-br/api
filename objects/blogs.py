@@ -19,9 +19,6 @@ class Blog:
         else:
             data = blogId
 
-        if data is None:
-            return None
-
         if xndc_users is not None:
             author_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
         else:
@@ -36,9 +33,9 @@ class Blog:
             "blogId": data["id"],
             "title": data.get("title"),
             "content": data.get("content"),
-            "type": data.get("blogType"),
+            "type": data["blogType"],
             "status": data.get("status", 0),
-            "votesCount": len(data.get("liked", [])),
+            "votesCount": len(data.get("upvote", [])) - len(data.get("downvote", [])),
             "commentsCount": len(data.get("wall", [])),
             "ndcId": ndcId,
             "createdTime": data["createdTime"],
@@ -48,6 +45,12 @@ class Blog:
             }
             | extensions,
             "mediaList": MediaList.List(data.get("mediaList", [])),
-            "votedValue": int(trigger_uid in data.get("liked", [])),
+            "votedValue": (
+                1
+                if trigger_uid in data.get("upvote", [])
+                else -1
+                if trigger_uid in data.get("downvote", [])
+                else 0
+            ),
             "viewCount": 0,
         }

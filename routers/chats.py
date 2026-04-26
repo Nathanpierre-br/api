@@ -586,9 +586,9 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 and (not data.get("mediaUploadValue"))
             )
             or (
-                data.get("mediaType", 0) == 100
+                data.get("mediaType", 0) == 103
                 and (
-                    not data.get("mediaUploadValueContentType", "").startswith("image")
+                    not data.get("mediaUploadValue", "").startswith("ytv://")
                     or data["type"] != 0
                 )
             )
@@ -668,6 +668,8 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                     Key=filename, Body=b64decode(data["mediaUploadValue"])
                 )
                 mediaLink = Config.MEDIA_BASE_URL + filename
+            elif data["mediaType"] == 103:
+                mediaLink = data.get("mediaUploadValue", "ytv://dQw4w9WgXcQ")
             else:
                 mediaLink = None
         except Exception as e:

@@ -108,7 +108,7 @@ class Chat:
         return {
             "includedInSummary": True,
             "uid": data["authorId"],
-            "author": User.GetUserInfo(xndc_data),
+            "author": User.GetUserInfo(xndc_data, ndcId=ndcId),
             "isHidden": False,
             "messageId": data["messageId"],
             "mediaType": data.get("mediaType", 0),
@@ -234,7 +234,7 @@ class Chat:
             "condition": 1 if data["chatType"] == 2 else 0,
             "icon": data.get("icon"),
             "latestActivityTime": message["createdTime"],
-            "author": User.GetUserInfo(host_xndcId),
+            "author": User.GetUserInfo(host_xndcId, ndcId=ndcId),
             "extensions": {
                 "viewOnly": data.get("isViewMode", False),
                 "coHost": data["cohostsIds"],

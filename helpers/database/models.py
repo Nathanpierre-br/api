@@ -185,6 +185,8 @@ class Community:
         status = Integer(load_default=0)
         content = String(load_default="")
         liked = List(UUID(metadata={"as_string": True}), load_default=[])
+        upvote = List(UUID(metadata={"as_string": True}), load_default=[])
+        downvote = List(UUID(metadata={"as_string": True}), load_default=[])
         wall = Dict(load_default={})
         blogType = Integer(required=True)
         extensions = Dict(load_default={}, allow_none=True)

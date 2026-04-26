@@ -7,9 +7,9 @@ class User:
     def OwnSensetiveProfile(row):
         return {
             "username": None,
-            "status": row["status"],
+            "status": row.get("status", 0),
             "uid": row["id"],
-            "modifiedTime": row["modifiedTime"],
+            "modifiedTime": row.get("modifiedTime"),
             "createdTime": row["createdTime"],
             "twitterID": None,
             "googleID": None,
@@ -21,7 +21,7 @@ class User:
             "activation": 1,
             "phoneNumberActivation": 0,
             "emailActivation": 1,
-            "nickname": row["nickname"],
+            "nickname": row.get("nickname"),
             "mediaList": MediaList.List(row.get("mediaList")),
             "icon": row.get("icon"),
             "securityLevel": 3,  # idk what is it
@@ -264,7 +264,7 @@ class User:
                 "deviceInfo": {
                     "lastClientType": 100  # [TODO]: WTF IS LAST CLIENT TYPE WHY THEY SAVE IT AND GIVE IT TO RANDOM USER WHAT THE ACTUAL FUCK BRO
                 },
-                # "contentLanguage": "en",
+                "contentLanguage": row.get("lang", "en"),
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
                     "backgroundMediaList": MediaList.List(

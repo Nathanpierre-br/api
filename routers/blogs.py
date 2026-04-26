@@ -1,3 +1,4 @@
+from datetime import datetime, UTC
 from pymongo import DESCENDING
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
@@ -13,6 +14,12 @@ from helpers.routers.cachable import CachableRoute
 
 blog_methods = APIRouter()
 blog_methods.route_class = CachableRoute
+
+
+@blog_methods.get("/x{ndcId}/s/feed/blog-recommended")
+async def get_recommended_blogs(request: Request, ndcId: int):
+    # mock for now
+    return Base.Answer({"blogList": []})
 
 
 @blog_methods.get("/g/s/blog")
@@ -87,6 +94,124 @@ async def get_blog(
 
     await db.close()
     return Errors.DataNotExist(timestamp() - t1)
+
+
+@blog_methods.post("/g/s/blog/{blogId}")
+@blog_methods.post("/x{ndcId}/s/blog/{blogId}")
+async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+    data = await request.json()
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+
+    blog = await table.find_one({"id": blogId})
+    if not blog:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    if blog["authorId"] != trigger_uid:
+        await db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+
+    preparedQueries = {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+    if "title" in data:
+        preparedQueries["title"] = data["title"]
+    if "content" in data:
+        preparedQueries["content"] = data["content"]
+    if "mediaList" in data:
+        preparedQueries["mediaList"] = data["mediaList"]
+
+    extensions = data.get("extensions", {})
+    if extensions:
+        current_extensions = blog.get("extensions", {})
+        style = extensions.get("style", {})
+        if style:
+            current_style = current_extensions.get("style", {})
+            for k in [
+                "backgroundMediaList",
+                "backgroundColor",
+                "coverMediaIndexList",
+                "coverMediaList",
+            ]:
+                if k in style:
+                    current_style[k] = style[k]
+            current_extensions["style"] = current_style
+
+        if "privilegeOfCommentOnPost" in extensions:
+            current_extensions["commentAllowance"] = extensions[
+                "privilegeOfCommentOnPost"
+            ]
+
+        preparedQueries["extensions"] = current_extensions
+
+    await table.update_one({"id": blogId}, {"$set": preparedQueries})
+    updated_blog = await table.find_one({"id": blogId})
+    blog_info = await Blog.Info(updated_blog, db, ndcId=ndcId, trigger_uid=trigger_uid)
+
+    await db.close()
+    return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
+
+
+@blog_methods.post("/x{ndcId}/s/blog/{blogId}/vote")
+async def like_blog(request: Request, blogId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    value = data.get("value", 4)
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+
+    if value in [1, 4]:
+        await table.update_one(
+            {"id": blogId},
+            {
+                "$addToSet": {"upvote": trigger_uid},
+                "$pull": {"downvote": trigger_uid},
+            },
+        )
+    elif value == -1:
+        await table.update_one(
+            {"id": blogId},
+            {
+                "$addToSet": {"downvote": trigger_uid},
+                "$pull": {"upvote": trigger_uid},
+            },
+        )
+
+    await db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
+@blog_methods.delete("/x{ndcId}/s/blog/{blogId}/vote")
+async def unlike_blog(request: Request, blogId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+
+    await table.update_one(
+        {"id": blogId}, {"$pull": {"upvote": trigger_uid, "downvote": trigger_uid}}
+    )
+
+    await db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
 
 
 @blog_methods.post("/g/s/blog")

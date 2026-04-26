@@ -340,9 +340,8 @@ async def login(request: Request):
             if data["clientType"] != 100:
                 return Errors.UnsupportedClient(timestamp() - t1)
 
-            table = await db.get(database="x0", table="Users")
+            table = await db.get("x0", "Users")
             additionalRow = await table.find_one({"id": row["id"]})
-            await db.close()
 
             ip = (
                 request.headers.get("X-Forwarded-For")
@@ -352,6 +351,7 @@ async def login(request: Request):
             tmstmp = ceil(timestamp())
 
             await SessionProcessor.End(request.headers.get("NDCAUTH"))
+            await db.close()
             return Base.Answer(
                 {
                     "auid": row["id"],
