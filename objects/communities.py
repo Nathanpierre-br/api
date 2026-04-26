@@ -190,7 +190,7 @@ class Communities:
                             "homepageNav",
                             [
                                 {"id": "guidelines"},
-                                {"id": "post-blogs"},
+                                {"id": "post-latest-feed"},
                                 {"id": "chat-public-chats", "isStartPage": True},
                             ],
                         )

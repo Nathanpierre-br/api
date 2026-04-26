@@ -577,6 +577,12 @@ async def get_wallet_ads_info(request: Request):
     )
 
 
+@profile_methods.get("/x{ndcId}/s/user-profile/recommended")
+async def get_recommended_profiles(request: Request, ndcId: int):
+    # mock for now
+    return Base.Answer({"userProfileList": []})
+
+
 @profile_methods.post("/g/s/user-profile/{uid}")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}")
 @profile_methods.post("/g/s/account/{uid}")
