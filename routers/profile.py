@@ -231,6 +231,8 @@ async def get_user_wall(
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/g-comment/{commentId}")
+@profile_methods.get("/g/s/user-profile/{uid}/g-comment/{commentId}/response")
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/response")
 async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0):
     t1 = timestamp()
