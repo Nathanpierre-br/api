@@ -300,7 +300,9 @@ async def get_community_info(ndcId: int, request: Request):
 # guidelines
 @communities.get("/g/s/community/official-guideline")
 @communities.get("/x{ndcId}/s/community/official-guideline")
-async def get_official_guidelines(ndcId: int, request: Request, language: str = "en"):
+async def get_official_guidelines(
+    request: Request, ndcId: int = 0, language: str = "en"
+):
     try:
         file = await aioyaml("files/guidelines.yaml")
         language = language.lower() if language.lower() in ["ru", "en"] else "en"
@@ -324,7 +326,7 @@ async def get_official_guidelines(ndcId: int, request: Request, language: str = 
 @communities.get("/g/s/community/guideline")
 @communities.get("/x{ndcId}/s/community/guideline")
 @communities.get("/g/s-x{ndcId}/community/guideline")
-async def get_community_guidelines(ndcId: int, request: Request):
+async def get_community_guidelines(request: Request, ndcId: int = 0):
     t1 = timestamp()
 
     db = await Database().init()
