@@ -44,16 +44,12 @@ async def get_blogs(
         .sort("createdTime", DESCENDING)
     ]
 
-    print(blogs)
-
     blogList = [
         await Blog.Info(
             item, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
         )
         for item in blogs
     ]
-
-    print(blogList)
 
     await db.close()
     return Base.Answer(
@@ -63,6 +59,34 @@ async def get_blogs(
         },
         spent_time=timestamp() - t1,
     )
+
+
+@blog_methods.get("/g/s/blog/{blogId}")
+@blog_methods.get("/x{ndcId}/s/blog/{blogId}")
+async def get_blog(
+    request: Request,
+    blogId: str,
+    ndcId: int = 0,
+):
+    t1 = timestamp()
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+
+    blog = await table.find({"id": blogId})
+    if blog:
+        blog_info = await Blog.Info(
+            blog, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
+        )
+        await db.close()
+
+        return Base.Answer(
+            {"blog": blog_info},
+            spent_time=timestamp() - t1,
+        )
+
+    await db.close()
+    return Errors.DataNotExist(timestamp() - t1)
 
 
 @blog_methods.post("/g/s/blog")

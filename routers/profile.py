@@ -3,7 +3,6 @@ from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
 from datetime import datetime, UTC
-from typing import Union
 from uuid import uuid4
 
 from objects import Base, Errors, User, Comments
@@ -129,13 +128,11 @@ async def get_user_following(
 
     db = await Database().init()
     xndcid_table = await db.get(f"x{ndcId}", "Users")
-    global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     following = row["following"][start : start + size]
     following_list = [
         User.GetUserInfo(
-            await global_table.find_one({"id": item})
-            | await xndcid_table.find_one({"id": item}),
+            await xndcid_table.find_one({"id": item}),
             ndcId=ndcId,
         )
         for item in following
@@ -158,13 +155,11 @@ async def get_user_followers(
 
     db = await Database().init()
     xndcid_table = await db.get(f"x{ndcId}", "Users")
-    global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     followers = row["whoFollows"][start : start + size]
     followers_list = [
         User.GetUserInfo(
-            await global_table.find_one({"id": item})
-            | await xndcid_table.find_one({"id": item}),
+            await xndcid_table.find_one({"id": item}),
             ndcId=ndcId,
         )
         for item in followers
@@ -197,7 +192,6 @@ async def get_user_wall(
 
     db = await Database().init()
     xndcid_table = await db.get(f"x{ndcId}", "Users")
-    global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     if sort == "newest":
         all_wall_comments = listed(row["wall"])
@@ -217,7 +211,7 @@ async def get_user_wall(
     wall_comments = wall_comments[start : start + size]
     wc_list = [
         await Comments.Parent(
-            item[1], item[0], uid, global_table, xndcid_table, trigger_uid, ndcId=ndcId
+            item[1], item[0], uid, xndcid_table, trigger_uid, ndcId=ndcId
         )
         for item in wall_comments
     ]
@@ -242,7 +236,6 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
 
     db = await Database().init()
     xndcid_table = await db.get(f"x{ndcId}", "Users")
-    global_table = await db.get(table="Users")
     row = await xndcid_table.find_one({"id": uid})
     all_wall = row["wall"]
     comment_thread = all_wall[commentId]["subWMs"]
@@ -257,7 +250,6 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
             item[0],
             commentId,
             uid,
-            global_table,
             xndcid_table,
             trigger_uid,
             ndcId=ndcId,
@@ -335,7 +327,6 @@ async def post_on_user_wall(
 
     db = await Database().init()
     xndcid_table = await db.get(f"x{ndcId}", "Users")
-    global_table = await db.get(table="Users")
 
     commentUid = str(uuid4())
     wm = ModelFabric.Construct(
@@ -383,11 +374,11 @@ async def ban_user(uid, request: Request, ndcId: int = 0):
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Users")
-    gl_table = await db.get(table="Users")
-    inited_user = await gl_table.find_one({"id": target_user})
+    # gl_table = await db.get(table="Users")
+    inited_user = await table.find_one({"id": target_user})
     if inited_user["role"] in [555, 254, 100, 102]:
         await table.update_one({"id": uid}, {"$set": {"status": 9}})
-        await gl_table.update_one({"id": uid}, {"$set": {"status": 9}})
+        # await gl_table.update_one({"id": uid}, {"$set": {"status": 9}})
         await db.close()
         return Base.Answer(spent_time=timestamp() - t1)
     else:
@@ -410,11 +401,11 @@ async def unban_user(uid, request: Request, ndcId: int = 0):
 
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Users")
-    gl_table = await db.get(table="Users")
+    # gl_table = await db.get(table="Users")
     inited_user = await table.find_one({"id": target_user})
     if inited_user["role"] in [555, 254, 100, 102]:
         await table.update_one({"id": uid}, {"$set": {"status": 0}})
-        await gl_table.update_one({"id": uid}, {"$set": {"status": 0}})
+        # await gl_table.update_one({"id": uid}, {"$set": {"status": 0}})
 
         await db.close()
         return Base.Answer(spent_time=timestamp() - t1)
@@ -522,19 +513,6 @@ async def get_self_info(request: Request, ndcId: int = 0):
     await db.close()
     return Base.Answer(
         {"userProfile": User.GetUserInfo(row1 | row2, ndcId=ndcId)},
-        spent_time=timestamp() - t1,
-    )
-
-
-@profile_methods.get("/g/s/blog")
-@profile_methods.get("/x{ndcId}/s/blog")
-async def get_user_stories(
-    request: Request, q: Union[str, None] = None, ndcId: int = 0
-):
-    t1 = timestamp()
-
-    return Base.Answer(
-        {"communityInfoMapping": {}, "paging": {}, "blogList": []},
         spent_time=timestamp() - t1,
     )
 
