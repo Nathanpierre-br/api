@@ -193,15 +193,21 @@ async def get_user_wall(
     db = await Database().init()
     xndcid_table = await db.get(f"x{ndcId}", "Users")
     row = await xndcid_table.find_one({"id": uid})
+    if row is None:
+        await db.close()
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    wall_data = row.get("wall", {})
+
     if sort == "newest":
-        all_wall_comments = listed(row["wall"])
+        all_wall_comments = listed(wall_data)
         all_wall_comments.reverse()
     elif sort == "vote":
         all_wall_comments = sorted(
-            listed(row["wall"]), key=lambda d: len(d[1]["votes"]), reverse=True
+            listed(wall_data), key=lambda d: len(d[1]["votes"]), reverse=True
         )
     else:
-        all_wall_comments = listed(row["wall"])
+        all_wall_comments = listed(wall_data)
 
     wall_comments = []
     for _comment_id, _comment_info in all_wall_comments:
@@ -237,8 +243,16 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
     db = await Database().init()
     xndcid_table = await db.get(f"x{ndcId}", "Users")
     row = await xndcid_table.find_one({"id": uid})
-    all_wall = row["wall"]
-    comment_thread = all_wall[commentId]["subWMs"]
+    if row is None:
+        await db.close()
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    all_wall = row.get("wall", {})
+    if commentId not in all_wall:
+        await db.close()
+        return Errors.NotFound(timestamp() - t1)
+
+    comment_thread = all_wall[commentId].get("subWMs", [])
     certain_wall = []
     for _comment_id, _comment_info in all_wall.items():
         if _comment_id in comment_thread:
@@ -282,7 +296,11 @@ async def delete_post_from_wall(
         table = await db.get(f"x{ndcId}", "Users")
         user_info = await table.find_one({"id": uid})
 
-        wall = user_info.get("wall")
+        if user_info is None:
+            await db.close()
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        wall = user_info.get("wall", {})
         if wall.get(commentId):
             unsetDict = {f"wall.{commentId}": ""}
             sub_wms = wall.get(commentId, {}).get("subWMs", [])
@@ -350,10 +368,12 @@ async def post_on_user_wall(
             trigger_uid,
             ndcId=ndcId,
         )
+    else:
+        commentObj = await Comments.Parent(
+            wm, commentUid, uid, xndcid_table, trigger_uid, ndcId=ndcId
+        )
+
     await xndcid_table.update_one({"id": uid}, {"$set": {f"wall.{commentUid}": wm}})
-    commentObj = await Comments.Parent(
-        wm, commentUid, uid, xndcid_table, trigger_uid, ndcId=ndcId
-    )
 
     await db.close()
     return Base.Answer({"comment": commentObj}, spent_time=timestamp() - t1)
