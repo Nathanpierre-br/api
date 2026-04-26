@@ -48,6 +48,6 @@ class Blog:
             }
             | extensions,
             "mediaList": MediaList.List(data.get("mediaList", [])),
-            "votedValue": int(trigger_uid and trigger_uid in data.get("liked", [])),
+            "votedValue": int(trigger_uid in data.get("liked", [])),
             "viewCount": 0,
         }
