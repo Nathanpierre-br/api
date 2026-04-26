@@ -329,6 +329,11 @@ async def login(request: Request):
         row = await table.find_one(
             {"passwordHash": passwordHash, "email": data["email"]}
         )
+
+        if not row:
+            await db.close()
+            return Errors.InvalidLogin(timestamp() - t1)
+
         if row.get("status", 0) == 9:
             await db.close()
             return Errors.UserBanned(timestamp() - t1)
