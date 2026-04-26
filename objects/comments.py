@@ -1,7 +1,5 @@
 from .user import User
-
-# import sys
-# sys.path.append('../')
+from .medialist import MediaList
 
 
 class Comments:
@@ -10,7 +8,6 @@ class Comments:
         row,
         commentId: str,
         parentId: str,
-        g_users,
         xndcid_users,
         triggerUserId: str | None = None,
         parentType: int = 0,
@@ -24,16 +21,11 @@ class Comments:
             "parentType": parentType,  # im guessing its for posts and etc
             "commentId": commentId,  # comment id
             "parentNdcId": ndcId,
-            "mediaList": (
-                None
-                if row["mediaList"] in [[], None]
-                else User.MediaList(row["mediaList"])
-            ),  # if have images i guess
+            "mediaList": MediaList.List(row.get("mediaList", [])),
             "votesSum": len(row["likes"]),  # how many likes
             "subcommentsPreview": [],  # subcomments preview
             "author": User.GetUserInfo(
-                (await g_users.find_one({"id": row["authorId"]}) or {})
-                | (await xndcid_users.find_one({"id": row["authorId"]}) or {})
+                await xndcid_users.find_one({"id": row["authorId"]}) or {}
             ),
             "content": row["content"],
             "extensions": {} | extenstions,
@@ -49,7 +41,6 @@ class Comments:
         commentId: str,
         headCommentId: str,
         parentId: str,
-        g_users,
         xndcid_users,
         triggerUserId: str | None = None,
         parentType: int = 0,
@@ -64,15 +55,10 @@ class Comments:
             "parentType": parentType,  # im guessing its for posts and etc
             "commentId": commentId,  # comment id
             "parentNdcId": ndcId,
-            "mediaList": (
-                None
-                if row["mediaList"] in [[], None]
-                else User.MediaList(row["mediaList"])
-            ),  # if have images i guess
+            "mediaList": MediaList.List(row.get("mediaList", [])),
             "votesSum": len(row["likes"]),  # how many likes
             "author": User.GetUserInfo(
-                (await g_users.find_one({"id": row["authorId"]}) or {})
-                | (await xndcid_users.find_one({"id": row["authorId"]}) or {})
+                await xndcid_users.find_one({"id": row["authorId"]}) or {}
             ),
             "content": row["content"],
             "extensions": {} | extenstions,

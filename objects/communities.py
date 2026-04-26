@@ -188,7 +188,11 @@ class Communities:
                     "homePage": {
                         "navigation": conf.get(
                             "homepageNav",
-                            [{"id": "chat-public-chats", "isStartPage": True}],
+                            [
+                                {"id": "guidelines"},
+                                {"id": "post-blogs"},
+                                {"id": "chat-public-chats", "isStartPage": True},
+                            ],
                         )
                     },
                 },

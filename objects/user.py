@@ -1,4 +1,5 @@
 from typing import Union
+from .medialist import MediaList
 
 
 class User:
@@ -21,7 +22,7 @@ class User:
             "phoneNumberActivation": 0,
             "emailActivation": 1,
             "nickname": row["nickname"],
-            "mediaList": row.get("mediaList"),
+            "mediaList": MediaList.List(row.get("mediaList")),
             "icon": row.get("icon"),
             "securityLevel": 3,  # idk what is it
             "phoneNumber": None,
@@ -29,6 +30,7 @@ class User:
             "advancedSettings": {"analyticsEnabled": 0},
             "email": row["email"],
             "extensions": {
+                "isMemberOfTeamAmino": row.get("isTeamMember", False),
                 "contentLanguage": row.get("lang", "en"),
                 "adsFlags": 2147483647,  # change to hide ads
                 "adsLevel": 2,  # change to hide ads
@@ -60,7 +62,7 @@ class User:
             "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
             "tagList": row.get("tagList", []),
-            "mediaList": User.MediaList(row.get("mediaList", [])),
+            "mediaList": MediaList.List(row.get("mediaList")),
             "icon": row.get("icon"),
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
@@ -85,10 +87,11 @@ class User:
                 "backgroundColor": row.get("backgroundColor"),
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
-                    "backgroundMediaList": User.MediaList(
+                    "backgroundMediaList": MediaList.List(
                         row.get("backgroundMediaList")
                     ),
                 },
+                "isMemberOfTeamAmino": row.get("isTeamMember", False),
             }
             | extensions,
             "moodSticker": (
@@ -113,15 +116,26 @@ class User:
         triggerUserId: Union[str, None] = None,
         ndcId: int = 0,
         extensions: dict = {},
+        membershipStatus: int | None = None,
     ):
+        followingStatus = 0
         if triggerUserId is None:
-            membershipStatus = 0
-        elif triggerUserId in row.get("whoFollows", []):
-            membershipStatus = 1
-        elif row["id"] in row.get("following", []):
-            membershipStatus = 2
+            followingStatus = 0
+        elif triggerUserId in row["whoFollows"] and triggerUserId in row["following"]:
+            followingStatus = 3
+        elif triggerUserId in row["following"]:
+            followingStatus = 2
+        elif triggerUserId in row["whoFollows"]:
+            followingStatus = 1
         else:
-            membershipStatus = 0
+            followingStatus = 0
+
+        if row["id"] == triggerUserId:
+            followingStatus = 0
+
+        if membershipStatus is None:
+            followingStatus = membershipStatus
+
         return {
             "status": row["status"],
             "uid": row["id"],
@@ -131,7 +145,7 @@ class User:
             "aminoId": row.get("aminoId"),
             "nickname": row["nickname"],
             "tagList": row.get("tagList", []),
-            "mediaList": User.MediaList(row.get("mediaList", [])),
+            "mediaList": MediaList.List(row.get("mediaList", [])),
             "icon": None if row["icon"] == "" else row["icon"],
             "accountMembershipStatus": int(row.get("isPaidSubscriber")),
             "ndcId": ndcId,  # 0 is global
@@ -141,7 +155,7 @@ class User:
             "mood": None if ndcId == 0 else row["mood"],
             "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["whoFollows"]),
-            "followingStatus": membershipStatus,
+            "followingStatus": followingStatus,
             "membersCount": len(row["followers"]),
             "storiesCount": 0,  # i will NOT implement stories, fuck them
             "blogsCount": (
@@ -151,10 +165,11 @@ class User:
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
             "extensions": {
+                "isMemberOfTeamAmino": row.get("isTeamMember", False),
                 "customTitles": row.get("titles", []),
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
-                    "backgroundMediaList": User.MediaList(
+                    "backgroundMediaList": MediaList.List(
                         row.get("backgroundMediaList")
                     ),
                 },
@@ -186,21 +201,24 @@ class User:
         extensions: dict = {},
         membershipStatus: int | None = None,
     ):
-        if membershipStatus is None:
-            if triggerUserId is None:
-                membershipStatus = 0
-            elif (
-                triggerUserId in row["whoFollows"] and triggerUserId in row["following"]
-            ):
-                membershipStatus = 3
-            elif triggerUserId in row["following"]:
-                membershipStatus = 2
-            elif triggerUserId in row["whoFollows"]:
-                membershipStatus = 1
-            else:
-                membershipStatus = 0
+        followingStatus = 0
+        if triggerUserId is None:
+            followingStatus = 0
+        elif triggerUserId in row["whoFollows"] and triggerUserId in row["following"]:
+            followingStatus = 3
+        elif triggerUserId in row["following"]:
+            followingStatus = 2
+        elif triggerUserId in row["whoFollows"]:
+            followingStatus = 1
+        else:
+            followingStatus = 0
+
         if row["id"] == triggerUserId:
-            membershipStatus = 0
+            followingStatus = 0
+
+        if membershipStatus is None:
+            followingStatus = membershipStatus
+
         return {
             "iconFrameId": row.get("frame"),
             "iconFrame": (
@@ -215,7 +233,7 @@ class User:
             "nickname": row["nickname"],
             "tagList": row.get("tagList", []),
             "fanClubList": [],
-            "mediaList": User.MediaList(row.get("mediaList", [])),
+            "mediaList": MediaList.List(row.get("mediaList", [])),
             "icon": row.get("icon"),
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
@@ -228,7 +246,7 @@ class User:
             ),  # [TODO]: check wtf is this
             "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["following"]),
-            "followingStatus": membershipStatus,
+            "followingStatus": followingStatus,
             "membersCount": len(row["whoFollows"]),
             "storiesCount": 0,  # i will NOT implement stories, fuck them
             "blogsCount": (
@@ -238,6 +256,7 @@ class User:
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
             "extensions": {
+                "isMemberOfTeamAmino": row.get("isTeamMember", False),
                 "customTitles": row.get("titles", []),
                 "privilegeOfCommentOnUserProfile": row["allowanceWriteToWall"],
                 "privilegeOfChatInviteRequest": row["allowanceWriteToPM"],
@@ -245,10 +264,10 @@ class User:
                 "deviceInfo": {
                     "lastClientType": 100  # [TODO]: WTF IS LAST CLIENT TYPE WHY THEY SAVE IT AND GIVE IT TO RANDOM USER WHAT THE ACTUAL FUCK BRO
                 },
-                "contentLanguage": "en",
+                # "contentLanguage": "en",
                 "style": {
                     "backgroundColor": row.get("backgroundColor"),
-                    "backgroundMediaList": User.MediaList(
+                    "backgroundMediaList": MediaList.List(
                         row.get("backgroundMediaList")
                     ),
                 },
@@ -287,13 +306,3 @@ class User:
     @staticmethod
     def iconFrame(frameId: str):
         return {"frameId": frameId}
-
-    @staticmethod
-    def MediaList(mediaList: list | None):
-        if mediaList is None or len(mediaList) < 1:
-            return None
-        return [User.MediaItem(item) for item in mediaList]
-
-    @staticmethod
-    def MediaItem(link: str):
-        return [100, link, None, None, None, {}]

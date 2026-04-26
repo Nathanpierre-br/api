@@ -17,6 +17,8 @@ from routers.profile import profile_methods
 from routers.upload_media import upload_media
 from routers.configurations import configurations
 from routers.communities import communities
+from routers.blogs import blog_methods
+# from routers.pseudoacm import pseudoacm
 
 # app things
 
@@ -41,6 +43,8 @@ app.include_router(upload_media, prefix="/api/v1")
 app.include_router(configurations, prefix="/api/v1")
 app.include_router(profile_methods, prefix="/api/v1")
 app.include_router(communities, prefix="/api/v1")
+app.include_router(blog_methods, prefix="/api/v1")
+# app.include_router(pseudoacm, prefix="/api/v1")
 
 app.add_middleware(BrotliMiddleware, gzip_fallback=True)
 app.add_middleware(
@@ -81,5 +85,9 @@ async def custom_500_handler(_, __):
     except Exception:
         print("Not a status code that we returned!")
 
-    print("What happened:", _, "//", __)
+    try:
+        print("What happened:", _, "//", __)
+    except Exception:
+        print("WE CAN'T EVEN DUCKING PRINT WHAT HAPPENED. COOL")
+
     return Errors.InternalServerError()

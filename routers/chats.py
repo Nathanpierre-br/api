@@ -368,7 +368,7 @@ async def if_chat_exists(
             async for item in table.find({"chatType": 2})
             .skip(start)
             .limit(size)
-            .sort("timestamp", DESCENDING)
+            .sort("lastMessageTimestamp", DESCENDING)
         ]
 
         await db.close()
@@ -736,7 +736,15 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         mediaValue=mediaLink,
     )
     await table.insert_one(message)
-    await chat.update_one({"id": chatId}, {"$set": {"lastMessageId": messageId}})
+    await chat.update_one(
+        {"id": chatId},
+        {
+            "$set": {
+                "lastMessageId": messageId,
+                "lastMessageTimestamp": message["timestamp"],
+            }
+        },
+    )
 
     messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
     answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
@@ -1017,7 +1025,15 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
         mediaValue=mediaLink,
     )
     await table.insert_one(message)
-    await chat.update_one({"id": chatId}, {"$set": {"lastMessageId": messageId}})
+    await chat.update_one(
+        {"id": chatId},
+        {
+            "$set": {
+                "lastMessageId": messageId,
+                "lastMessageTimestamp": message["timestamp"],
+            }
+        },
+    )
 
     messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
     answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
@@ -1051,10 +1067,11 @@ async def get_chat_members(
     start: int = 0,
     size: int = 25,
     ndcId: int = 0,
+    q: str = "",
 ):
     t1 = timestamp()
 
-    if type not in ["default", "co-host"]:
+    if type not in ["default", "co-host", "at"]:
         return Errors.InvalidRequest(timestamp() - t1)
 
     connection = await Database().init()
@@ -1510,7 +1527,13 @@ async def toggle_things(
             )
             await history.insert_one(message)
             await table.update_one(
-                {"id": chatId}, {"$set": {"lastMessageId": messageId}}
+                {"id": chatId},
+                {
+                    "$set": {
+                        "lastMessageId": messageId,
+                        "lastMessageTimestamp": message["timestamp"],
+                    }
+                },
             )
 
             xndc_users = await db.get(f"x{ndcId}", "Users")

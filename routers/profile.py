@@ -355,14 +355,13 @@ async def post_on_user_wall(
             commentUid,
             data["respondTo"],
             uid,
-            global_table,
             xndcid_table,
             trigger_uid,
             ndcId=ndcId,
         )
     await xndcid_table.update_one({"id": uid}, {"$set": {f"wall.{commentUid}": wm}})
     commentObj = await Comments.Parent(
-        wm, commentUid, uid, global_table, xndcid_table, trigger_uid, ndcId=ndcId
+        wm, commentUid, uid, xndcid_table, trigger_uid, ndcId=ndcId
     )
 
     await db.close()
