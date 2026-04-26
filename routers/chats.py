@@ -11,7 +11,7 @@ import asyncio
 
 from boto3 import resource
 
-from objects import Base, Chat, Errors
+from objects import Base, Chat, Errors, User
 from helpers.config import Config
 from helpers.functions import (
     parse_page_token,
@@ -1075,52 +1075,101 @@ async def get_chat_members(
         return Errors.InvalidRequest(timestamp() - t1)
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
-    chat_info = await chat.find_one({"id": chatId})
+    chat_table = await connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one({"id": chatId})
+
+    if not chat_info:
+        await connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
     xndc_users = await connection.get(f"x{ndcId}", "Users")
 
     if type == "default":
-        members = chat_info["memberList"]
-        invited = chat_info["invitedList"]
-        all_members = (members + invited)[start : start + size]
-
-        answer = Base.Answer(
-            {
-                "memberList": [
-                    await Chat.GetMemberInfo(
-                        member,
-                        xndc_users,
-                        True if member in members else False,
-                        ndcId=ndcId,
-                    )
-                    for member in all_members
-                ]
-            },
-            spent_time=timestamp() - t1,
+        chat_info = await chat_table.find_one(
+            {"id": chatId}, {"memberList": 1, "invitedList": 1}
         )
+        if not chat_info:
+            await connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+        members_in_chat = chat_info.get("memberList", [])
+        invited_in_chat = chat_info.get("invitedList", [])
+        all_ids = members_in_chat + invited_in_chat
+        target_ids = all_ids[start : start + size]
+
+        users_data = {
+            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
+        }
+        member_list = [
+            User.GetUserInfo(
+                users_data[uid],
+                membershipStatus=(1 if uid in members_in_chat else 2),
+                ndcId=ndcId,
+            )
+            for uid in target_ids
+            if uid in users_data
+        ]
+
+    elif type == "at":
+        chat_info = await chat_table.find_one({"id": chatId}, {"memberList": 1})
+        if not chat_info:
+            await connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+        members_in_chat = chat_info.get("memberList", [])
+        query = {"id": {"$in": members_in_chat}}
+        if q:
+            query["nickname"] = {"$regex": f"^{regex_escape(q)}", "$options": "i"}
+
+        member_list = [
+            User.GetUserInfo(u, membershipStatus=1, ndcId=ndcId)
+            async for u in xndc_users.find(query).skip(start).limit(size)
+        ]
+
     elif type == "co-host":
-        members = chat_info["memberList"]
-        co_hosts = chat_info.get("cohostsIds", [])
-
-        non_cohosts = []
-        for i in members + co_hosts:
-            if i in members and i in co_hosts:
-                continue
-            non_cohosts.append(i)
-        non_cohosts = non_cohosts[start : start + size]
-
-        answer = Base.Answer(
-            {
-                "memberList": [
-                    await Chat.GetMemberInfo(member, xndc_users, True, ndcId=ndcId)
-                    for member in non_cohosts
-                ]
-            },
-            spent_time=timestamp() - t1,
+        chat_info = await chat_table.find_one(
+            {"id": chatId}, {"memberList": 1, "cohostsIds": 1}
         )
-    else:
-        answer = Errors.InvalidRequest(timestamp() - t1)
+        if not chat_info:
+            await connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
 
+        members_in_chat = chat_info.get("memberList", [])
+        cohosts_in_chat = chat_info.get("cohostsIds", [])
+
+        temp_ids = []
+        seen_ids = set()
+        for uid in members_in_chat + cohosts_in_chat:
+            if uid not in seen_ids:
+                temp_ids.append(uid)
+                seen_ids.add(uid)
+
+        target_ids = [
+            uid
+            for uid in temp_ids
+            if not (uid in members_in_chat and uid in cohosts_in_chat)
+        ][start : start + size]
+
+        users_data = {
+            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
+        }
+        member_list = [
+            User.GetUserInfo(users_data[uid], membershipStatus=1, ndcId=ndcId)
+            for uid in target_ids
+            if uid in users_data
+        ]
+
+    else:
+        await connection.close()
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    answer = Base.Answer(
+        {
+            "memberList": member_list,
+            "paging": calculate_page_tokens(start, size, member_list),
+        },
+        spent_time=timestamp() - t1,
+    )
     await connection.close()
     return answer
 
@@ -1131,29 +1180,53 @@ async def get_chat_members(
 
 @chats.get("/g/s/chat/thread/{chatId}/co-host")
 @chats.get("/x{ndcId}/s/chat/thread/{chatId}/co-host")
-async def get_chat_cohosts(request: Request, chatId: str, ndcId: int = 0):
+async def get_chat_cohosts(
+    request: Request,
+    chatId: str,
+    start: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
+    ndcId: int = 0,
+):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession()
 
+    size = size if 0 < size < 101 else 25
+    start = parse_page_token(pageToken, start)
     trigger_uid = request.state.session["uid"]
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
-    chat_info = await chat.find_one({"id": chatId})
+    chat_table = await connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one(
+        {"id": chatId}, {"cohostsIds": 1, "hostId": 1}
+    )
+
+    if not chat_info:
+        await connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
     if trigger_uid != chat_info["hostId"]:
         await connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
-    members = chat_info.get("cohostsIds", [])
+    cohosts_ids_all = chat_info.get("cohostsIds", [])
+    cohosts_ids_sliced = cohosts_ids_all[start : start + size]
     xndc_users = await connection.get(f"x{ndcId}", "Users")
+
+    users_data = {
+        u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts_ids_sliced}})
+    }
+    user_list = [
+        User.GetUserInfo(users_data[uid], membershipStatus=1, ndcId=ndcId)
+        for uid in cohosts_ids_sliced
+        if uid in users_data
+    ]
 
     answer = Base.Answer(
         {
-            "userProfileList": [
-                await Chat.GetMemberInfo(member, xndc_users, True, ndcId=ndcId)
-                for member in members
-            ]
+            "userProfileList": user_list,
+            "paging": calculate_page_tokens(start, size, user_list),
         },
         spent_time=timestamp() - t1,
     )
@@ -1174,27 +1247,38 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
 
     data = await request.json()
     trigger_uid = request.state.session["uid"]
-    cohosts = data.get("uidList", [])
+    new_cohosts = data.get("uidList", [])
 
     connection = await Database().init()
     chat = await connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
+    if not chat_info:
+        await connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
     if trigger_uid != chat_info["hostId"]:
         await connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
-    xndc_users = await connection.get(f"x{ndcId}", "Users")
-    answer = Base.Answer(
-        {
-            "userProfileList": [
-                await Chat.GetMemberInfo(member, xndc_users, True, ndcId=ndcId)
-                for member in cohosts
-            ]
-        },
-        spent_time=timestamp() - t1,
+    await chat.update_one(
+        {"id": chatId}, {"$push": {"cohostsIds": {"$each": new_cohosts}}}
     )
 
-    await chat.update_one({"id": chatId}, {"$push": {"cohostsIds": {"$each": cohosts}}})
+    xndc_users = await connection.get(f"x{ndcId}", "Users")
+    users_data = {
+        u["id"]: u async for u in xndc_users.find({"id": {"$in": new_cohosts}})
+    }
+
+    user_profile_list = [
+        User.GetUserInfo(users_data[uid], membershipStatus=1, ndcId=ndcId)
+        for uid in new_cohosts
+        if uid in users_data
+    ]
+
+    answer = Base.Answer(
+        {"userProfileList": user_profile_list, "paging": {}},
+        spent_time=timestamp() - t1,
+    )
 
     await connection.close()
     return answer
@@ -1216,6 +1300,10 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
     connection = await Database().init()
     chat = await connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
+    if not chat_info:
+        await connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
     if trigger_uid != chat_info["hostId"]:
         await connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
@@ -1225,13 +1313,17 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
     chat_info = await chat.find_one({"id": chatId})
     cohosts = chat_info.get("cohostsIds", [])
     xndc_users = await connection.get(f"x{ndcId}", "Users")
+
+    users_data = {u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts}})}
+
+    user_profile_list = [
+        User.GetUserInfo(users_data[cid], membershipStatus=1, ndcId=ndcId)
+        for cid in cohosts
+        if cid in users_data
+    ]
+
     answer = Base.Answer(
-        {
-            "userProfileList": [
-                await Chat.GetMemberInfo(member, xndc_users, True, ndcId=ndcId)
-                for member in cohosts
-            ]
-        },
+        {"userProfileList": user_profile_list, "paging": {}},
         spent_time=timestamp() - t1,
     )
 
