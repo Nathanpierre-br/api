@@ -73,7 +73,7 @@ async def get_blog(
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Blogs")
 
-    blog = await table.find({"id": blogId})
+    blog = await table.find_one({"id": blogId})
     if blog:
         blog_info = await Blog.Info(
             blog, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
