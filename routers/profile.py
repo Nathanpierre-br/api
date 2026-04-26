@@ -304,14 +304,28 @@ async def delete_post_from_wall(
 
         wall = user_info.get("wall", {})
         if wall.get(commentId):
-            unsetDict = {f"wall.{commentId}": ""}
-            sub_wms = wall.get(commentId, {}).get("subWMs", [])
-            if len(sub_wms) > 0:
+            unset_fields = {f"wall.{commentId}": ""}
+            comment_to_delete = wall[commentId]
+
+            if comment_to_delete.get("isSubWM") is False:
+                sub_wms = comment_to_delete.get("subWMs", [])
                 for key in sub_wms:
                     if key in wall.keys():
-                        unsetDict.update({f"wall.{key}": ""})
+                        unset_fields[f"wall.{key}"] = ""
+            else:
+                parent_comment_id = None
+                for parent_id, parent_comment_info in wall.items():
+                    if commentId in parent_comment_info.get("subWMs", []):
+                        parent_comment_id = parent_id
+                        break
 
-            await table.update_many({"id": uid}, {"$unset": unsetDict})
+                if parent_comment_id:
+                    await table.update_one(
+                        {"id": uid},
+                        {"$pull": {f"wall.{parent_comment_id}.subWMs": commentId}},
+                    )
+
+            await table.update_one({"id": uid}, {"$unset": unset_fields})
 
         await db.close()
     return Base.Answer(spent_time=timestamp() - t1)
