@@ -14,15 +14,23 @@ class Comments:
         ndcId: int = 0,
         extenstions: dict = {},
     ):
+        upvotes = row.get("upvotes", [])
+        downvotes = row.get("downvotes", [])
+
+        votesSum = len(upvotes) - len(downvotes)
+        voteValue = (
+            1 if triggerUserId in upvotes else -1 if triggerUserId in downvotes else 0
+        )
+
         return {
             "modifiedTime": row["modifiedTime"],
             "ndcId": ndcId,
-            "votedValue": int(triggerUserId in row["likes"]),
+            "votedValue": voteValue,
             "parentType": parentType,  # im guessing its for posts and etc
             "commentId": commentId,  # comment id
             "parentNdcId": ndcId,
             "mediaList": MediaList.List(row.get("mediaList", [])),
-            "votesSum": len(row["likes"]),  # how many likes
+            "votesSum": votesSum,
             "subcommentsPreview": [],  # subcomments preview
             "author": User.GetUserInfo(
                 await xndcid_users.find_one({"id": row["authorId"]}) or {}
@@ -47,16 +55,24 @@ class Comments:
         ndcId: int = 0,
         extenstions: dict = {},
     ):
+        upvotes = row.get("upvotes", [])
+        downvotes = row.get("downvotes", [])
+
+        votesSum = len(upvotes) - len(downvotes)
+        voteValue = (
+            1 if triggerUserId in upvotes else -1 if triggerUserId in downvotes else 0
+        )
+
         return {
             "headCommentId": headCommentId,
             "modifiedTime": row["modifiedTime"],
             "ndcId": ndcId,
-            "votedValue": int(triggerUserId in row["likes"]),
+            "votedValue": voteValue,
             "parentType": parentType,  # im guessing its for posts and etc
             "commentId": commentId,  # comment id
             "parentNdcId": ndcId,
             "mediaList": MediaList.List(row.get("mediaList", [])),
-            "votesSum": len(row["likes"]),  # how many likes
+            "votesSum": votesSum,
             "author": User.GetUserInfo(
                 await xndcid_users.find_one({"id": row["authorId"]}) or {}
             ),

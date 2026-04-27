@@ -204,7 +204,7 @@ async def get_user_wall(
         all_wall_comments.reverse()
     elif sort == "vote":
         all_wall_comments = sorted(
-            listed(wall_data), key=lambda d: len(d[1]["votes"]), reverse=True
+            listed(wall_data), key=lambda d: len(d[1]["upvotes"]), reverse=True
         )
     else:
         all_wall_comments = listed(wall_data)
@@ -393,6 +393,95 @@ async def post_on_user_wall(
 
     await db.close()
     return Base.Answer({"comment": commentObj}, spent_time=timestamp() - t1)
+
+
+@profile_methods.post("/g/s/user-profile/{uid}/comment/{commentId}/vote")
+@profile_methods.post("/g/s/user-profile/{uid}/g-comment/{commentId}/vote")
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/vote")
+async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    value = data.get("value", 0)
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Users")
+    user_info = await table.find_one({"id": uid})
+    if user_info is None:
+        await db.close()
+        return Errors.InvalidLogin(timestamp() - t1)
+
+    if commentId not in user_info.get("wall", {}):
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    if value == 1:
+        await table.update_one(
+            {"id": uid},
+            {
+                "$addToSet": {f"wall.{commentId}.upvotes": trigger_uid},
+                "$pull": {f"wall.{commentId}.downvotes": trigger_uid},
+            },
+        )
+    elif value == -1:
+        await table.update_one(
+            {"id": uid},
+            {
+                "$addToSet": {f"wall.{commentId}.downvotes": trigger_uid},
+                "$pull": {f"wall.{commentId}.upvotes": trigger_uid},
+            },
+        )
+    else:
+        await db.close()
+        return Errors.InvalidRequest()
+
+    await db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
+@profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/vote")
+async def remove_comment_vote(
+    request: Request, uid: str, commentId: str, ndcId: int = 0
+):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Users")
+
+    # Check if the user exists
+    user_info = await table.find_one({"id": uid})
+    if user_info is None:
+        await db.close()
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    # Check if the comment exists
+    if commentId not in user_info.get("wall", {}):
+        await db.close()
+        return Errors.NotFound(timestamp() - t1)
+
+    await table.update_one(
+        {"id": uid},
+        {
+            "$pull": {
+                f"wall.{commentId}.upvotes": trigger_uid,
+                f"wall.{commentId}.downvotes": trigger_uid,
+            }
+        },
+    )
+
+    await db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
 
 
 # ban

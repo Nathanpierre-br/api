@@ -36,6 +36,7 @@ async def edit_community(request: Request, blogId: str, ndcId: int = 0):
     for key in [
         "name",
         "aminoId",
+        "tagline",
         "description",
         "guidelines",
         "icon",

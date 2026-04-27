@@ -46,7 +46,7 @@ class Blog:
             | extensions,
             "mediaList": MediaList.List(data.get("mediaList", [])),
             "votedValue": (
-                1
+                4
                 if trigger_uid in data.get("upvote", [])
                 else -1
                 if trigger_uid in data.get("downvote", [])
