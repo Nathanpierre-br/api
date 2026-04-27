@@ -410,7 +410,6 @@ async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 
         data = {}
 
     value = data.get("value", 0)
-
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Users")
     user_info = await table.find_one({"id": uid})
@@ -446,6 +445,8 @@ async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 
     return Base.Answer(spent_time=timestamp() - t1)
 
 
+@profile_methods.delete("/g/s/user-profile/{uid}/comment/{commentId}/vote")
+@profile_methods.delete("/g/s/user-profile/{uid}/g-comment/{commentId}/vote")
 @profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/vote")
 async def remove_comment_vote(
     request: Request, uid: str, commentId: str, ndcId: int = 0
@@ -455,17 +456,14 @@ async def remove_comment_vote(
         return Errors.InvalidSession(timestamp() - t1)
 
     trigger_uid = request.state.session["uid"]
-
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Users")
 
-    # Check if the user exists
     user_info = await table.find_one({"id": uid})
     if user_info is None:
         await db.close()
         return Errors.AccountNotExist(timestamp() - t1)
 
-    # Check if the comment exists
     if commentId not in user_info.get("wall", {}):
         await db.close()
         return Errors.NotFound(timestamp() - t1)
@@ -482,6 +480,47 @@ async def remove_comment_vote(
 
     await db.close()
     return Base.Answer(spent_time=timestamp() - t1)
+
+
+# see who voted comment
+@profile_methods.get("/g/s/user-profile/{uid}/comment/{commentId}/vote")
+@profile_methods.get("/g/s/user-profile/{uid}/g-comment/{commentId}/vote")
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/vote")
+async def get_comment_voted_users(
+    request: Request,
+    uid: str,
+    commentId: str,
+    ndcId: int = 0,
+    pageToken: str | None = None,
+    start: int = 0,
+    size: int = 25,
+):
+    t1 = timestamp()
+
+    db = await Database().init()
+    xndcid_table = await db.get(f"x{ndcId}", "Users")
+    row = await xndcid_table.find_one({"id": uid})
+    if row is None:
+        return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
+
+    try:
+        comment = row["wall"][commentId]
+        votes = comment.get("upvotes", []) + comment.get("downvotes", [])
+        votes_selected = votes[start : start + size]
+    except Exception:
+        await db.close()
+        return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
+
+    voters_list = [
+        User.GetUserInfo(
+            await xndcid_table.find_one({"id": item}),
+            ndcId=ndcId,
+        )
+        for item in votes_selected
+    ]
+
+    await db.close()
+    return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
 
 
 # ban

@@ -6,7 +6,7 @@ from time import time as timestamp
 from typing import Union
 from uuid import uuid4
 
-from objects import Base, Errors, Blog
+from objects import Base, Errors, Blog, Comments
 from helpers.functions import parse_page_token, calculate_page_tokens
 from helpers.database.mongo import Database
 from helpers.database.models import ModelFabric, Community
@@ -142,6 +142,177 @@ async def get_blog(
     return Errors.DataNotExist(timestamp() - t1)
 
 
+@blog_methods.get("/g/s/blog/{blogId}/comment")
+@blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment")
+async def get_blog_comments(
+    request: Request,
+    blogId: str,
+    ndcId: int = 0,
+    start: int = 0,
+    size: int = 25,
+    sort: str = "newest",
+):
+    t1 = timestamp()
+
+    trigger_uid = request.state.session.get("uid")
+
+    def listed(result: dict):
+        return list(result.items())
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+    blog_info = await table.find_one({"id": blogId})
+    if blog_info is None:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    wall_data = blog_info.get("wall", {})
+
+    if sort == "newest":
+        wall = listed(wall_data)
+        wall.reverse()
+    elif sort == "vote":
+        wall = sorted(
+            listed(wall_data), key=lambda d: len(d[1]["upvotes"]), reverse=True
+        )
+    else:  # oldest and other
+        wall = listed(wall_data)
+
+    wall_chunk = []
+    for _item_id, _item_info in wall:
+        if _item_info["isSubWM"] is False:
+            wall_chunk.append((_item_id, _item_info))
+
+    wall_chunk = wall_chunk[start : start + size]
+    wc_list = [
+        await Comments.Parent(
+            item[1], item[0], blogId, table, trigger_uid, ndcId=ndcId, parentType=2
+        )
+        for item in wall_chunk
+    ]
+
+    await db.close()
+    return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
+
+
+@blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}")
+@blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}/response")
+@blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment/{commentId}")
+@blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/response")
+async def get_blog_comment_answers(
+    request: Request,
+    blogId: str,
+    commentId: str,
+    ndcId: int = 0,
+    start: int = 0,
+    size: int = 25,
+):
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+    blog_info = await table.find_one({"id": blogId})
+    if blog_info is None:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    wall_data = blog_info.get("wall", {})
+    if commentId not in wall_data:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    wall_thread = wall_data[commentId].get("subWMs", [])
+    certain_wall = []
+    for _item_id, _item_info in wall_data.items():
+        if _item_id in wall_thread:
+            certain_wall.append((_item_id, _item_info))
+
+    certain_wall = certain_wall[start : start + size]
+    wc_list = [
+        await Comments.Son(
+            item[1],
+            item[0],
+            commentId,
+            blogId,
+            table,
+            trigger_uid,
+            ndcId=ndcId,
+            parentType=2,
+        )
+        for item in certain_wall
+    ]
+
+    await db.close()
+    return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
+
+
+@blog_methods.post("/g/s/blog/{blogId}/comment")
+@blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment")
+async def post_blog_comment(
+    blogId: str,
+    request: Request,
+    ndcId: int = 0,
+):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    data = await request.json()
+    try:
+        if not data["content"]:
+            raise Exception()
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+    blog_info = await table.find_one({"id": blogId})
+    if not blog_info:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    commentUid = str(uuid4())
+    wm = ModelFabric.Construct(
+        Community.WallMessage,
+        authorId=trigger_uid,
+        content=data["content"],
+        mediaList=data.get("mediaList", []),
+        isSubWM=True if data.get("respondTo") else False,
+    )
+
+    if data.get("respondTo"):
+        await table.update_one(
+            {"id": blogId},
+            {"$push": {f"wall.{data['respondTo']}.subWMs": commentUid}},
+        )
+        wmObj = await Comments.Son(
+            wm,
+            commentUid,
+            data["respondTo"],
+            blogId,
+            table,
+            trigger_uid,
+            ndcId=ndcId,
+            parentType=2,
+        )
+    else:
+        wmObj = await Comments.Parent(
+            wm, commentUid, blogId, table, trigger_uid, ndcId=ndcId, parentType=2
+        )
+
+    await table.update_one({"id": blogId}, {"$set": {f"wall.{commentUid}": wm}})
+
+    await db.close()
+    return Base.Answer({"comment": wmObj}, spent_time=timestamp() - t1)
+
+
 @blog_methods.post("/g/s/blog/{blogId}")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}")
 async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
@@ -204,8 +375,12 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
 
 
+# add vote to blog
+
+
+@blog_methods.post("/g/s/blog/{blogId}/vote")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/vote")
-async def like_blog(request: Request, blogId: str, ndcId: int = 0):
+async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -220,6 +395,7 @@ async def like_blog(request: Request, blogId: str, ndcId: int = 0):
     db = await Database().init()
     table = await db.get(f"x{ndcId}", "Blogs")
 
+    # upvote
     if value in [1, 4]:
         await table.update_one(
             {"id": blogId},
@@ -228,6 +404,7 @@ async def like_blog(request: Request, blogId: str, ndcId: int = 0):
                 "$pull": {"downvote": trigger_uid},
             },
         )
+    # downvote
     elif value == -1:
         await table.update_one(
             {"id": blogId},
@@ -241,8 +418,12 @@ async def like_blog(request: Request, blogId: str, ndcId: int = 0):
     return Base.Answer(spent_time=timestamp() - t1)
 
 
+# remove vote from blog
+
+
+@blog_methods.delete("/g/s/blog/{blogId}/vote")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}/vote")
-async def unlike_blog(request: Request, blogId: str, ndcId: int = 0):
+async def remove_vote_from_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -258,6 +439,9 @@ async def unlike_blog(request: Request, blogId: str, ndcId: int = 0):
 
     await db.close()
     return Base.Answer(spent_time=timestamp() - t1)
+
+
+# post blog
 
 
 @blog_methods.post("/g/s/blog")
@@ -323,3 +507,135 @@ async def post_blog(request: Request, ndcId: int = 0):
 
     await db.close()
     return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
+
+
+# delete comment from blog
+
+
+@blog_methods.delete("/g/s/blog/{blogId}/comment/{commentId}")
+@blog_methods.delete("/x{ndcId}/s/blog/{blogId}/comment/{commentId}")
+async def delete_blog_comment(
+    request: Request, blogId: str, commentId: str, ndcId: int = 0
+):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+    blog_info = await table.find_one({"id": blogId})
+    if not blog_info:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    wall_data = blog_info.get("wall", {})
+    if commentId not in wall_data:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    wm = wall_data[commentId]
+    if wm["authorId"] != trigger_uid and blog_info["authorId"] != trigger_uid:
+        await db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+
+    unset_fields = {f"wall.{commentId}": ""}
+    if wm.get("isSubWM") is False:
+        for sub_id in wm.get("subWMs", []):
+            if sub_id in wall_data:
+                unset_fields[f"wall.{sub_id}"] = ""
+    else:
+        for parent_id, parent_info in wall_data.items():
+            if commentId in parent_info.get("subWMs", []):
+                await table.update_one(
+                    {"id": blogId},
+                    {"$pull": {f"wall.{parent_id}.subWMs": commentId}},
+                )
+                break
+
+    await table.update_one({"id": blogId}, {"$unset": unset_fields})
+    await db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
+# vote for blog comment
+
+
+@blog_methods.post("/g/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/vote")
+async def vote_blog_comment(
+    request: Request, blogId: str, commentId: str, ndcId: int = 0
+):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    value = data.get("value", 0)
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+    blog_info = await table.find_one({"id": blogId})
+    if not blog_info or commentId not in blog_info.get("wall", {}):
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    if value == 1:
+        await table.update_one(
+            {"id": blogId},
+            {
+                "$addToSet": {f"wall.{commentId}.upvotes": trigger_uid},
+                "$pull": {f"wall.{commentId}.downvotes": trigger_uid},
+            },
+        )
+    elif value == -1:
+        await table.update_one(
+            {"id": blogId},
+            {
+                "$addToSet": {f"wall.{commentId}.downvotes": trigger_uid},
+                "$pull": {f"wall.{commentId}.upvotes": trigger_uid},
+            },
+        )
+    else:
+        await db.close()
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    await db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
+# remove vote from blog comment
+
+
+@blog_methods.delete("/g/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.delete("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/vote")
+async def remove_blog_comment_vote(
+    request: Request, blogId: str, commentId: str, ndcId: int = 0
+):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+
+    await table.update_one(
+        {"id": blogId},
+        {
+            "$pull": {
+                f"wall.{commentId}.upvotes": trigger_uid,
+                f"wall.{commentId}.downvotes": trigger_uid,
+            }
+        },
+    )
+
+    await db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
