@@ -142,6 +142,9 @@ async def get_blog(
     return Errors.DataNotExist(timestamp() - t1)
 
 
+# get blog's wall
+
+
 @blog_methods.get("/g/s/blog/{blogId}/comment")
 @blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment")
 async def get_blog_comments(
@@ -183,16 +186,20 @@ async def get_blog_comments(
         if _item_info["isSubWM"] is False:
             wall_chunk.append((_item_id, _item_info))
 
+    xndc_users = await db.get(f"x{ndcId}", "Users")
     wall_chunk = wall_chunk[start : start + size]
     wc_list = [
         await Comments.Parent(
-            item[1], item[0], blogId, table, trigger_uid, ndcId=ndcId, parentType=2
+            item[1], item[0], blogId, xndc_users, trigger_uid, ndcId=ndcId, parentType=2
         )
         for item in wall_chunk
     ]
 
     await db.close()
     return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
+
+
+# get replies to blog's wall post
 
 
 @blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}")
@@ -232,6 +239,7 @@ async def get_blog_comment_answers(
         if _item_id in wall_thread:
             certain_wall.append((_item_id, _item_info))
 
+    xndc_users = await db.get(f"x{ndcId}", "Users")
     certain_wall = certain_wall[start : start + size]
     wc_list = [
         await Comments.Son(
@@ -239,7 +247,7 @@ async def get_blog_comment_answers(
             item[0],
             commentId,
             blogId,
-            table,
+            xndc_users,
             trigger_uid,
             ndcId=ndcId,
             parentType=2,
@@ -249,6 +257,9 @@ async def get_blog_comment_answers(
 
     await db.close()
     return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
+
+
+# post on blog's wall
 
 
 @blog_methods.post("/g/s/blog/{blogId}/comment")
@@ -287,6 +298,7 @@ async def post_blog_comment(
         isSubWM=True if data.get("respondTo") else False,
     )
 
+    xndc_users = await db.get(f"x{ndcId}", "Users")
     if data.get("respondTo"):
         await table.update_one(
             {"id": blogId},
@@ -297,20 +309,23 @@ async def post_blog_comment(
             commentUid,
             data["respondTo"],
             blogId,
-            table,
+            xndc_users,
             trigger_uid,
             ndcId=ndcId,
             parentType=2,
         )
     else:
         wmObj = await Comments.Parent(
-            wm, commentUid, blogId, table, trigger_uid, ndcId=ndcId, parentType=2
+            wm, commentUid, blogId, xndc_users, trigger_uid, ndcId=ndcId, parentType=2
         )
 
     await table.update_one({"id": blogId}, {"$set": {f"wall.{commentUid}": wm}})
 
     await db.close()
     return Base.Answer({"comment": wmObj}, spent_time=timestamp() - t1)
+
+
+# edit blog post
 
 
 @blog_methods.post("/g/s/blog/{blogId}")
@@ -396,7 +411,7 @@ async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
     table = await db.get(f"x{ndcId}", "Blogs")
 
     # upvote
-    if value in [1, 4]:
+    if value in [1, 2, 3, 4]:
         await table.update_one(
             {"id": blogId},
             {
