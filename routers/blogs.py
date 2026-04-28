@@ -6,7 +6,7 @@ from time import time as timestamp
 from typing import Union
 from uuid import uuid4
 
-from objects import Base, Errors, Blog, Comments
+from objects import Base, Errors, Blog, Comments, User
 from helpers.functions import parse_page_token, calculate_page_tokens
 from helpers.database.mongo import Database
 from helpers.database.models import ModelFabric, Community
@@ -263,7 +263,9 @@ async def get_blog_comment_answers(
 
 
 @blog_methods.post("/g/s/blog/{blogId}/comment")
+@blog_methods.post("/g/s/item/{blogId}/comment")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment")
+@blog_methods.post("/x{ndcId}/s/item/{blogId}/comment")
 async def post_blog_comment(
     blogId: str,
     request: Request,
@@ -394,7 +396,9 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
 
 
 @blog_methods.post("/g/s/blog/{blogId}/vote")
+@blog_methods.post("/g/s/item/{blogId}/vote")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/vote")
+@blog_methods.post("/x{ndcId}/s/item/{blogId}/vote")
 async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -437,7 +441,9 @@ async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
 
 
 @blog_methods.delete("/g/s/blog/{blogId}/vote")
+@blog_methods.delete("/g/s/item/{blogId}/vote")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}/vote")
+@blog_methods.delete("/x{ndcId}/s/item/{blogId}/vote")
 async def remove_vote_from_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -454,6 +460,44 @@ async def remove_vote_from_blog(request: Request, blogId: str, ndcId: int = 0):
 
     await db.close()
     return Base.Answer(spent_time=timestamp() - t1)
+
+
+# see who voted for blog
+
+
+@blog_methods.get("/g/s/blog/{blogId}/vote")
+@blog_methods.get("/g/s/item/{blogId}/vote")
+@blog_methods.get("/x{ndcId}/s/blog/{blogId}/vote")
+@blog_methods.get("/x{ndcId}/s/item/{blogId}/vote")
+async def get_blog_voters(
+    request: Request,
+    blogId: str,
+    ndcId: int = 0,
+    start: int = 0,
+    size: int = 25,
+):
+    t1 = timestamp()
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+    blog = await table.find_one({"id": blogId})
+    if blog is None:
+        await db.close()
+        return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
+
+    votes = blog.get("upvote", []) + blog.get("downvote", [])
+    votes_selected = votes[start : start + size]
+
+    xndc_users = await db.get(f"x{ndcId}", "Users")
+    trigger_uid = request.state.session.get("uid")
+    voters_list = [
+        User.GetUserInfo(u, ndcId=ndcId, triggerUserId=trigger_uid)
+        for item in votes_selected
+        if (u := await xndc_users.find_one({"id": item}))
+    ]
+
+    await db.close()
+    return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
 
 
 # post blog
@@ -528,7 +572,9 @@ async def post_blog(request: Request, ndcId: int = 0):
 
 
 @blog_methods.delete("/g/s/blog/{blogId}/comment/{commentId}")
+@blog_methods.delete("/g/s/item/{blogId}/comment/{commentId}")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}/comment/{commentId}")
+@blog_methods.delete("/x{ndcId}/s/item/{blogId}/comment/{commentId}")
 async def delete_blog_comment(
     request: Request, blogId: str, commentId: str, ndcId: int = 0
 ):
@@ -578,7 +624,9 @@ async def delete_blog_comment(
 
 
 @blog_methods.post("/g/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.post("/g/s/item/{blogId}/comment/{commentId}/vote")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.post("/x{ndcId}/s/item/{blogId}/comment/{commentId}/vote")
 async def vote_blog_comment(
     request: Request, blogId: str, commentId: str, ndcId: int = 0
 ):
@@ -629,7 +677,9 @@ async def vote_blog_comment(
 
 
 @blog_methods.delete("/g/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.delete("/g/s/item/{blogId}/comment/{commentId}/vote")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.delete("/x{ndcId}/s/item/{blogId}/comment/{commentId}/vote")
 async def remove_blog_comment_vote(
     request: Request, blogId: str, commentId: str, ndcId: int = 0
 ):
@@ -654,3 +704,47 @@ async def remove_blog_comment_vote(
 
     await db.close()
     return Base.Answer(spent_time=timestamp() - t1)
+
+
+# see who voted for blog comment
+
+
+@blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.get("/g/s/item/{blogId}/comment/{commentId}/vote")
+@blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.get("/x{ndcId}/s/item/{blogId}/comment/{commentId}/vote")
+async def get_blog_comment_voters(
+    request: Request,
+    blogId: str,
+    commentId: str,
+    ndcId: int = 0,
+    start: int = 0,
+    size: int = 25,
+):
+    t1 = timestamp()
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+    blog = await table.find_one({"id": blogId})
+    if blog is None:
+        await db.close()
+        return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
+
+    try:
+        comment = blog["wall"][commentId]
+        votes = comment.get("upvotes", []) + comment.get("downvotes", [])
+        votes_selected = votes[start : start + size]
+    except Exception:
+        await db.close()
+        return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
+
+    xndc_users = await db.get(f"x{ndcId}", "Users")
+    trigger_uid = request.state.session.get("uid")
+    voters_list = [
+        User.GetUserInfo(u, ndcId=ndcId, triggerUserId=trigger_uid)
+        for item in votes_selected
+        if (u := await xndc_users.find_one({"id": item}))
+    ]
+
+    await db.close()
+    return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
