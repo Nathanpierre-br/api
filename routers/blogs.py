@@ -392,6 +392,36 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
 
 
+# delete blog post
+
+
+@blog_methods.delete("/g/s/blog/{blogId}")
+@blog_methods.delete("/x{ndcId}/s/blog/{blogId}")
+async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Blogs")
+
+    blog = await table.find_one({"id": blogId})
+    if not blog:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    if blog["authorId"] != trigger_uid:
+        await db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+
+    await table.delete_one({"id": blogId})
+
+    await db.close()
+    return Base.Answer({}, spent_time=timestamp() - t1)
+
+
 # add vote to blog
 
 
