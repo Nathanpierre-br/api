@@ -276,19 +276,25 @@ async def get_community_info(ndcId: int, request: Request):
 
     db = await Database().init()
     try:
-        info = await Communities.Info(ndcId, db, uid)
-        if not info:
+        ndc_info = await Communities.Info(ndcId, db, uid)
+        if not ndc_info:
             return Errors.DataNotExist(timestamp() - t1)
+
+        users_table = await db.get(f"x{ndcId}", "Users")
+        user_info = await users_table.find_one({"id": uid})
+        if not user_info:
+            user_info = {"api:warning": "User not joined or profile is corrupted."}
 
         return Base.Answer(
             {
-                "community": info,
-                "isCurrentUserJoined": bool(info.get("membershipStatus", 0)),
+                "community": ndc_info,
+                "isCurrentUserJoined": bool(ndc_info.get("membershipStatus", 0)),
                 "currentUserInfo": {
                     "userProfile": {
                         "id": uid,
-                        "membershipStatus": info.get("membershipStatus", 0),
-                    },
+                        "membershipStatus": ndc_info.get("membershipStatus", 0),
+                    }
+                    | User.GetUserInfo(user_info, triggerUserId=uid, ndcId=ndcId),
                 },
             },
             spent_time=timestamp() - t1,
