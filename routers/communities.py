@@ -4,7 +4,7 @@ from time import time as timestamp
 
 from objects import Base, Errors, Communities, User
 from helpers.aioyaml import aioyaml
-from helpers.functions import parse_page_token, calculate_page_tokens
+from helpers.functions import parse_page_token, calculate_page_tokens, is_app_link
 from helpers.database.mongo import Database
 from helpers.database.models import dttmn
 from helpers.routers.cachable import CachableRoute
@@ -123,6 +123,46 @@ async def search_community(
                 "communityList": communityList,
                 "paging": calculate_page_tokens(start, size, communityList),
                 "allItemCount": len(items),
+            },
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        await db.close()
+
+
+# community search by aminoid
+@communities.get("/g/s/search/amino-id-and-link")
+async def search_community_by_amino_id(
+    request: Request,
+    q: str = "",
+    start: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
+):
+    t1 = timestamp()
+    size = size if 0 < size < 101 else 25
+
+    # parse page token
+    if pageToken:
+        start = parse_page_token(pageToken, start)
+
+    if is_app_link(q) and "/c/" in q:
+        q = q[q.find("/c/") + 3 :]
+
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = await db.get(table="Communities")
+
+        query = {"aminoId": {"$regex": regex_escape(q), "$options": "i"}}
+        items = [item async for item in table.find(query).skip(start).limit(size)]
+        communityList = [
+            {"refObject": await Communities.Info(item["id"], db, uid)} for item in items
+        ]
+        return Base.Answer(
+            {
+                "communityList": communityList,
+                "paging": calculate_page_tokens(start, size, communityList),
             },
             spent_time=timestamp() - t1,
         )

@@ -13,7 +13,7 @@ pseudoacm.route_class = CachableRoute
 
 @pseudoacm.post("/x{ndcId}/pacm/community-edit")
 @validauth_required
-async def edit_community(request: Request, blogId: str, ndcId: int = 0):
+async def edit_community(request: Request, ndcId: int = 0):
     t1 = timestamp()
 
     trigger_uid = request.state.session["uid"]

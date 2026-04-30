@@ -32,11 +32,6 @@ async def recommended_communities_mock(request: Request):
     return Base.Answer({"communityList": [], "paging": {}, "allItemCount": 0})
 
 
-@mock.get("/g/s/search/amino-id-and-link")
-async def shitty_search_mock(request: Request):
-    return Base.Answer({"resultList": []})
-
-
 @mock.get("/g/s/chat/thread/search")
 async def useless_chat_search_mock(request: Request):
     return Base.Answer(
