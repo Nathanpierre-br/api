@@ -255,6 +255,9 @@ async def join_community(request: Request, ndcId: int):
 
             await table_community_users.insert_one(new_profile)
 
+        # update community profile that user joined
+        await table_community_users.update_one({"id": trigger_uid}, {"status": 0})
+
         # update community
         await table_communities.update_one(
             {"id": ndcId},
@@ -324,9 +327,15 @@ async def leave_community(request: Request, ndcId: int):
         )
 
         # update community user info
-        table_global_users = await db.get(f"x{ndcId}", "Users")
-        await table_global_users.update_one(
-            {"id": trigger_uid}, {"$set": {"role": 0, "status": 1}}
+        table_xndc_users = await db.get(f"x{ndcId}", "Users")
+        user_info = await table_xndc_users.find_one({"id": trigger_uid})
+        role = (
+            0
+            if not user_info or user_info["role"] not in [200, 201, 555]
+            else user_info["role"]
+        )
+        await table_xndc_users.update_one(
+            {"id": trigger_uid}, {"$set": {"role": role, "status": 2}}
         )
 
         return Base.Answer({}, spent_time=timestamp() - t1)
