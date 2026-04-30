@@ -132,6 +132,7 @@ class RequestProcessor:
                 "audio/ogg; codecs=opusvideo/mp4",
                 "application/x-www-form-urlencoded",
                 "application/octet-stream",
+                "application/zip",
                 "application/json",
                 "application/json; charset=utf-8",
             ]
