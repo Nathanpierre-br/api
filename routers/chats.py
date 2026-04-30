@@ -1070,6 +1070,7 @@ async def get_chat_members(
     size: int = 25,
     ndcId: int = 0,
     q: str = "",
+    pageToken: str | None = None,
 ):
     t1 = timestamp()
 
@@ -1085,6 +1086,9 @@ async def get_chat_members(
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
     xndc_users = await connection.get(f"x{ndcId}", "Users")
+
+    if pageToken:
+        start = parse_page_token(pageToken, start)
 
     if type == "default":
         chat_info = await chat_table.find_one(
@@ -1373,7 +1377,7 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
     )
 
     await connection.close()
-    return Base.Answer(timestamp() - t1)
+    return Base.Answer(spent_time=timestamp() - t1)
 
 
 # join chat

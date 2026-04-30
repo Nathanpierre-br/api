@@ -209,7 +209,7 @@ async def modules(request: Request):
                     "userRemovable": False,
                     "isVirtual": False,
                     "contentObjectType": 151,
-                    "dataUrl": "/topic/0/feed/banner-ads?moduleId=1c4ea74e-b500-4c72-821f-0677a5078bdc&adUnitId=703920",
+                    "dataUrl": "/topic/0/feed/banner-ads?moduleId=1c4ea74e-b500-4c72-821f-0677a5078bdc",
                     "displayName": "Banners",
                     "topicLocked": False,
                     "visibility": 1,

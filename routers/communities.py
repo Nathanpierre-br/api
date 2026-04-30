@@ -117,12 +117,47 @@ async def search_community(
 
         query = {"name": {"$regex": regex_escape(q), "$options": "i"}, "lang": language}
         items = [item async for item in table.find(query).skip(start).limit(size)]
-        communityList = [await Communities.Info(item["id"], db, uid) for item in items]
+        communityList = [await Communities.Info(item, db, uid) for item in items]
         return Base.Answer(
             {
                 "communityList": communityList,
                 "paging": calculate_page_tokens(start, size, communityList),
                 "allItemCount": len(items),
+            },
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        await db.close()
+
+
+# all communities available
+@communities.get("/g/s/topic/0/feed/community")
+@communities.get("/g/s/community/trending")
+@communities.get("/g/s/community/suggested")
+async def all_communities_list(
+    request: Request,
+    language: str = "en",
+    size: int = 25,
+    start: int = 0,
+    pageToken: str | None = None,
+):
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+    start = parse_page_token(pageToken, start)
+
+    db = await Database().init()
+    try:
+        table = await db.get(table="Communities")
+
+        items = [
+            item
+            async for item in table.find({"lang": language}).skip(start).limit(size)
+        ]
+        communityList = [await Communities.Info(item, db, uid) for item in items]
+        return Base.Answer(
+            {
+                "communityList": communityList,
+                "paging": calculate_page_tokens(start, size, communityList),
             },
             spent_time=timestamp() - t1,
         )
@@ -157,7 +192,7 @@ async def search_community_by_amino_id(
         query = {"aminoId": {"$regex": regex_escape(q), "$options": "i"}}
         items = [item async for item in table.find(query).skip(start).limit(size)]
         communityList = [
-            {"refObject": await Communities.Info(item["id"], db, uid)} for item in items
+            {"refObject": await Communities.Info(item, db, uid)} for item in items
         ]
         return Base.Answer(
             {

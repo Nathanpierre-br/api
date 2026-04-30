@@ -25,13 +25,6 @@ async def avatar_frame_apply_mock(request: Request, ndcId: int = 0):
     return Base.Answer({})
 
 
-@mock.get("/g/s/topic/0/feed/community")
-@mock.get("/g/s/community/trending")
-@mock.get("/g/s/community/suggested")
-async def recommended_communities_mock(request: Request):
-    return Base.Answer({"communityList": [], "paging": {}, "allItemCount": 0})
-
-
 @mock.get("/g/s/chat/thread/search")
 async def useless_chat_search_mock(request: Request):
     return Base.Answer(
