@@ -360,9 +360,7 @@ async def get_community_info(ndcId: int, request: Request):
         if not user_info:
             full_user_data = {"api:warning": "User not joined or profile is corrupted."}
         else:
-            full_user_data = (
-                User.GetUserInfo(user_info, triggerUserId=uid, ndcId=ndcId),
-            )
+            full_user_data = User.GetUserInfo(user_info, triggerUserId=uid, ndcId=ndcId)
 
         return Base.Answer(
             {
