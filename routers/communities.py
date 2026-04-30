@@ -161,7 +161,7 @@ async def search_community_by_amino_id(
         ]
         return Base.Answer(
             {
-                "communityList": communityList,
+                "resultList": communityList,
                 "paging": calculate_page_tokens(start, size, communityList),
             },
             spent_time=timestamp() - t1,
