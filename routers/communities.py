@@ -358,7 +358,11 @@ async def get_community_info(ndcId: int, request: Request):
         users_table = await db.get(f"x{ndcId}", "Users")
         user_info = await users_table.find_one({"id": uid})
         if not user_info:
-            user_info = {"api:warning": "User not joined or profile is corrupted."}
+            full_user_data = {"api:warning": "User not joined or profile is corrupted."}
+        else:
+            full_user_data = (
+                User.GetUserInfo(user_info, triggerUserId=uid, ndcId=ndcId),
+            )
 
         return Base.Answer(
             {
@@ -369,7 +373,7 @@ async def get_community_info(ndcId: int, request: Request):
                         "id": uid,
                         "membershipStatus": ndc_info.get("membershipStatus", 0),
                     }
-                    | User.GetUserInfo(user_info, triggerUserId=uid, ndcId=ndcId),
+                    | full_user_data,
                 },
             },
             spent_time=timestamp() - t1,
