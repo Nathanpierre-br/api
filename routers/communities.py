@@ -256,7 +256,9 @@ async def join_community(request: Request, ndcId: int):
             await table_community_users.insert_one(new_profile)
 
         # update community profile that user joined
-        await table_community_users.update_one({"id": trigger_uid}, {"status": 0})
+        await table_community_users.update_one(
+            {"id": trigger_uid}, {"$set": {"status": 0}}
+        )
 
         # update community
         await table_communities.update_one(
@@ -335,7 +337,7 @@ async def leave_community(request: Request, ndcId: int):
             else user_info["role"]
         )
         await table_xndc_users.update_one(
-            {"id": trigger_uid}, {"$set": {"role": role, "status": 2}}
+            {"id": trigger_uid}, {"$set": {"role": role, "status": 5}}
         )
 
         return Base.Answer({}, spent_time=timestamp() - t1)
@@ -374,7 +376,7 @@ async def get_community_info(ndcId: int, request: Request):
         return Base.Answer(
             {
                 "community": ndc_info,
-                "isCurrentUserJoined": bool(ndc_info.get("membershipStatus", 0)),
+                "isCurrentUserJoined": bool(ndc_info.get("membershipStatus")),
                 "currentUserInfo": {
                     "userProfile": {
                         "id": uid,
