@@ -133,7 +133,7 @@ class User:
         if row["id"] == triggerUserId:
             followingStatus = 0
 
-        if membershipStatus is None:
+        if membershipStatus is not None:
             followingStatus = membershipStatus
 
         return {
@@ -216,7 +216,7 @@ class User:
         if row["id"] == triggerUserId:
             followingStatus = 0
 
-        if membershipStatus is None:
+        if membershipStatus is not None:
             followingStatus = membershipStatus
 
         return {
