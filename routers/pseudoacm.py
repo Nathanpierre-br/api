@@ -43,6 +43,7 @@ async def edit_community(request: Request, ndcId: int = 0):
         "themeUrl",
         "themeColor",
         "themeRevision",
+        "coverUrl",
     ]:
         if key in data:
             preparedQueries[key] = data[key]

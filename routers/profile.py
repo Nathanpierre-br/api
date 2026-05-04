@@ -27,6 +27,14 @@ async def change_aminoId(request: Request):
 
     db = await Database().init()
     table = await db.get(table="Users")
+
+    possible_find = await table.find_one(
+        {"aminoId": {"$regex": regex_escape(data["aminoId"]), "$options": "i"}}
+    )
+    if possible_find:
+        await db.close()
+        return Errors.AminoIdWasTaken()
+
     await table.update_one({"id": uid}, {"$set": {"aminoId": data["aminoId"]}})
     await db.close()
 

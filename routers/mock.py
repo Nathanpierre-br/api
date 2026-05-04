@@ -33,8 +33,12 @@ async def useless_chat_search_mock(request: Request):
 
 
 @mock.get("/g/s/sticker-collection")
+@mock.get("/x{ndcId}/s/sticker-collection")
 async def stickers_mock(
-    request: Request, type: str | None = None, includeStickers: bool = False
+    request: Request,
+    type: str | None = None,
+    includeStickers: bool = False,
+    ndcId: int = 0,
 ):
     if type == "my-active-collection":
         return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
@@ -52,7 +56,7 @@ async def personabasic_mock(request: Request):
                 "auid": request.state.session["uid"],
                 "age": 20,
                 "gender": 1,
-                "country_code": "UK",
+                "country_code": "NL",
                 "dateOfBirth": 731589,
             }
         }

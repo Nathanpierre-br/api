@@ -1,6 +1,7 @@
 from typing import Union
 from helpers.database.mongo import Database
 from .user import User
+from .medialist import MediaList
 
 """
 this is top tier bullshit
@@ -83,7 +84,7 @@ class Communities:
         if not connection:
             connection = await Database().init()
         if isinstance(ndcId, int) or isinstance(ndcId, str):
-            comms = await connection.get("global", "Communities")
+            comms = await connection.get(table="Communities")
             data = await comms.find_one({"id": ndcId})
         else:
             data = ndcId
@@ -206,7 +207,9 @@ class Communities:
                 "frontPageLayout": conf.get("frontPageLayout", 1),
             },
             "communityHeadList": [],
-            "promotionalMediaList": None,
+            "promotionalMediaList": [MediaList.Item(data["coverUrl"])]
+            if "coverUrl" in data
+            else None,
         }
 
     """

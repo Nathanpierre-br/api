@@ -216,6 +216,12 @@ async def join_community(request: Request, ndcId: int):
 
     db = await Database().init()
     try:
+        # checking if user is banned globally
+        table_accounts = await db.get(table="Users")
+        account = await table_accounts.find_one({"id": trigger_uid})
+        if account and account.get("status") == 9:
+            return Errors.UserBanned(timestamp() - t1)
+
         table_communities = await db.get(table="Communities")
         community = await table_communities.find_one({"id": ndcId})
         if not community:
@@ -230,7 +236,12 @@ async def join_community(request: Request, ndcId: int):
 
         # adding profile info if not exist
         table_community_users = await db.get(f"x{ndcId}", "Users")
-        if not (await table_community_users.find_one({"id": trigger_uid})):
+        user_info = await table_community_users.find_one({"id": trigger_uid})
+
+        if user_info and user_info.get("status") == 9:
+            return Errors.UserBanned(timestamp() - t1)
+
+        if not user_info:
             g_table = await db.get("x0", "Users")
             g_data = await g_table.find_one({"id": trigger_uid})
             if not g_data:
@@ -264,7 +275,16 @@ async def join_community(request: Request, ndcId: int):
         await table_communities.update_one(
             {"id": ndcId},
             [
-                {"$set": {"memberList": {"$setUnion": ["$memberList", [trigger_uid]]}}},
+                {
+                    "$set": {
+                        "memberList": {
+                            "$setUnion": [
+                                {"$ifNull": ["$memberList", []]},
+                                [trigger_uid],
+                            ]
+                        }
+                    }
+                },
                 {"$set": {"membersCount": {"$size": "$memberList"}}},
             ],
         )
@@ -315,7 +335,12 @@ async def leave_community(request: Request, ndcId: int):
             [
                 {
                     "$set": {
-                        "memberList": {"$setDifference": ["$memberList", [trigger_uid]]}
+                        "memberList": {
+                            "$setDifference": [
+                                {"$ifNull": ["$memberList", []]},
+                                [trigger_uid],
+                            ]
+                        }
                     }
                 },
                 {"$set": {"membersCount": {"$size": "$memberList"}}},

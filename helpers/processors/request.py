@@ -52,7 +52,7 @@ class RequestProcessor:
                 timestamp = int(timestamp)
             else:
                 return False
-        return ceil(time()) - ceil(timestamp / 1000) <= 5
+        return ceil(time()) - ceil(timestamp / 1000) <= 300
 
     @staticmethod
     async def Validate(request: Request) -> list[Union[bool, Optional[ORJSONResponse]]]:
