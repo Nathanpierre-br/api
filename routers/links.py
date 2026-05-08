@@ -12,8 +12,10 @@ links.route_class = CachableRoute
 
 
 @links.post("/g/s/link-resolution")
+@links.post("/g/s-x{ndcId}/link-resolution")
 @links.post("/x{ndcId}/s/link-resolution")
 @links.post("/g/s/link-translation")
+@links.post("/g/s-x{ndcId}/link-translation")
 @links.post("/x{ndcId}/s/link-translation")
 async def make_link(request: Request, ndcId: int = 0):
     t1 = timestamp()
@@ -23,7 +25,12 @@ async def make_link(request: Request, ndcId: int = 0):
     links_table = await db.get(table="Links")
 
     if data["objectType"] == 0:
-        check_table = await db.get(table="Users")
+        if str(ndcId) in request.url.path:
+            check_table = await db.get(f"x{ndcId}", "Users")
+        else:
+            check_table = await db.get(table="Users")
+    elif data["objectType"] == 1:
+        check_table = await db.get(f"x{ndcId}", "Blogs")
     elif data["objectType"] == 12:
         check_table = await db.get(f"x{ndcId}", "Chats")
     else:
@@ -36,7 +43,7 @@ async def make_link(request: Request, ndcId: int = 0):
         return Errors.MythicData(timestamp() - t1)
 
     link = await links_table.find_one(
-        {"objectId": data["objectId"], "objectType": data["objectType"]}
+        {"objectId": data["objectId"], "objectType": data["objectType"], "ndcId": ndcId}
     )
     if link is None:
         link = ModelFabric.Construct(
@@ -54,6 +61,8 @@ async def make_link(request: Request, ndcId: int = 0):
 
     if data["objectType"] == 0:
         return Base.Answer(Links.User(link), spent_time=timestamp() - t1)
+    elif data["objectType"] == 1:
+        return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
     elif data["objectType"] == 12:
         return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)
 
@@ -85,5 +94,7 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
 
     if link["objectType"] == 0:
         return Base.Answer(Links.User(link), spent_time=timestamp() - t1)
+    elif link["objectType"] == 1:
+        return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
     elif link["objectType"] == 12:
         return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)

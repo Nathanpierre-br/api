@@ -1,6 +1,6 @@
 from .user import User
 from typing import Union
-from datetime import datetime
+from datetime import datetime, UTC
 
 # import sys
 # sys.path.append('../')
@@ -184,7 +184,7 @@ class Chat:
             "chatBubbles": {},
             "membersQuota": 9999,
             "membersSummary": [
-                Chat.Member_ShortInfo(i)
+                Chat.Member_ShortInfo(i, ndcId=ndcId)
                 async for i in xndc_users.find(
                     {"id": {"$in": data["memberList"]}}
                 ).limit(10)
@@ -225,7 +225,8 @@ class Chat:
             "needHidden": False,
             "alertOption": 1,
             "lastReadTime": data["lastReadedList"].get(
-                trigger_uid, datetime.fromtimestamp(0).strftime("%Y-%m-%dT%H:%M:%SZ")
+                trigger_uid,
+                datetime.fromtimestamp(0, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             ),
             "type": data["chatType"],
             "status": data["status"],

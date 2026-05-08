@@ -494,7 +494,15 @@ async def create_chat(request: Request, ndcId: int = 0):
     xndc_users = await db.get(f"x{ndcId}", "Users")
     history = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
     await history.insert_many(messages)
-    await table.update_one({"id": chatId}, {"$set": {"lastMessageId": lastMsgId}})
+    await table.update_one(
+        {"id": chatId},
+        {
+            "$set": {
+                "lastMessageId": lastMsgId,
+                f"lastReadedList.{trigger_uid}": messages[-1]["createdTime"],
+            }
+        },
+    )
 
     chatInfo_obj = await Chat.Info(
         chatId, db, trigger_uid=trigger_uid, xndc_users=xndc_users, ndcId=ndcId
@@ -744,6 +752,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             "$set": {
                 "lastMessageId": messageId,
                 "lastMessageTimestamp": message["timestamp"],
+                f"lastReadedList.{trigger_uid}": message["createdTime"],
             }
         },
     )
@@ -1033,6 +1042,7 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
             "$set": {
                 "lastMessageId": messageId,
                 "lastMessageTimestamp": message["timestamp"],
+                f"lastReadedList.{trigger_uid}": message["createdTime"],
             }
         },
     )
@@ -1416,7 +1426,10 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         {
             "$push": {"memberList": userId},
             "$pull": {"invitedList": userId},
-            "$set": {"lastMessageId": messageId},
+            "$set": {
+                "lastMessageId": messageId,
+                f"lastReadedList.{userId}": message["createdTime"],
+            },
         },
     )
 
@@ -1564,10 +1577,9 @@ async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
     connection = await Database().init()
     chat = await connection.get(f"x{ndcId}", "Chats")
     history = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
-    if await history.find_one({"messageId": data["messageId"]}):
-        readTimestamp = datetime.fromtimestamp(data["timestamp"] / 1000.0).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
+    msg = await history.find_one({"messageId": data["messageId"]})
+    if msg:
+        readTimestamp = msg["createdTime"]
         await chat.update_one(
             {"id": chatId}, {"$set": {f"lastReadedList.{uid}": readTimestamp}}
         )
@@ -1630,6 +1642,7 @@ async def toggle_things(
                     "$set": {
                         "lastMessageId": messageId,
                         "lastMessageTimestamp": message["timestamp"],
+                        f"lastReadedList.{trigger_uid}": message["createdTime"],
                     }
                 },
             )

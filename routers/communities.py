@@ -73,7 +73,7 @@ async def joined_communities(
             "communityList": communityList,
             "userInfoInCommunities": {
                 # experimental fix
-                f"x{item}": User.OwnNonSensetiveProfile(
+                str(item): User.OwnNonSensetiveProfile(
                     row2, ndcId=item, membershipStatus=1
                 )
                 | {"joined": True, "membershipStatus": 1, "accountMembershipStatus": 1}

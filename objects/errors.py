@@ -135,7 +135,7 @@ class Errors:
         return Base.Answer(
             api_status_code=103,
             html_status_code=400,
-            api_message="This method is created but is not available. Try again later.",
+            api_message="This method is created but is not available or not ready for this data. Try again later.",
             spent_time=spent_time,
         )
 
