@@ -79,7 +79,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
             if value == 0:
                 status = 0
             elif value == 9:
-                status == 1
+                status = 1
             else:
                 await db.close()
                 return Errors.UnimplementedPath()
