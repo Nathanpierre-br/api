@@ -380,7 +380,7 @@ async def leave_community(request: Request, ndcId: int):
 @communities.get("/g/s/community/info")
 @communities.get("/x{ndcId}/s/community/info")
 @communities.get("/g/s-x{ndcId}/community/info")
-async def get_community_info(ndcId: int, request: Request):
+async def get_community_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
 
     uid = request.state.session["uid"]
@@ -402,9 +402,7 @@ async def get_community_info(ndcId: int, request: Request):
             {
                 "community": ndc_info,
                 "isCurrentUserJoined": bool(ndc_info.get("membershipStatus", 0)),
-                "currentUserInfo": {
-                    full_user_data,
-                },
+                "currentUserInfo": full_user_data,
             },
             spent_time=timestamp() - t1,
         )

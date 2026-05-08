@@ -65,7 +65,6 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
     operation = data["adminOpName"]
     value = data.get("adminOpValue")
 
-    status: int
     if table_name == "Users":
         if operation == 18:
             status = 1
@@ -82,8 +81,10 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
             elif value == 9:
                 status == 1
             else:
+                await db.close()
                 return Errors.UnimplementedPath()
         else:
+            await db.close()
             return Errors.UnimplementedPath()
 
     table = await db.get(f"x{ndcId}", table_name)
