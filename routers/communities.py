@@ -73,7 +73,7 @@ async def joined_communities(
             "communityList": communityList,
             "userInfoInCommunities": {
                 # experimental fix
-                str(item): User.OwnNonSensetiveProfile(
+                f"x{item}": User.OwnNonSensetiveProfile(
                     row2, ndcId=item, membershipStatus=1
                 )
                 | {"joined": True, "membershipStatus": 1, "accountMembershipStatus": 1}
@@ -394,20 +394,16 @@ async def get_community_info(ndcId: int, request: Request):
         users_table = await db.get(f"x{ndcId}", "Users")
         user_info = await users_table.find_one({"id": uid})
         if not user_info:
-            full_user_data = {"api:warning": "User not joined or profile is corrupted."}
+            full_user_data = None
         else:
             full_user_data = User.GetUserInfo(user_info, triggerUserId=uid, ndcId=ndcId)
 
         return Base.Answer(
             {
                 "community": ndc_info,
-                "isCurrentUserJoined": bool(ndc_info.get("membershipStatus")),
+                "isCurrentUserJoined": bool(ndc_info.get("membershipStatus", 0)),
                 "currentUserInfo": {
-                    "userProfile": {
-                        "id": uid,
-                        "membershipStatus": ndc_info.get("membershipStatus", 0),
-                    }
-                    | full_user_data,
+                    full_user_data,
                 },
             },
             spent_time=timestamp() - t1,

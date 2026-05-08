@@ -531,61 +531,6 @@ async def get_comment_voted_users(
     return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
 
 
-# ban
-# [POST] /g/s/user-profile/632fac88-f43b-4d4c-8f89-7e8fca65323a/member
-
-
-@profile_methods.post("/g/s/user-profile/{uid}/ban")
-@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/ban")
-async def ban_user(uid, request: Request, ndcId: int = 0):
-    t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-
-    target_user = request.state.session["uid"]
-
-    db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Users")
-    # gl_table = await db.get(table="Users")
-    inited_user = await table.find_one({"id": target_user})
-    if inited_user["role"] in [555, 254, 100, 102]:
-        await table.update_one({"id": uid}, {"$set": {"status": 9}})
-        # await gl_table.update_one({"id": uid}, {"$set": {"status": 9}})
-        await db.close()
-        return Base.Answer(spent_time=timestamp() - t1)
-    else:
-        await db.close()
-        return Errors.NotEnoughRights(spent_time=timestamp() - t1)
-
-
-# unban
-# [POST] /g/s/user-profile/632fac88-f43b-4d4c-8f89-7e8fca65323a/member
-
-
-@profile_methods.post("/g/s/user-profile/{uid}/unban")
-@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/unban")
-async def unban_user(uid, request: Request, ndcId: int = 0):
-    t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-
-    target_user = request.state.session["uid"]
-
-    db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Users")
-    # gl_table = await db.get(table="Users")
-    inited_user = await table.find_one({"id": target_user})
-    if inited_user["role"] in [555, 254, 100, 102]:
-        await table.update_one({"id": uid}, {"$set": {"status": 0}})
-        # await gl_table.update_one({"id": uid}, {"$set": {"status": 0}})
-
-        await db.close()
-        return Base.Answer(spent_time=timestamp() - t1)
-    else:
-        await db.close()
-        return Errors.NotEnoughRights(spent_time=timestamp() - t1)
-
-
 # follow
 # [POST] /g/s/user-profile/632fac88-f43b-4d4c-8f89-7e8fca65323a/member
 

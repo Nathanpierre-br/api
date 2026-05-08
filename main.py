@@ -19,6 +19,7 @@ from routers.configurations import configurations
 from routers.communities import communities
 from routers.blogs import blog_methods
 from routers.pseudoacm import pseudoacm
+from routers.moderation_tools import moderation_tools
 
 # app things
 
@@ -44,6 +45,7 @@ app.include_router(configurations, prefix="/api/v1")
 app.include_router(profile_methods, prefix="/api/v1")
 app.include_router(communities, prefix="/api/v1")
 app.include_router(blog_methods, prefix="/api/v1")
+app.include_router(moderation_tools, prefix="/api/v1")
 app.include_router(pseudoacm, prefix="/api/v1")
 
 app.add_middleware(BrotliMiddleware, gzip_fallback=True)
