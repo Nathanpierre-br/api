@@ -69,7 +69,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
 
     if table_name == "Users":
         if operation == 18:
-            status = 1
+            status = 18
         elif operation == 19:
             status = 0
         else:
@@ -81,7 +81,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
             if value == 0:
                 status = 0
             elif value == 9:
-                status = 1
+                status = 9
             else:
                 await db.close()
                 return Errors.UnimplementedPath()

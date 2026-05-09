@@ -262,14 +262,4 @@ class Communities:
             100006
         ]
     }   
-
-    promotionalMediaList:
-    also no idea for now
-    [
-      [
-        100,
-        "http://cm1.aminoapps.com/8994/3f565c7f774febc4f0624a439b58f8eda8f16416_00.jpg",
-        None
-      ]
-    ]
     """
