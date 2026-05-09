@@ -227,13 +227,6 @@ async def join_community(request: Request, ndcId: int):
         if not community:
             return Errors.DataNotExist(timestamp() - t1)
 
-        # updating community info
-        if trigger_uid in community.get("memberList", []):
-            return Base.Answer(
-                {"api:warning": "You are already joined community."},
-                spent_time=timestamp() - t1,
-            )
-
         # adding profile info if not exist
         table_community_users = await db.get(f"x{ndcId}", "Users")
         user_info = await table_community_users.find_one({"id": trigger_uid})

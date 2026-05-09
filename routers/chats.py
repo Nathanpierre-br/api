@@ -4,7 +4,6 @@ from string import ascii_letters, digits
 from re import escape as regex_escape
 from fastapi import APIRouter, Request
 from time import time as timestamp
-from datetime import datetime
 from random import choice
 from uuid import uuid4
 import asyncio
@@ -1421,6 +1420,17 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
 
     messageId = str(uuid4())
 
+    table = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+    message = ModelFabric.Construct(
+        Community.Message,
+        messageId=messageId,
+        authorId=userId,
+        messageType=101,
+        clientRefId=0,
+        content=None,
+    )
+    await table.insert_one(message)
+
     await chat.update_one(
         {"id": chatId},
         {
@@ -1433,16 +1443,6 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         },
     )
 
-    table = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
-    message = ModelFabric.Construct(
-        Community.Message,
-        messageId=messageId,
-        authorId=userId,
-        messageType=101,
-        clientRefId=0,
-        content=None,
-    )
-    await table.insert_one(message)
     xndc_users = await connection.get(f"x{ndcId}", "Users")
     messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
     ws_send_obj = {

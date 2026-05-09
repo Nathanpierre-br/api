@@ -38,6 +38,7 @@ async def ban_user_toggle(uid, request: Request, ndcId: int = 0):
 
 
 @moderation_tools.post("/x{ndcId}/s/{object_type}/{object_id}/admin")
+@moderation_tools.post("/x{ndcId}/s/chat/{object_type}/{object_id}/admin")
 async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Request):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -53,6 +54,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
     table_map = {
         "blog": "Blogs",
         "item": "Blogs",
+        "thread": "Chats",
         "chat/thread": "Chats",
         "user-profile": "Users",
     }
@@ -88,7 +90,9 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
             return Errors.UnimplementedPath()
 
     table = await db.get(f"x{ndcId}", table_name)
-    await table.update_one({"id": object_id}, {"$set": {"status": status}})
+    await table.update_one(
+        {"id": object_id}, {"$set": {"status": status, "isHidden": status > 0}}
+    )
     await db.close()
 
     return Base.Answer(spent_time=timestamp() - t1)
