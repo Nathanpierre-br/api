@@ -132,6 +132,39 @@ async def get_chat_info(chatId: str, request: Request, ndcId: int = 0):
     )
 
 
+# vvchat permission precheck
+# [POST] /g/s/chat/thread/{chatId}/vvchat-permission
+@chats.post("/g/s/chat/thread/{chatId}/vvchat-permission")
+@chats.post("/x{ndcId}/s/chat/thread/{chatId}/vvchat-permission")
+async def vvchat_permission(request: Request, chatId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
+
+    trigger_uid = request.state.session["uid"]
+    payload = await request.json()
+    vv_chat_join_type = payload.get("vvChatJoinType", 1)
+    if not isinstance(vv_chat_join_type, int):
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+    table = await db.get(f"x{ndcId}", "Chats")
+    chat_info = await table.find_one({"id": chatId})
+    if not chat_info:
+        await db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    # AltAmino client only needs a successful ack for this request.
+    response = {
+        "threadId": chatId,
+        "ndcId": ndcId,
+        "uid": trigger_uid,
+        "vvChatJoinType": vv_chat_join_type,
+    }
+    await db.close()
+    return Base.Answer(response, spent_time=timestamp() - t1)
+
+
 # edit chat
 # [POST] /g/s/chat/thread/434cd5b4-a984-42c4-8375-46c1c6e0803d
 
