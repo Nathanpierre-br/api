@@ -90,9 +90,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
             return Errors.UnimplementedPath()
 
     table = await db.get(f"x{ndcId}", table_name)
-    await table.update_one(
-        {"id": object_id}, {"$set": {"status": status, "isHidden": status > 0}}
-    )
+    await table.update_one({"id": object_id}, {"$set": {"status": status}})
     await db.close()
 
     return Base.Answer(spent_time=timestamp() - t1)

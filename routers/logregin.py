@@ -306,11 +306,7 @@ async def login(request: Request):
         ).strip() in ["None", ""]:
             return Errors.InvalidLogin(timestamp() - t1)
 
-        if (
-            (not DeviceProcessor.Validate(data["deviceID"]))
-            or (data["deviceID"] != request.headers["NDCDEVICEID"])
-            or (not EmailProcessor.Validate(data["email"]))
-        ):
+        if not EmailProcessor.Validate(data["email"]):
             raise Exception()
     except Exception as e:
         print(e)
