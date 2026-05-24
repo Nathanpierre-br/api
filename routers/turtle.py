@@ -21,6 +21,16 @@ async def turnstile_page(request: Request, inspector: str = None):
     return templates.TemplateResponse(request=request, name="error.html")
 
 
+# GET /turtle/hello/email - serve the captcha page for email verification
+@turtle.get("/turtle/hello/email")
+async def turnstile_email_page(request: Request, inspector: str = None):
+    if inspector:
+        return templates.TemplateResponse(
+            request=request, name="email_captcha.html", context={"inspector": inspector}
+        )
+    return templates.TemplateResponse(request=request, name="error.html")
+
+
 # POST /turtle/validate - validate the captcha
 @turtle.post("/turtle/validate")
 @turtle.post("/turtle/validate/{why}")
@@ -32,13 +42,13 @@ async def turnstile_validation(request: Request, why: str = None):
     if response.cdata != data["inspector"]:
         return TurtleAnswers.ERR("You can't get another inspector.")
 
-    turtle = CacheProcessor.Get(inspector, prefix="turtlelimiter:")
+    turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
         return TurtleAnswers.ERR("This inspector have no case in their hands.")
 
     if why == "email":
-        CacheProcessor.Update(inspector, value="OK", prefix="turtlelimiter:")
+        await CacheProcessor.Update(inspector, value="OK", prefix="turtlelimiter:")
     else:
-        CacheProcessor.Delete(inspector, prefix="turtlelimiter:")
+        await CacheProcessor.Delete(inspector, prefix="turtlelimiter:")
 
     return TurtleAnswers.OK()

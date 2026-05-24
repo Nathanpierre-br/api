@@ -197,7 +197,12 @@ class Errors:
     @staticmethod
     def VerificationRequired(url: str, spent_time: Union[int, float] = 0):
         return Base.Answer(
-            data={"url": url},
+            data={
+                "url": url,
+                "api:url": url,
+                "api:link": url,
+                "extensions": {"url": url},
+            },
             api_status_code=270,
             html_status_code=400,
             api_message="Uh-oh! Looks like you need to verify that you aren't a robot.",
