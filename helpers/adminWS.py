@@ -1,6 +1,7 @@
 from orjson import dumps
-from .config import Config
 from websockets.asyncio.client import connect
+
+from .config import Config
 
 
 async def send_admin_ws(victims: list | str, payload: dict | str):
@@ -12,9 +13,9 @@ async def send_admin_ws(victims: list | str, payload: dict | str):
         "WS-ADMIN-VERIFY": Config.WS_ADMIN_VERIFY,
     }
     url = Config.WS_LINK
+    request = dumps({"ADMIN-SAYS": {"VICTIMS": victims, "WEAPON": payload}}).decode()
     async with connect(url, additional_headers=headers) as websocket:
-        request = dumps({"ADMIN-SAYS": {"VICTIMS": victims, "WEAPON": payload}})
-        await websocket.send(request.decode())
+        await websocket.send(request)
         response = await websocket.recv()
         print(response)
         return response

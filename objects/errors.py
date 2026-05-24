@@ -223,6 +223,15 @@ class Errors:
         )
 
     @staticmethod
+    def AminoIdWasTaken(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=215,
+            html_status_code=400,
+            api_message="Amino ID was taken for another account. Try different one.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
     def NotWorkingEmail(spent_time: Union[int, float] = 0):
         return Base.Answer(
             api_status_code=215,

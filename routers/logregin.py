@@ -65,7 +65,7 @@ async def requestCode(request: Request):
         return Errors.InvalidEmail(timestamp() - t1)
 
     f = Fernet(Config.FERNET_KEY.encode())
-    inspector = f.encrypt("email:" + reciever.encode("utf-8")).decode()
+    inspector = f.encrypt(("email:" + reciever).encode("utf-8")).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
         await CacheProcessor.Make(inspector, "X", prefix="turtlelimiter:", expires=180)
