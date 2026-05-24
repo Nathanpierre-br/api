@@ -44,9 +44,9 @@ def turtlelimiter(
             inspector = f.encrypt(
                 dumps({"case": tag, "user": uid}, ensure_ascii=False).encode()
             ).decode()
-            turtle = CacheProcessor.Get(inspector, prefix="turtlelimiter:")
+            turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
             if turtle is None:
-                CacheProcessor.Make(
+                await CacheProcessor.Make(
                     inspector,
                     prefix="turtlelimiter:",
                     value=1,
@@ -56,12 +56,12 @@ def turtlelimiter(
 
             # if user has not exceeded the limit, increment the turtle counter
             if turtle <= limit:
-                CacheProcessor.Increment(inspector, prefix="turtlelimiter:")
+                await CacheProcessor.Increment(inspector, prefix="turtlelimiter:")
                 return await func(*args, **kwargs)
 
             # if user has exceeded the limit - well, solve the captcha
             # also cooldown is resetted ([NOTE]: maybe will be removed, we need to test it)
-            CacheProcessor.Update(
+            await CacheProcessor.Update(
                 inspector, prefix="turtlelimiter:", expiring_after=cooldown
             )
 

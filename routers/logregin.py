@@ -66,9 +66,9 @@ async def requestCode(request: Request):
 
     f = Fernet(Config.FERNET_KEY.encode())
     inspector = f.encrypt("email:" + reciever.encode("utf-8")).decode()
-    turtle = CacheProcessor.Get(inspector, prefix="turtlelimiter:")
+    turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
-        CacheProcessor.Make(inspector, "X", prefix="turtlelimiter:", expires=180)
+        await CacheProcessor.Make(inspector, "X", prefix="turtlelimiter:", expires=180)
         turtle = "X"
 
     if turtle == "X":
