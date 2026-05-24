@@ -30,6 +30,7 @@ class Config:
     SMTP_PSWD = environ.get("SMTP_PSWD")
     SMTP_SNDR = environ.get("SMTP_SNDR")
 
+    FERNET_KEY = environ.get("FERNET_KEY")
     TURNSTILE_TOKEN = environ.get("TURNSTILE_TOKEN")
 
     # [WARNING]
