@@ -4,7 +4,6 @@ from math import ceil
 from time import time as timestamp
 from uuid import uuid4
 
-from cryptography.fernet import Fernet
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from redmail import EmailSender
@@ -15,7 +14,6 @@ from helpers.database.mongo import Database
 from helpers.functions import get_ip
 from helpers.generator import Generator
 from helpers.imageTools import ImageTools
-from helpers.processors.cache import CacheProcessor
 from helpers.processors.device import DeviceProcessor
 from helpers.processors.email import EmailProcessor
 from helpers.processors.session import SessionProcessor
@@ -64,7 +62,7 @@ async def requestCode(request: Request):
     if not EmailProcessor.Validate(reciever):
         return Errors.InvalidEmail(timestamp() - t1)
 
-    f = Fernet(Config.FERNET_KEY.encode())
+    """f = Fernet(Config.FERNET_KEY.encode())
     inspector = f.encrypt(("email:" + reciever).encode("utf-8")).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
@@ -77,7 +75,7 @@ async def requestCode(request: Request):
         return Errors.VerificationRequired(
             Config.API_BASE_URL + "/api/v1/turtle/hello/email?inspector=" + inspector,
             timestamp() - t1,
-        )
+        )"""
 
     db = await Database().init()
     table = await db.get(table="VerificationCodes")

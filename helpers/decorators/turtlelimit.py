@@ -65,6 +65,9 @@ def turtlelimiter(
                 inspector, prefix="turtlelimiter:", expiring_after=cooldown
             )
 
+            # TEMP
+            return await func(*args, **kwargs)
+
             return Errors.VerificationRequired(
                 Config.API_BASE_URL + "/api/v1/turtle/hello?inspector=" + inspector
             )
