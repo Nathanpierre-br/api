@@ -68,7 +68,9 @@ async def requestCode(request: Request):
     inspector = f.encrypt(("email:" + reciever).encode("utf-8")).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
-        await CacheProcessor.Make(inspector, "X", prefix="turtlelimiter:", expires=180)
+        await CacheProcessor.Make(
+            inspector, "X", prefix="turtlelimiter:", expiring_after=180
+        )
         turtle = "X"
 
     if turtle == "X":
