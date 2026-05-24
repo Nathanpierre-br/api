@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{% block title %}{% endblock title %}</title>
+
+    <link href="https://unpkg.com/ress/dist/ress.min.css" rel="stylesheet">
+    <style>
+    	body {
+    		background: #000000;
+    		background: linear-gradient(0deg, rgba(0, 0, 0, 1) 0%, rgba(90, 37, 99, 1) 100%);
+    	}
+    	.central-container {
+    		display: grid;
+  		    place-items: center;
+  			height: 100vh;
+    	}
+    </style>
+
+    {% block head %}{% endblock head %}
+</head>
+<body>
+    {% block body %}{% endblock body %}
+
+    {% block script %}{% endblock script %}
+</body>
+</html>

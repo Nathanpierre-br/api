@@ -29,7 +29,14 @@ class Config:
     SMTP_USER = environ.get("SMTP_USER")
     SMTP_PSWD = environ.get("SMTP_PSWD")
     SMTP_SNDR = environ.get("SMTP_SNDR")
-    SMTP_STARTTLS = environ.get("SMTP_STARTTLS", "True").lower() in ["true", "1"]
+
+    TURNSTILE_TOKEN = environ.get("TURNSTILE_TOKEN")
+
+    # [WARNING]
+    # might be deprecated soon since mostly we use default ports in the internet
+    # for now it's here for backward compatibility and to avoid breaking changes
+    SMTP_STARTTLS = environ.get("SMTP_STARTTLS", "").lower() in ["true", "1"]
+    SMTP_SSL = environ.get("SMTP_SSL", "").lower() in ["true", "1"]
 
     API_DOMAIN = environ.get("API_DOMAIN", "service.altamino.top")
     API_BASE_URL = environ.get("API_BASE_URL", f"https://{API_DOMAIN}")

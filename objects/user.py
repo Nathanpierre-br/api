@@ -1,4 +1,5 @@
 from typing import Union
+
 from .medialist import MediaList
 
 
@@ -83,6 +84,7 @@ class User:
             ),  # [TODO] when communitues will be implemented do that
             "backgroundColor": row.get("backgroundColor"),
             "extensions": {
+                "tagList": row.get("tagList", []),
                 "customTitles": row.get("titles", []),
                 "backgroundColor": row.get("backgroundColor"),
                 "style": {
@@ -165,6 +167,7 @@ class User:
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
             "extensions": {
+                "tagList": row.get("tagList", []),
                 "isMemberOfTeamAmino": row.get("isTeamMember", False),
                 "customTitles": row.get("titles", []),
                 "style": {
@@ -256,6 +259,7 @@ class User:
                 0 if ndcId else 0
             ),  # [TODO] when communitues will be implemented do that
             "extensions": {
+                "tagList": row.get("tagList", []),
                 "isMemberOfTeamAmino": row.get("isTeamMember", False),
                 "customTitles": row.get("titles", []),
                 "privilegeOfCommentOnUserProfile": row["allowanceWriteToWall"],

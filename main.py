@@ -1,25 +1,26 @@
 # import
 
-from objects import Errors
-from fastapi import FastAPI
 from brotli_asgi import BrotliMiddleware
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, ORJSONResponse, RedirectResponse
 
-# routers
-
-from routers.mock import mock
+from objects import Errors
+from routers.blogs import blog_methods
 from routers.chats import chats
+from routers.communities import communities
+from routers.configurations import configurations
 from routers.links import links
 from routers.logregin import logregin
-from routers.profile import profile_methods
-from routers.upload_media import upload_media
-from routers.configurations import configurations
-from routers.communities import communities
-from routers.blogs import blog_methods
-from routers.pseudoacm import pseudoacm
+
+# routers
+from routers.mock import mock
 from routers.moderation_tools import moderation_tools
+from routers.profile import profile_methods
+from routers.pseudoacm import pseudoacm
+from routers.turtle import turtle
+from routers.upload_media import upload_media
 
 # app things
 
@@ -38,6 +39,7 @@ async def health():
 
 app.include_router(mock, prefix="/api/v1")
 app.include_router(chats, prefix="/api/v1")
+app.include_router(turtle, prefix="/api/v1")
 app.include_router(links, prefix="/api/v1")
 app.include_router(logregin, prefix="/api/v1")
 app.include_router(upload_media, prefix="/api/v1")

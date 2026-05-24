@@ -1,0 +1,106 @@
+{% extends 'skeleton/base.html' %}
+
+{% block title %}Hold on! Are you a robot?{% endblock title %}
+
+{% block head %}
+<link rel="preconnect" href="https://challenges.cloudflare.com" />
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+    .result-block {
+        color: #eae4ec;
+        min-width: 12rem;
+        min-height: auto;
+        max-width: 80vw;
+    }
+    .result-block svg {
+        width: 100%;
+        height: auto;
+    }
+    .result-block p {
+        text-align: center;
+        font-size: xx-large;
+        font-family: system-ui, sans-serif;
+    }
+</style>
+{% endblock head %}
+
+{% block body %}
+<div class="central-container">
+    <div id="captcha" class="cf-turnstile"
+		data-sitekey="0x4AAAAAADVBvLx07Tx4ez7V"
+		data-cdata="{{ inspector }}"
+		data-callback="onSuccess"
+		data-error-callback="onError"
+	    data-expired-callback="onErrorNA"
+	    data-timeout-callback="onErrorNA"
+	></div>
+
+	<div class="result-block" id="loading" style="display: none;">
+	    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4a8 8 0 0 1 7.89 6.7 1.53 1.53 0 0 0 1.49 1.3 1.5 1.5 0 0 0 1.48-1.75 11 11 0 0 0-21.72 0A1.5 1.5 0 0 0 2.62 12a1.53 1.53 0 0 0 1.49-1.3A8 8 0 0 1 12 4"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite"/></path></svg>
+		<p>Please wait...</p>
+	</div>
+
+	<div class="result-block" id="error" style="display: none;">
+	    <svg fill="currentColor" version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="690 10 640 640"><path d="M762.5 88.7c-14.3 16.9-26 31.1-26 31.5 0 .3 7.9 7.3 17.5 15.4 56.4 47.6 109.9 96 174.2 157.7l20.8 20-6.8 7.3c-3.7 4-16.6 17.8-28.8 30.6-59.9 63.4-111.7 123.2-163 188.2-11.1 14-14.1 18.4-13.1 19.3.7.6 13.7 11.7 29 24.7 23.8 20.2 28.4 23.6 31 23.5 2.8 0 4.3-1.4 13.2-12.2 47.8-58.2 131.6-151.8 184.6-206l14.4-14.7 22.6 23.7c64.9 68.3 118.8 128.6 174.3 195.1 11.3 13.5 12.1 14.3 15.2 14 4.8-.4 58.4-46 58.4-49.7 0-2.6-1.2-4.3-23.4-32.1-48.3-60.6-100.4-120-161.8-184.7-13.6-14.4-24.8-26.4-24.8-26.6 0-1.4 55.5-54.5 88-84.3 36.2-33.1 99.3-88.5 117.8-103.3 3.1-2.5 4.2-4.2 4.2-6.2 0-2.1-5.7-9.4-25.1-32.3-13.7-16.3-25.3-29.6-25.6-29.6-.7 0-29.2 23.3-54.3 44.6-52.8 44.7-102.9 90-157.7 142.8l-8.2 7.9-15.4-14.9c-37.2-36.2-88.2-82.6-132.2-120.4-28.4-24.5-71.4-60-72.5-60-.3 0-12.2 13.8-26.5 30.7"/></svg>
+		<p>Can't believe you. Try again.</p>
+	</div>
+
+	<div class="result-block" id="success" style="display: none;">
+        <svg fill="currentColor" version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="-45 0 640 640"><path d="M489.9 44.7C472.2 60.2 435 96.9 418.6 115c-42.4 46.9-78.2 95-109.9 147.8-35.1 58.4-68.4 130.7-87.9 190.9-3.2 9.9-4.7 13.1-5.7 12.7-.8-.2-39.7-25.7-86.4-56.6C69 370.4 43.3 354 42.4 354.6c-.8.5-10.6 13.3-21.9 28.4C3.6 405.5 0 411 .2 413.3c.3 2.5 13.4 11.4 135.3 91.7l135 89 .7-4.3c.3-2.3 1.4-10.5 2.3-18.2 9-75.7 41.3-164 91.3-249.5 51.1-87.3 119.1-170.1 182-221.3 6.7-5.5 12.1-10.3 12-10.7-.2-.4-11.3-13.3-24.8-28.8-22.1-25.3-24.8-28.1-27.6-28.1-2.6-.1-5.4 1.9-16.5 11.6"/></svg>
+        <p>You are free to go!</p>
+	</div>
+
+</div>
+{% endblock body %}
+
+{% block script %}
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const inspector = urlParams.get('inspector');
+
+    function destroyElement(elementId) {
+      document.getElementById(elementId).remove();
+    }
+
+    function forceShow(elementId) {
+      document.getElementById(elementId).style.display = 'block';
+    }
+
+    function forceHide(elementId) {
+      document.getElementById(elementId).style.display = 'none';
+    }
+
+	function onSuccess(token) {
+        destroyElement('captcha');
+	    forceShow('loading');
+		fetch(`https://${window.location.hostname}/api/v1/turtle/validate`, {
+		  method: 'POST',
+		  headers: {
+		    'Content-Type': 'application/json'
+		  },
+		  body: JSON.stringify({
+		    turtle: token,
+		    inspector: inspector
+		  })
+		})
+		  .then(response => response.json())
+		  .then(function (data) {
+		      forceHide('loading');
+		      forceShow(data.status === 'OK' ? 'success' : 'error');
+		  })
+		  .catch(function (error) {
+		      forceHide('loading');
+		      forceHide('success');
+		      forceShow('error');
+		  });
+	}
+	function onError(errorCode) {
+   	    forceHide('loading');
+        forceHide('success');
+        forceShow('error');
+	}
+	function onErrorNA() {
+	    onError(999);
+	}
+</script>
+{% endblock script %}

@@ -1,12 +1,14 @@
+from io import BytesIO
+from random import randint
+from secrets import choice
+from string import digits
+from time import time
+from typing import Union
+
+import cv2
+import numpy as np
 from numpy.random import randint as randmanyints
 from PIL import Image, ImageDraw, ImageFont
-from random import randint, choices
-from string import digits
-from typing import Union
-from io import BytesIO
-from time import time
-import numpy as np
-import cv2
 
 
 class ImageTools:
@@ -66,7 +68,7 @@ class ImageTools:
     ):
         t0 = time()
 
-        code_chars = list(code) if code else choices(digits, k=6)
+        code_chars = list(code) if code else [choice(digits) for _ in range(6)]
         if not bg_color:
             bg_color = (randint(0, 256), randint(0, 256), randint(0, 256))
         if not text_color:

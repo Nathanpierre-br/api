@@ -1,16 +1,18 @@
-from datetime import datetime, UTC
-from pymongo import DESCENDING
+from datetime import UTC, datetime
 from re import escape as regex_escape
-from fastapi import APIRouter, Request
 from time import time as timestamp
 from typing import Union
 from uuid import uuid4
 
-from objects import Base, Errors, Blog, Comments, User
-from helpers.functions import parse_page_token, calculate_page_tokens
+from fastapi import APIRouter, Request
+from pymongo import DESCENDING
+
+from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
-from helpers.database.models import ModelFabric, Community
+from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
+from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
+from objects import Base, Blog, Comments, Errors, User
 
 blog_methods = APIRouter()
 blog_methods.route_class = CachableRoute
@@ -266,6 +268,7 @@ async def get_blog_comment_answers(
 @blog_methods.post("/g/s/item/{blogId}/comment")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment")
 @blog_methods.post("/x{ndcId}/s/item/{blogId}/comment")
+@turtlelimiter(limit=1, period=TurtleTime.second, tag="blog-comment")
 async def post_blog_comment(
     blogId: str,
     request: Request,
@@ -535,6 +538,7 @@ async def get_blog_voters(
 
 @blog_methods.post("/g/s/blog")
 @blog_methods.post("/x{ndcId}/s/blog")
+@turtlelimiter(limit=1, period=TurtleTime.second, tag="post-blog")
 async def post_blog(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:

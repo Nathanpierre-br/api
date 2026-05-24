@@ -1,28 +1,29 @@
-from base64 import b64decode
-from pymongo import DESCENDING
-from string import ascii_letters, digits
-from re import escape as regex_escape
-from fastapi import APIRouter, Request
-from time import time as timestamp
-from random import choice
-from uuid import uuid4
 import asyncio
+from base64 import b64decode
+from random import choice
+from re import escape as regex_escape
+from string import ascii_letters, digits
+from time import time as timestamp
+from uuid import uuid4
 
 from boto3 import resource
+from fastapi import APIRouter, Request
+from pymongo import DESCENDING
 
-from objects import Base, Chat, Errors, User
+from helpers.adminWS import send_admin_ws
 from helpers.config import Config
+from helpers.database.models import Community, ModelFabric
+from helpers.database.mongo import Database
+from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import (
-    parse_page_token,
     calculate_page_tokens,
     detect_file_ext,
     is_app_link,
+    parse_page_token,
 )
-from helpers.database.mongo import Database
-from helpers.database.models import Community, ModelFabric
-from helpers.adminWS import send_admin_ws
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
+from objects import Base, Chat, Errors, User
 
 chats = APIRouter()
 chats.route_class = CachableRoute
@@ -437,6 +438,7 @@ async def if_chat_exists(
 
 @chats.post("/g/s/chat/thread")
 @chats.post("/x{ndcId}/s/chat/thread")
+@turtlelimiter(limit=1, period=TurtleTime.minute, tag="create-chat")
 async def create_chat(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -606,6 +608,7 @@ async def get_chat_messages(
 
 @chats.post("/g/s/chat/thread/{chatId}/message")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/message")
+@turtlelimiter(limit=3, period=TurtleTime.second, tag="send-message")
 async def send_message(request: Request, chatId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -899,6 +902,7 @@ async def delete_message(request: Request, chatId: str, messageId: str, ndcId: i
 
 @chats.post("/g/s/chat/thread/{chatId}/message/{messageId}")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}")
+@turtlelimiter(limit=3, period=TurtleTime.second, tag="update-message")
 async def update_message(request: Request, chatId: str, messageId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -1047,7 +1051,11 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
     if data.get("replyMessageId"):
         extensions.update({"replyMessageId": data["replyMessageId"]})
 
-    if data.get("stickerId") and data["stickerId"].startswith("e/"):
+    if (
+        data.get("stickerId")
+        and data["stickerId"].startswith("e/")
+        and data["stickerId"][2:].isdecimal()
+    ):
         extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
         data["mediaType"] = 113
         mediaLink = f"ndcsticker://{data['stickerId']}"
@@ -1428,6 +1436,7 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
 
 @chats.post("/g/s/chat/thread/{chatId}/member/{userId}")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/{userId}")
+@turtlelimiter(limit=1, period=TurtleTime.second, tag="jl-chat")
 async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -1500,6 +1509,7 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
 
 @chats.delete("/g/s/chat/thread/{chatId}/member/{userId}")
 @chats.delete("/x{ndcId}/s/chat/thread/{chatId}/member/{userId}")
+@turtlelimiter(limit=1, period=TurtleTime.second, tag="jl-chat")
 async def leave_chat(
     request: Request, chatId: str, userId: str, allowRejoin: int = 0, ndcId: int = 0
 ):

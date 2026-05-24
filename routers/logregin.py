@@ -1,23 +1,26 @@
-from fastapi.responses import StreamingResponse
 from base64 import b64decode, b64encode
-from fastapi import APIRouter, Request
-from time import time as timestamp
-from redmail import EmailSender
 from hashlib import blake2b
-from uuid import uuid4
 from math import ceil
+from time import time as timestamp
+from uuid import uuid4
 
-from objects import Base, Errors, User
+from cryptography.fernet import Fernet
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
+from redmail import EmailSender
+
 from helpers.config import Config
-from helpers.functions import get_ip
+from helpers.database.models import Community, Global, ModelFabric
 from helpers.database.mongo import Database
-from helpers.database.models import ModelFabric, Global, Community
+from helpers.functions import get_ip
 from helpers.generator import Generator
 from helpers.imageTools import ImageTools
-from helpers.routers.cachable import CachableRoute
-from helpers.processors.email import EmailProcessor
+from helpers.processors.cache import CacheProcessor
 from helpers.processors.device import DeviceProcessor
+from helpers.processors.email import EmailProcessor
 from helpers.processors.session import SessionProcessor
+from helpers.routers.cachable import CachableRoute
+from objects import Base, Errors, User
 
 logregin = APIRouter()
 logregin.route_class = CachableRoute
@@ -58,11 +61,21 @@ async def requestCode(request: Request):
     except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
 
-    if EmailProcessor.NotWorking(reciever):
-        return Errors.NotWorkingEmail(timestamp() - t1)
-
     if not EmailProcessor.Validate(reciever):
         return Errors.InvalidEmail(timestamp() - t1)
+
+    f = Fernet(Config.FERNET_KEY.encode())
+    inspector = f.encrypt("email:" + reciever.encode("utf-8")).decode()
+    turtle = CacheProcessor.Get(inspector, prefix="turtlelimiter:")
+    if turtle is None:
+        CacheProcessor.Make(inspector, "X", prefix="turtlelimiter:", expires=180)
+        turtle = "X"
+
+    if turtle == "X":
+        return Errors.VerificationRequired(
+            Config.API_BASE_URL + "/api/v1/turtle/hello?inspector=" + inspector,
+            timestamp() - t1,
+        )
 
     db = await Database().init()
     table = await db.get(table="VerificationCodes")
@@ -98,7 +111,12 @@ async def requestCode(request: Request):
     )
     await db.close()
 
-    text = """<h3>You have requested a confirmation code for AltAmino. Please enter this code.</h3>{{ IMAGE }}<p>Can't see the code? Please click on the link below to see the code.</p>[LINK]<br><p>If this is not your AltAmino account, don't worry. Someone may have misspelled their email address.</p><p>If you have any difficulties or questions, please email us: support@altamino.top</p><br><p>Thanks,<br>Team AltAmino</p>"""
+    html = """<h3>You have requested a confirmation code for AltAmino. Please enter this code.</h3>{{ IMAGE }}<p>Can't see the code? Please click on the link below to see the code.</p>[LINK]<br><p>If this is not your AltAmino account, don't worry. Someone may have misspelled their email address.</p><p>If you have any difficulties or questions, please contact us.</p><br><p>Thanks,<br>Team AltAmino</p>"""
+    text = "You have requested a confirmation code for AltAmino. Please visit the link to see the code: [LINK]"
+    verification_link = f"{Config.SITE_DOMAIN}/verify?code={uniqueCode}"
+    html = html.replace("[LINK]", verification_link)
+    text = text.replace("[LINK]", verification_link)
+
     try:
         email = EmailSender(
             host=Config.SMTP_SERVER,
@@ -106,14 +124,15 @@ async def requestCode(request: Request):
             username=Config.SMTP_USER,
             password=Config.SMTP_PSWD,
             use_starttls=Config.SMTP_STARTTLS,
+            use_ssl=Config.SMTP_SSL,
         )
+        email.domain_name = Config.SITE_DOMAIN
         email.send(
             sender=Config.SMTP_SNDR,
             subject="Confirmation code for AltAmino",
             receivers=[reciever],
-            html=text.replace(
-                "[LINK]", f"{Config.API_BASE_URL}/api/v1/verification-code/{uniqueCode}"
-            ),
+            html=html,
+            text=text,
             body_images={"IMAGE": c_img},
         )
     except Exception as e:

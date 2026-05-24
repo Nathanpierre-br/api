@@ -1,14 +1,16 @@
 from re import escape as regex_escape
-from fastapi import APIRouter, Request
 from time import time as timestamp
 
-from objects import Base, Errors, Communities, User
+from fastapi import APIRouter, Request
+
 from helpers.aioyaml import aioyaml
-from helpers.functions import parse_page_token, calculate_page_tokens, is_app_link
-from helpers.database.mongo import Database
 from helpers.database.models import dttmn
-from helpers.routers.cachable import CachableRoute
+from helpers.database.mongo import Database
+from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.decorators.validauth import validauth_required
+from helpers.functions import calculate_page_tokens, is_app_link, parse_page_token
+from helpers.routers.cachable import CachableRoute
+from objects import Base, Communities, Errors, User
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -207,6 +209,7 @@ async def search_community_by_amino_id(
 
 # community join
 @communities.post("/x{ndcId}/s/community/join")
+@turtlelimiter(limit=1, period=TurtleTime.second, tag="jl-community")
 async def join_community(request: Request, ndcId: int):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -298,6 +301,7 @@ async def join_community(request: Request, ndcId: int):
 
 # community leave
 @communities.post("/x{ndcId}/s/community/leave")
+@turtlelimiter(limit=1, period=TurtleTime.second, tag="jl-community")
 async def leave_community(request: Request, ndcId: int):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -395,7 +399,8 @@ async def get_community_info(request: Request, ndcId: int = 0):
             {
                 "community": ndc_info,
                 "isCurrentUserJoined": bool(ndc_info.get("membershipStatus", 0)),
-                "currentUserInfo": full_user_data,
+                "currentUserInfo": full_user_data
+                | {"membershipStatus": ndc_info.get("membershipStatus", 0)},
             },
             spent_time=timestamp() - t1,
         )

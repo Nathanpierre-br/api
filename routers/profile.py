@@ -1,21 +1,24 @@
-from pymongo import DESCENDING
+from datetime import UTC, datetime
 from re import escape as regex_escape
-from fastapi import APIRouter, Request
 from time import time as timestamp
-from datetime import datetime, UTC
 from uuid import uuid4
 
-from objects import Base, Errors, User, Comments
-from helpers.functions import parse_page_token, calculate_page_tokens
+from fastapi import APIRouter, Request
+from pymongo import DESCENDING
+
+from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
-from helpers.database.models import ModelFabric, Community
+from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
+from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
+from objects import Base, Comments, Errors, User
 
 profile_methods = APIRouter()
 profile_methods.route_class = CachableRoute
 
 
 @profile_methods.post("/g/s/account/change-amino-id")
+@turtlelimiter(limit=1, period=TurtleTime.minute, tag="amino-id-change")
 async def change_aminoId(request: Request):
     t1 = timestamp()
 
@@ -346,6 +349,7 @@ async def delete_post_from_wall(
 @profile_methods.post("/g/s/user-profile/{uid}/comment")
 @profile_methods.post("/g/s/user-profile/{uid}/g-comment")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment")
+@turtlelimiter(limit=1, period=TurtleTime.second, tag="blog-comment")
 async def post_on_user_wall(
     uid,
     request: Request,

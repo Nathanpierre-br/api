@@ -1,5 +1,6 @@
 from random import choice
 from typing import Union
+
 from .base import Base
 
 
@@ -190,6 +191,16 @@ class Errors:
             api_status_code=1664,
             html_status_code=400,
             api_message="Message content is larger, than 2345 symbols.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
+    def VerificationRequired(url: str, spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            data={"url": url},
+            api_status_code=270,
+            html_status_code=400,
+            api_message="Uh-oh! Looks like you need to verify that you aren't a robot.",
             spent_time=spent_time,
         )
 
