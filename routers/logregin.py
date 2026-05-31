@@ -65,7 +65,7 @@ async def requestCode(request: Request):
     if not EmailProcessor.Validate(reciever):
         return Errors.InvalidEmail(timestamp() - t1)
 
-    inspector = FISH.cook(("email:" + reciever).encode()).decode()
+    """inspector = FISH.cook(("email:" + reciever).encode()).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
         await CacheProcessor.Make(
@@ -77,7 +77,7 @@ async def requestCode(request: Request):
         return Errors.VerificationRequired(
             Config.API_BASE_URL + "/api/v1/turtle/hello/email?inspector=" + inspector,
             timestamp() - t1,
-        )
+        )"""
 
     db = await Database().init()
     table = await db.get(table="VerificationCodes")
