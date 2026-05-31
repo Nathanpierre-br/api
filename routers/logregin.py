@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from redmail import EmailSender
+from smtplib import SMTP
 
 from helpers.config import Config
 from helpers.database.models import Community, Global, ModelFabric
@@ -123,7 +124,8 @@ async def requestCode(request: Request):
             port=Config.SMTP_PORT,
             username=Config.SMTP_USER,
             password=Config.SMTP_PSWD,
-            use_starttls=Config.SMTP_STARTTLS,
+            use_starttls=True,
+            cls_smtp=SMTP,
         )
         email.domain_name = Config.SITE_DOMAIN
         email.send(
