@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from redmail import EmailSender
 from smtplib import SMTP
 
+from helpers.fish import FISH
 from helpers.config import Config
 from helpers.database.models import Community, Global, ModelFabric
 from helpers.database.mongo import Database
@@ -18,6 +19,7 @@ from helpers.imageTools import ImageTools
 from helpers.processors.device import DeviceProcessor
 from helpers.processors.email import EmailProcessor
 from helpers.processors.session import SessionProcessor
+from helpers.processors.cache import CacheProcessor
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors, User
 
@@ -63,8 +65,7 @@ async def requestCode(request: Request):
     if not EmailProcessor.Validate(reciever):
         return Errors.InvalidEmail(timestamp() - t1)
 
-    """f = Fernet(Config.FERNET_KEY.encode())
-    inspector = f.encrypt(("email:" + reciever).encode("utf-8")).decode()
+    inspector = FISH.cook(("email:" + reciever).encode("utf-8")).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
         await CacheProcessor.Make(
@@ -76,7 +77,7 @@ async def requestCode(request: Request):
         return Errors.VerificationRequired(
             Config.API_BASE_URL + "/api/v1/turtle/hello/email?inspector=" + inspector,
             timestamp() - t1,
-        )"""
+        )
 
     db = await Database().init()
     table = await db.get(table="VerificationCodes")

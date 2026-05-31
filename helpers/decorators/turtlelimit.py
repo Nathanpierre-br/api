@@ -2,7 +2,7 @@ from functools import wraps
 from json import dumps
 from uuid import UUID
 
-from cryptography.fernet import Fernet
+from helpers.fish import FISH
 
 from helpers.config import Config
 from helpers.processors.cache import CacheProcessor
@@ -38,10 +38,9 @@ def turtlelimiter(
             # we are rate limiting by user id since ip-based rate limiting
             # is easily can be bypassed using a VPN or proxy
             uid = UUID(request.state.session["uid"]).hex
-            f = Fernet(Config.FERNET_KEY.encode())
 
             # for multi rate limiting
-            inspector = f.encrypt(
+            inspector = FISH.cook(
                 dumps({"case": tag, "user": uid}, ensure_ascii=False).encode()
             ).decode()
             turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
