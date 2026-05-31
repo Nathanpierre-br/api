@@ -42,7 +42,7 @@ def turtlelimiter(
             # for multi rate limiting
             inspector = FISH.cook(
                 dumps({"case": tag, "user": uid}, ensure_ascii=False).encode()
-            ).decode()
+            )
             turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
             if turtle is None:
                 await CacheProcessor.Make(
