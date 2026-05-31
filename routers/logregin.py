@@ -7,7 +7,6 @@ from uuid import uuid4
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from redmail import EmailSender
-from smtplib import SMTP_SSL
 
 from helpers.config import Config
 from helpers.database.models import Community, Global, ModelFabric
@@ -125,7 +124,6 @@ async def requestCode(request: Request):
             username=Config.SMTP_USER,
             password=Config.SMTP_PSWD,
             use_starttls=Config.SMTP_STARTTLS,
-            cls_smtp=SMTP_SSL if Config.SMTP_SSL else None,
         )
         email.domain_name = Config.SITE_DOMAIN
         email.send(
