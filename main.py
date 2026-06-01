@@ -21,6 +21,7 @@ from routers.profile import profile_methods
 from routers.pseudoacm import pseudoacm
 from routers.turtle import turtle
 from routers.upload_media import upload_media
+from routers.acm import acm_router
 
 # app things
 
@@ -49,6 +50,7 @@ app.include_router(communities, prefix="/api/v1")
 app.include_router(blog_methods, prefix="/api/v1")
 app.include_router(moderation_tools, prefix="/api/v1")
 app.include_router(pseudoacm, prefix="/api/v1")
+app.include_router(acm_router, prefix="/api/v1")
 
 app.add_middleware(BrotliMiddleware, gzip_fallback=True)
 app.add_middleware(
