@@ -401,7 +401,7 @@ async def login(request: Request):
         if row["passwordHash"] != decodedPswdHash:
             await db.close()
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
-        if row["status"] == 9:
+        if row.get("status", 0) == 9:
             await db.close()
             return Errors.UserBanned(timestamp() - t1)
 
