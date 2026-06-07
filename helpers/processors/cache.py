@@ -4,6 +4,13 @@ from helpers.database.redis import get
 
 
 class CacheProcessor:
+    @staticmethod
+    def _redis_key(key: str, prefix: str = "") -> str:
+        key = CacheProcessor._norm(key)
+        prefix = CacheProcessor._norm(prefix)
+        if prefix != "" and key.startswith(prefix):
+            return key
+        return prefix + key
 
     @staticmethod
     def _norm(x: Union[str, bytes, None]) -> str:
@@ -24,11 +31,9 @@ class CacheProcessor:
             return
 
         redis = get()
+        final_key = CacheProcessor._redis_key(key, prefix)
 
-        key = CacheProcessor._norm(key)
-        prefix = CacheProcessor._norm(prefix)
-
-        await redis.set(prefix + key, value, expiring_after)
+        await redis.set(final_key, value, expiring_after)
 
     @staticmethod
     async def Update(
@@ -41,11 +46,7 @@ class CacheProcessor:
     ) -> None:
 
         redis = get()
-
-        key = CacheProcessor._norm(key)
-        prefix = CacheProcessor._norm(prefix)
-
-        full_key = prefix + key
+        full_key = CacheProcessor._redis_key(key, prefix)
 
         if increment:
             await redis.incr(full_key)
@@ -55,7 +56,7 @@ class CacheProcessor:
             await redis.expire(full_key, expiring_after)
             return
         if value is None:
-            return #idk
+            return  # idk
 
         await redis.set(full_key, value, expiring_after, keepttl=keep_ttl)
 
@@ -67,10 +68,9 @@ class CacheProcessor:
 
         redis = get()
 
-        key = CacheProcessor._norm(key)
-        prefix = CacheProcessor._norm(prefix)
+        full_key = CacheProcessor._redis_key(key, prefix)
 
-        return await redis.get(prefix + key)
+        return await redis.get(full_key)
 
     @staticmethod
     async def Delete(
@@ -80,7 +80,6 @@ class CacheProcessor:
 
         redis = get()
 
-        key = CacheProcessor._norm(key)
-        prefix = CacheProcessor._norm(prefix)
+        full_key = CacheProcessor._redis_key(key, prefix)
 
-        return await redis.unlink(prefix + key)
+        return await redis.unlink(full_key)

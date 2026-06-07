@@ -5,6 +5,7 @@ from uuid import uuid4
 from objects import Base, Errors
 from helpers.routers.cachable import CachableRoute
 from helpers.decorators.validauth import validauth_required
+from helpers.database.mongo import Database
 
 configurations = APIRouter()
 configurations.route_class = CachableRoute
@@ -59,7 +60,16 @@ async def global_configs(request: Request):
 
 @configurations.get("/g/s/client-config/content-language-settings")
 async def lang_configs(request: Request):
-    return Base.Answer({"contentLanguageSettings": {"language": "en"}})
+    uid = request.state.session.get("uid", str(uuid4()))
+
+    db = await Database().init()
+    table = await db.get(table="Users")
+    row = await table.find_one({"id": uid})
+    if row is None:
+        return Base.Answer({"contentLanguageSettings": {"language": "en"}})
+
+    await db.close()
+    return Base.Answer({"contentLanguageSettings": {"language": row.get("lang", "en")}})
 
 
 @configurations.get("/g/s/eventlog/profile")
@@ -97,7 +107,7 @@ async def eventlog_config(request: Request):
 
 @configurations.get("/g/s/community-collection/supported-languages")
 async def supported_languages_config(request: Request):
-    return Base.Answer({"supportedLanguages": ["en", "ru"]})
+    return Base.Answer({"supportedLanguages": ["en", "ru", "es", "ar"]})
 
 
 @configurations.get("/g/s/membership")

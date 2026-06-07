@@ -713,6 +713,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
     data = await request.json()
 
     print(f"editing profile {uid}:", data)
+    lang = None
 
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -743,8 +744,8 @@ async def edit_user_info(uid, request: Request, ndcId=0):
         extensions = data["extensions"]
         if isinstance(extensions.get("defaultBubbleId"), str):
             pass  # [TODO]: implement default bubble id
-        if extensions.get("contentLanguage", "en") in ["ru", "en"]:
-            preparedQueries.update({"lang": extensions.get("contentLanguage", "en")})
+        if extensions.get("contentLanguage", "en") in ["ru", "en", "ar", "es"]:
+            lang = {"lang": extensions.get("contentLanguage", "en")}
         if extensions.get("style"):
             style = extensions["style"]
 
@@ -756,14 +757,22 @@ async def edit_user_info(uid, request: Request, ndcId=0):
             else:
                 preparedQueries.update({"backgroundMediaList": None})
 
-    if len(preparedQueries) == 0:
+    if len(preparedQueries) == 0 and lang is None:
         return Base.Answer({"exceptions": "No data provided."})
 
     db = await Database().init()
-    table = await db.get(database=f"x{ndcId}", table="Users")
-    await table.update_one({"id": uid}, {"$set": preparedQueries})
 
+    if preparedQueries:
+        table = await db.get(database=f"x{ndcId}", table="Users")
+        await table.update_one({"id": uid}, {"$set": preparedQueries})
+
+    if lang:
+        table = await db.get(table="Users")
+        await table.update_one({"id": uid}, {"$set": lang})
+
+    table = await db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
+
     await db.close()
 
     if row2 is None:

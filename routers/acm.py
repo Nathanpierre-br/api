@@ -11,8 +11,6 @@ acm_router = APIRouter()
 acm_router.route_class = CachableRoute
 
 
-
-
 @acm_router.post("/g/s/community")
 async def create_community(request: Request):
     t1 = timestamp()
@@ -29,16 +27,10 @@ async def create_community(request: Request):
     if not name or not tagline or not icon or not theme_color:
         return Errors.InvalidRequest(timestamp() - t1)
 
-
-
     required_icon_fields = ["height", "width", "x", "y", "imageMatrix", "path"]
     if not all(k in icon for k in required_icon_fields):
         return Errors.InvalidRequest(timestamp() - t1)
 
-
     db = await Database().init()
     # -------- 5. RETURN --------
-    return Base.Answer(
-        spent_time=timestamp() - t1,
-        data={}
-    )
+    return Base.Answer(spent_time=timestamp() - t1, data={})
