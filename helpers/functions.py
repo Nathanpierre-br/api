@@ -11,6 +11,12 @@ from .config import Config
 from .generator import Generator
 
 
+def is_hex_str(s: str, limited_to: int | None = None) -> bool:
+    if s is None or (limited_to is not None and len(s) != limited_to):
+        return False
+    return all(c in "0123456789abcdefABCDEF" for c in s)
+
+
 def audio_length(data: bytes) -> int:
     try:
         tag = TinyTag.get(file_obj=BytesIO(data))

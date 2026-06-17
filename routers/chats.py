@@ -20,6 +20,7 @@ from helpers.functions import (
     calculate_page_tokens,
     detect_file_ext,
     is_app_link,
+    is_hex_str,
     is_valid_uuid4,
     parse_page_token,
 )
@@ -1012,6 +1013,7 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
                 )
                 audio_bytes = b64decode(data["mediaUploadValue"])
                 extensions = extensions | {"duration": audio_length(audio_bytes)}
+                print(extensions)
                 s3.Bucket(Config.S3_BUCKET_NAME).put_object(
                     Key=filename, Body=audio_bytes
                 )
@@ -1065,7 +1067,9 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
         extensions.update({"replyMessageId": data["replyMessageId"]})
 
     if data.get("stickerId"):
-        if data["stickerId"][2:].isdigit():
+        if data["stickerId"][2:].isdigit() or is_hex_str(
+            data["stickerId"][2:], limited_to=8
+        ):
             extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
             data["mediaType"] = 113
             mediaLink = f"ndcsticker://{data['stickerId'][2:]}"
