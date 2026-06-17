@@ -775,6 +775,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             data["mediaType"] = 113
             mediaLink = f"ndcsticker://{data['stickerId']}"
         else:
+            print("invalid stickerId:", data["stickerId"])
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
 
     messageId = str(uuid4())
@@ -1075,6 +1076,7 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
             data["mediaType"] = 113
             mediaLink = f"ndcsticker://{data['stickerId']}"
         else:
+            print("invalid stickerId:", data["stickerId"])
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
 
     messageId = str(uuid4())

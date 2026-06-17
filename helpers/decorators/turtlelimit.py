@@ -57,7 +57,7 @@ def turtlelimiter(
                 return await func(*args, **kwargs)
 
             # if user has not exceeded the limit, increment the turtle counter
-            if turtle <= limit:
+            if int(turtle) <= limit:
                 await CacheProcessor.Increment(inspector, prefix="turtlelimiter:")
                 return await func(*args, **kwargs)
 

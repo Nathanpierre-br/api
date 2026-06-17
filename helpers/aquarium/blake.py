@@ -9,8 +9,8 @@ class Blake:
     def __init__(
         self,
         data: str | bytes,
-        key: str | bytes | None = None,
-        salt: str | bytes | None = None,
+        key: str | bytes = b"",
+        salt: str | bytes = b"",
         digest_size: int = 64,
     ):
         if isinstance(data, str):
