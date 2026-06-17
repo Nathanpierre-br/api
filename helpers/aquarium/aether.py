@@ -32,12 +32,20 @@ class _Aether:
         encryptor = self.cipher.encryptor()
         return encryptor.update(padded_data) + encryptor.finalize()
 
+    # alias for encrypt
+    def encode(self, data: bytes | str) -> bytes:
+        return self.encrypt(data)
+
     def decrypt(self, data: bytes) -> bytes:
         decryptor = self.cipher.decryptor()
         decrypted_padded = decryptor.update(data) + decryptor.finalize()
 
         unpadder = padding.PKCS7(128).unpadder()
         return unpadder.update(decrypted_padded) + unpadder.finalize()
+
+    # alias for decrypt
+    def decode(self, data: bytes) -> bytes:
+        return self.decrypt(data)
 
 
 Aether = _Aether(key=Config.AETHER_KEY)

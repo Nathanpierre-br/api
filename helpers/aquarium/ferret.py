@@ -22,8 +22,16 @@ class _Ferret:
             data = data.encode("utf-8")
         return self._fernet.encrypt(data)
 
+    # alias for encrypt
+    def encode(self, data: bytes | str) -> bytes:
+        return self.encrypt(data)
+
     def decrypt(self, data: bytes) -> bytes:
         return self._fernet.decrypt(data)
+
+    # alias for decrypt
+    def decode(self, data: bytes) -> bytes:
+        return self.decrypt(data)
 
 
 Ferret = _Ferret(key=Config.FERNET_KEY)
