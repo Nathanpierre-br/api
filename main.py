@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse, RedirectResponse
+from routers.altacm import altacm
 
 from objects import Errors
 from routers.blogs import blog_methods
@@ -18,10 +19,8 @@ from routers.logregin import logregin
 from routers.mock import mock
 from routers.moderation_tools import moderation_tools
 from routers.profile import profile_methods
-from routers.pseudoacm import pseudoacm
 from routers.turtle import turtle
 from routers.upload_media import upload_media
-from routers.acm import acm_router
 
 # app things
 
@@ -49,13 +48,14 @@ app.include_router(profile_methods, prefix="/api/v1")
 app.include_router(communities, prefix="/api/v1")
 app.include_router(blog_methods, prefix="/api/v1")
 app.include_router(moderation_tools, prefix="/api/v1")
-app.include_router(pseudoacm, prefix="/api/v1")
-app.include_router(acm_router, prefix="/api/v1")
+app.include_router(altacm, prefix="/api/v1")
 
+# brotli can break amino libraries, but it's easy to fix
+# either enable support for brotli, or just remove "brotli" from headers
 app.add_middleware(BrotliMiddleware, gzip_fallback=True)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # dont be like us, configure it, im lazy to do it rn
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,7 +63,6 @@ app.add_middleware(
 
 
 @app.exception_handler(403)
-@app.exception_handler(422)
 async def custom_403_handler(_, __):
     return Errors.Forbidden()
 
@@ -75,6 +74,7 @@ async def custom_404_handler(_, __):
     return Errors.InvalidPath()
 
 
+@app.exception_handler(422)
 @app.exception_handler(RequestValidationError)
 async def custom_422_handler(_, exc: RequestValidationError):
     print(exc.errors())
@@ -94,6 +94,6 @@ async def custom_500_handler(_, __):
     try:
         print("What happened:", _, "//", __)
     except Exception:
-        print("WE CAN'T EVEN DUCKING PRINT WHAT HAPPENED. COOL")
+        print("WE CAN'T EVEN FUCKING PRINT WHAT HAPPENED. COOL")
 
     return Errors.InternalServerError()

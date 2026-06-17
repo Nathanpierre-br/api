@@ -16,9 +16,11 @@ from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import (
+    audio_length,
     calculate_page_tokens,
     detect_file_ext,
     is_app_link,
+    is_valid_uuid4,
     parse_page_token,
 )
 from helpers.imageTools import ImageTools
@@ -761,10 +763,19 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     if data.get("replyMessageId"):
         extensions.update({"replyMessageId": data["replyMessageId"]})
 
-    if data.get("stickerId") and data["stickerId"].startswith("e/"):
-        extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
-        data["mediaType"] = 113
-        mediaLink = f"ndcsticker://{data['stickerId']}"
+    if data.get("stickerId"):
+        if data["stickerId"][2:].isdigit():
+            extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
+            data["mediaType"] = 113
+            mediaLink = f"ndcsticker://{data['stickerId'][2:]}"
+        elif is_valid_uuid4(data["stickerId"]):
+            # should be a custom sticker, but since we dont implemented it still...
+            # [NOTE]: please implement it normally
+            extensions.update(Chat.InternalSticker(data["stickerId"]))
+            data["mediaType"] = 113
+            mediaLink = f"ndcsticker://{data['stickerId']}"
+        else:
+            return Errors.InvalidRequest(spent_time=timestamp() - t1)
 
     messageId = str(uuid4())
     xndc_users = await db.get(f"x{ndcId}", "Users")
@@ -998,9 +1009,10 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
                     + "".join([choice(ascii_letters + digits) for _ in range(64)])
                     + ".aac"
                 )
-                extensions = extensions | {"duration": 0.00}
+                audio_bytes = b64decode(data["mediaUploadValue"])
+                extensions = extensions | {"duration": audio_length(audio_bytes)}
                 s3.Bucket(Config.S3_BUCKET_NAME).put_object(
-                    Key=filename, Body=b64decode(data["mediaUploadValue"])
+                    Key=filename, Body=audio_bytes
                 )
                 mediaLink = Config.MEDIA_BASE_URL + filename
             else:
@@ -1051,14 +1063,19 @@ async def update_message(request: Request, chatId: str, messageId: str, ndcId: i
     if data.get("replyMessageId"):
         extensions.update({"replyMessageId": data["replyMessageId"]})
 
-    if (
-        data.get("stickerId")
-        and data["stickerId"].startswith("e/")
-        and data["stickerId"][2:].isdecimal()
-    ):
-        extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
-        data["mediaType"] = 113
-        mediaLink = f"ndcsticker://{data['stickerId']}"
+    if data.get("stickerId"):
+        if data["stickerId"][2:].isdigit():
+            extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
+            data["mediaType"] = 113
+            mediaLink = f"ndcsticker://{data['stickerId'][2:]}"
+        elif is_valid_uuid4(data["stickerId"]):
+            # should be a custom sticker, but since we dont implemented it still...
+            # [NOTE]: please implement it normally
+            extensions.update(Chat.InternalSticker(data["stickerId"]))
+            data["mediaType"] = 113
+            mediaLink = f"ndcsticker://{data['stickerId']}"
+        else:
+            return Errors.InvalidRequest(spent_time=timestamp() - t1)
 
     messageId = str(uuid4())
     xndc_users = await db.get(f"x{ndcId}", "Users")

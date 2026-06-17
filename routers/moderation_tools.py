@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Request
 from time import time as timestamp
-from objects import Base, Errors
+
+from fastapi import APIRouter, Request
+
 from helpers.database.mongo import Database
 from helpers.routers.cachable import CachableRoute
+from objects import Base, Errors
 
 moderation_tools = APIRouter()
 moderation_tools.route_class = CachableRoute
@@ -16,9 +18,41 @@ async def check_rights(db, uid: str) -> bool:
     return user and user.get("role") in ALLOWED_ROLES
 
 
+# f"/x{self.comId}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}",
+@moderation_tools.get("/g/s/admin/operation")
+@moderation_tools.get("/x{ndcId}/s/admin/operation")
+async def moderation_history(
+    request: Request,
+    ndcId: int = 0,
+    objectId: str = "",
+    objectType: int = 0,
+    size: int = 25,
+):
+    """
+    example json:
+    {
+        "author": ,
+        "createdTime": ,
+        "objectType": ,
+        "operationName": ,
+        "ndcId": ,
+        "referTicketId": ,
+        "extData": ,
+        "operationDetail": ,
+        "operationLevel": ,
+        "moderationLevel": ,
+        "operation": ,
+        "objectId": ,
+        "logId": ,
+        "objectUrl": ,
+    }
+    """
+    return Base.Answer()
+
+
 @moderation_tools.post("/x{ndcId}/s/user-profile/{uid}/ban")
 @moderation_tools.post("/x{ndcId}/s/user-profile/{uid}/unban")
-async def ban_user_toggle(uid, request: Request, ndcId: int = 0):
+async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)

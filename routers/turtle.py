@@ -13,20 +13,13 @@ templates = Jinja2Templates(directory="templates")
 
 # GET /turtle/hello - serve the captcha page
 @turtle.get("/turtle/hello")
-async def turnstile_page(request: Request, inspector: str = None):
+@turtle.get("/turtle/hello/{why}")
+async def turnstile_page(request: Request, inspector: str = None, why: str = None):
     if inspector:
         return templates.TemplateResponse(
-            request=request, name="captcha.html", context={"inspector": inspector}
-        )
-    return templates.TemplateResponse(request=request, name="error.html")
-
-
-# GET /turtle/hello/email - serve the captcha page for email verification
-@turtle.get("/turtle/hello/email")
-async def turnstile_email_page(request: Request, inspector: str = None):
-    if inspector:
-        return templates.TemplateResponse(
-            request=request, name="email_captcha.html", context={"inspector": inspector}
+            request=request,
+            name="captcha.html",
+            context={"inspector": inspector, "why": f"/{why}" if why else ""},
         )
     return templates.TemplateResponse(request=request, name="error.html")
 
@@ -40,11 +33,11 @@ async def turnstile_validation(request: Request, why: str = None):
 
     response = await turnstile.validate(turtle)
     if response.cdata != data["inspector"]:
-        return TurtleAnswers.ERR("You can't get another inspector.")
+        return TurtleAnswers.ERR("You can't get different inspectors.")
 
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
-        return TurtleAnswers.ERR("This inspector have no case in their hands.")
+        return TurtleAnswers.ERR("This inspector is not working on this case.")
 
     if why == "email":
         await CacheProcessor.Update(inspector, value="OK", prefix="turtlelimiter:")

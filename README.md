@@ -16,9 +16,7 @@ Expect bugs, problems and etc.
 docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-4. Explore emails on http://localhost:8025
-
-5. Explore s3 buckets on http://localhost:9001
+4. Explore s3 buckets on http://localhost:9001
 
 ## TODO (in code):
 

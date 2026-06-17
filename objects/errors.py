@@ -68,6 +68,11 @@ class Errors:
             spent_time=spent_time,
         )
 
+    # alias for InternalServerError
+    @staticmethod
+    def InternalError(spent_time: Union[int, float] = 0):
+        return Errors.InternalServerError(spent_time)
+
     @staticmethod
     def MailError(spent_time: Union[int, float] = 0):
         return Base.Answer(

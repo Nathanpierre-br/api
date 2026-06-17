@@ -1,25 +1,24 @@
 from base64 import b64decode, b64encode
-from hashlib import blake2b
 from math import ceil
+from smtplib import SMTP
 from time import time as timestamp
 from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from redmail import EmailSender
-from smtplib import SMTP
 
-from helpers.fish import FISH
+from helpers.aquarium import Aether, Blake, Ferret
 from helpers.config import Config
 from helpers.database.models import Community, Global, ModelFabric
 from helpers.database.mongo import Database
 from helpers.functions import get_ip
 from helpers.generator import Generator
 from helpers.imageTools import ImageTools
+from helpers.processors.cache import CacheProcessor
 from helpers.processors.device import DeviceProcessor
 from helpers.processors.email import EmailProcessor
 from helpers.processors.session import SessionProcessor
-from helpers.processors.cache import CacheProcessor
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors, User
 
@@ -65,7 +64,7 @@ async def requestCode(request: Request):
     if not EmailProcessor.Validate(reciever):
         return Errors.InvalidEmail(timestamp() - t1)
 
-    """inspector = FISH.cook(("email:" + reciever).encode()).decode()
+    inspector = Aether.encode("email:" + reciever)
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
         await CacheProcessor.Make(
@@ -77,7 +76,15 @@ async def requestCode(request: Request):
         return Errors.VerificationRequired(
             Config.API_BASE_URL + "/api/v1/turtle/hello/email?inspector=" + inspector,
             timestamp() - t1,
-        )"""
+        )
+
+    if not Config.ENABLE_EMAIL:
+        return Base.Answer(
+            {
+                "api:warning": "Emails are disabled. Maybe it's a development environment (if not, this warning should matter server owners'!). Enter any code to continue."
+            },
+            spent_time=timestamp() - t1,
+        )
 
     db = await Database().init()
     table = await db.get(table="VerificationCodes")
@@ -93,12 +100,12 @@ async def requestCode(request: Request):
             captchaAnswer = row["captchaAnswer"]
 
     if not uniqueCode:
-        uniqueCode = blake2b(
-            data["deviceID"].encode("utf-8"),
-            key=Config.PASSWORD_SALT.encode("utf-8"),
-            salt=str(ceil(timestamp())).encode("utf-8"),
+        uniqueCode = Blake(
+            data=data["deviceID"],
+            key=Config.PASSWORD_SALT,
+            salt=str(ceil(timestamp())),
             digest_size=32,
-        ).hexdigest()
+        ).hash
 
     c_img, c_answer, _ = ImageTools.generate_captcha(captchaAnswer)
 
@@ -184,6 +191,14 @@ async def check_code(request: Request):
 
     email = data["validationContext"]["identity"]
 
+    if not Config.ENABLE_EMAIL:
+        return Base.Answer(
+            {
+                "api:warning": "Emails are disabled. Maybe it's a development environment (if not, this warning should matter server owners'!)."
+            },
+            spent_time=timestamp() - t1,
+        )
+
     db = await Database().init()
     table = await db.get(table="VerificationCodes")
     row = await table.find_one({"deviceId": data["deviceID"], "email": email})
@@ -229,23 +244,27 @@ async def register(request: Request):
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    codes = await db.get(table="VerificationCodes")
-    codes_row = await codes.find_one({"deviceId": data["deviceID"], "email": reciever})
-    if codes_row is None:
-        print("No codes")
-        return Errors.UnverifiedEmail(timestamp() - t1)
-    if data.get("validationContext"):
-        if str(data["validationContext"]["data"]["code"]) != str(
-            codes_row["captchaAnswer"]
-        ):
-            print("Invalid code (somehow)")
-            return Errors.InvalidVerificationCode(timestamp() - t1)
-        else:
-            codes_row["codeVerified"] = True
 
-    if not codes_row["codeVerified"]:
-        print("Code not verified")
-        return Errors.InvalidRequest(timestamp() - t1)
+    if Config.ENABLE_EMAIL:
+        codes = await db.get(table="VerificationCodes")
+        codes_row = await codes.find_one(
+            {"deviceId": data["deviceID"], "email": reciever}
+        )
+        if codes_row is None:
+            print("No codes")
+            return Errors.UnverifiedEmail(timestamp() - t1)
+        if data.get("validationContext"):
+            if str(data["validationContext"]["data"]["code"]) != str(
+                codes_row["captchaAnswer"]
+            ):
+                print("Invalid code (somehow)")
+                return Errors.InvalidVerificationCode(timestamp() - t1)
+            else:
+                codes_row["codeVerified"] = True
+
+        if not codes_row["codeVerified"]:
+            print("Code not verified")
+            return Errors.InvalidRequest(timestamp() - t1)
 
     users = await db.get(table="Users")
     row = await users.find_one({"email": data["email"]})
@@ -254,9 +273,12 @@ async def register(request: Request):
         return Errors.EmailWasTaken(timestamp() - t1)
 
     uid = str(uuid4())
-    passwordHash = blake2b(
-        data["secret"].encode("utf-8"), key=Config.PASSWORD_SALT.encode("utf-8")
-    ).hexdigest()
+
+    passwordHash = Blake(
+        data=data["secret"],
+        key=Config.PASSWORD_SALT,
+        digest_size=64,
+    ).hash
     await users.insert_one(
         ModelFabric.Construct(
             Global.Users,
@@ -321,35 +343,24 @@ async def login(request: Request):
     t1 = timestamp()
     data = await request.json()
 
-    try:
-        if str(data["email"]).strip() in ["None", ""] or str(
-            data["secret"]
-        ).strip() in ["None", ""]:
-            return Errors.InvalidLogin(timestamp() - t1)
+    if data.get("email") is None or data.get("secret") is None:
+        return Errors.InvalidLogin(timestamp() - t1)
 
-        if not EmailProcessor.Validate(data["email"]):
-            raise Exception()
-    except Exception as e:
-        print(e)
+    if not EmailProcessor.Validate(data["email"]):
         return Errors.InvalidRequest(timestamp() - t1)
 
     secretSplitted = data["secret"].split()
-    if len(secretSplitted) == 2 and secretSplitted[0] == "0":
-        passwordHash = blake2b(
-            data["secret"].encode("utf-8"),
-            key=Config.PASSWORD_SALT.encode("utf-8"),
-            digest_size=64,
-        ).hexdigest()
+    prefix = secretSplitted[0]
+    if prefix == "0":
+        passwordHash = Blake(
+            data=data["secret"], key=Config.PASSWORD_SALT, digest_size=64
+        ).hash
 
         db = await Database().init()
         table = await db.get(table="Users")
         row = await table.find_one(
             {"passwordHash": passwordHash, "email": data["email"]}
         )
-
-        if not row:
-            await db.close()
-            return Errors.InvalidLogin(timestamp() - t1)
 
         if row.get("status", 0) == 9:
             await db.close()
@@ -359,26 +370,27 @@ async def login(request: Request):
             await db.close()
             return Errors.InvalidLogin(timestamp() - t1)
         else:
-            if data["clientType"] != 100:
-                return Errors.UnsupportedClient(timestamp() - t1)
-
             table = await db.get("x0", "Users")
             additionalRow = await table.find_one({"id": row["id"]})
 
-            ip = (
-                request.headers.get("X-Forwarded-For")
-                or request.client.host
-                or "1.1.1.1"
-            )
+            ip = get_ip(request)
             tmstmp = ceil(timestamp())
 
             await SessionProcessor.End(request.headers.get("NDCAUTH"))
             await db.close()
+
+            ferrets_meal = {
+                "p": ip,
+                "t": tmstmp,
+                "i": row["id"],
+                "h": passwordHash,
+            }
             return Base.Answer(
                 {
                     "auid": row["id"],
                     "account": User.OwnSensetiveProfile(row),
                     "userProfile": User.OwnNonSensetiveProfile(additionalRow | row),
+                    "newSecret": f"54 {Ferret.encrypt(ferrets_meal)}",
                     "secret": f"31 {row['id']} {ip} {b64encode(passwordHash.encode()).decode()} {tmstmp} {31 * tmstmp}",
                     "sid": await SessionProcessor.Make(
                         row["id"], ip, data["clientType"]
@@ -386,21 +398,17 @@ async def login(request: Request):
                 },
                 spent_time=timestamp() - t1,
             )
-    elif len(secretSplitted) == 6:
-        if (not secretSplitted[0] == "31") or (
-            int(secretSplitted[0]) * int(secretSplitted[4]) != int(secretSplitted[5])
-        ):
-            return Errors.InvalidRequest(spent_time=timestamp() - t1)
-        decodedPswdHash = b64decode(secretSplitted[3]).decode()
+    # [NOTE]: future login system
+    elif prefix == "54":
+        junk = secretSplitted[1]
+        data = Ferret.decrypt(junk)
+
         db = await Database().init()
         table = await db.get(table="Users")
-        row = await table.find_one({"id": secretSplitted[1]})
-        if row is None:
+        row = await table.find_one({"id": data["i"]})
+        if row is None or row["passwordHash"] != data["h"]:
             await db.close()
-            return Errors.InvalidRequest(spent_time=timestamp() - t1)
-        if row["passwordHash"] != decodedPswdHash:
-            await db.close()
-            return Errors.InvalidRequest(spent_time=timestamp() - t1)
+            return Errors.InvalidLogin(spent_time=timestamp() - t1)
         if row.get("status", 0) == 9:
             await db.close()
             return Errors.UserBanned(timestamp() - t1)
@@ -409,7 +417,42 @@ async def login(request: Request):
         additionalRow = await table.find_one({"id": row["id"]})
         await db.close()
 
-        ip = request.headers.get("X-Forwarded-For") or request.client.host or "1.1.1.1"
+        ip = get_ip(request)
+        tmstmp = ceil(timestamp())
+        await SessionProcessor.End(request.headers.get("NDCAUTH"))
+        return Base.Answer(
+            {
+                "auid": row["id"],
+                "account": User.OwnSensetiveProfile(row),
+                "userProfile": User.OwnNonSensetiveProfile(additionalRow | row),
+                "sid": await SessionProcessor.Make(row["id"], ip, data["clientType"]),
+            },
+            spent_time=timestamp() - t1,
+        )
+    # [DEPRECATED]
+    # when password reset will be known as well working it will be wiped
+    # for now its just a compatibility thing
+    elif prefix == "31":
+        if (len(secretSplitted) != 6) or (
+            int(secretSplitted[0]) * int(secretSplitted[4]) != int(secretSplitted[5])
+        ):
+            return Errors.InvalidRequest(spent_time=timestamp() - t1)
+        decodedPswdHash = b64decode(secretSplitted[3]).decode()
+        db = await Database().init()
+        table = await db.get(table="Users")
+        row = await table.find_one({"id": secretSplitted[1]})
+        if row is None or row["passwordHash"] != decodedPswdHash:
+            await db.close()
+            return Errors.InvalidLogin(spent_time=timestamp() - t1)
+        if row.get("status", 0) == 9:
+            await db.close()
+            return Errors.UserBanned(timestamp() - t1)
+
+        table = await db.get(database="x0", table="Users")
+        additionalRow = await table.find_one({"id": row["id"]})
+        await db.close()
+
+        ip = get_ip(request)
         tmstmp = ceil(timestamp())
         await SessionProcessor.End(request.headers.get("NDCAUTH"))
         return Base.Answer(

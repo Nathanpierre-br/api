@@ -73,7 +73,7 @@
 	function onSuccess(token) {
         destroyElement('captcha');
 	    forceShow('loading');
-		fetch(`https://${window.location.hostname}/api/v1/turtle/validate`, {
+		fetch(`https://${window.location.hostname}/api/v1/turtle/validate{{ why }}`, {
 		  method: 'POST',
 		  headers: {
 		    'Content-Type': 'application/json'

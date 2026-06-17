@@ -1,7 +1,8 @@
 from typing import Union
-from ..config import Config
 
 import motor.motor_asyncio
+
+from ..config import Config
 
 
 class Database:
@@ -23,5 +24,10 @@ class Database:
     async def close(self):
         return self.__connection.close()
 
+    # [DEPRECATED] just an compatibility layer for now
     async def get_connection(self):
+        return self.__connection
+
+    @property
+    def connection(self):
         return self.__connection

@@ -106,6 +106,7 @@ class User:
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
             "isNicknameVerified": bool(row.get("isVerified", False)),
+            "verified": bool(len(row.get("tagList", []))),  # this fixes tagList! :D
             "notificationSubscriptionStatus": 0,
             "pushEnabled": True,
             "membershipStatus": membershipStatus,
@@ -187,7 +188,8 @@ class User:
                 None
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
-            "isNicknameVerified": False,
+            "isNicknameVerified": bool(row.get("isVerified", False)),
+            "verified": bool(len(row.get("tagList", []))),  # this fixes tagList! :D
             "notificationSubscriptionStatus": 0,
             "pushEnabled": True,
             "membershipStatus": membershipStatus,
@@ -284,6 +286,7 @@ class User:
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
             "isNicknameVerified": bool(row.get("isVerified", False)),
+            "verified": bool(len(row.get("tagList", []))),  # this fixes tagList! :D
             "notificationSubscriptionStatus": 0,
             "pushEnabled": True,
             "membershipStatus": membershipStatus,

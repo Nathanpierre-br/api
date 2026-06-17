@@ -1,18 +1,19 @@
-from helpers.routers.cachable import CachableRoute
-from helpers.functions import detect_file_ext
-from helpers.imageTools import ImageTools
-from string import ascii_letters, digits
-from fastapi import APIRouter, Request
-from time import time as timestamp
-from helpers.config import Config
-from boto3 import resource
-from random import choice
-from objects import Base, Errors
 from io import BytesIO
-from orjson import loads
+from random import choice
+from string import ascii_letters, digits
+from time import time as timestamp
 from zipfile import ZipFile
 
+from boto3 import resource
+from fastapi import APIRouter, Request
+from orjson import loads
+
+from helpers.config import Config
 from helpers.database.mongo import Database
+from helpers.functions import detect_file_ext
+from helpers.imageTools import ImageTools
+from helpers.routers.cachable import CachableRoute
+from objects import Base, Errors
 
 upload_media = APIRouter()
 upload_media.route_class = CachableRoute

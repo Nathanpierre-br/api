@@ -1,37 +1,42 @@
 services:
-  api:
-    build: .
-    ports: ["8080:8081"]
-    env_file: .env
-    depends_on:
-      - mongo
-      - minio
+    api:
+        build: .
+        ports: ["8080:8081"]
+        env_file: .env
+        depends_on:
+            - mongo
+            - minio
+            # - valkey
+        environment:
+            - ENABLE_EMAIL=0 # YOU DONT NEED EMAILS IN DEV DONT YOU
 
-  mongo:
-    image: mongo:7
-    ports: ["27017:27017"]
-    volumes: ["mongo_data:/data/db"]
+    # [NOTE]: only when valkey will be not in the same docker container as the api
+    # valkey:
+    #     image: valkey/valkey
+    #     ports: ["6379:6379"]
 
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    ports: ["9000:9000", "9001:9001"]
-    volumes: ["minio_data:/data"]
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY}
-  
-  createbucket:
-    image: minio/mc
-    depends_on:
-      - minio
-    env_file: .env
-    entrypoint: /bin/sh -c "mc alias set local http://minio:9000 $${S3_ACCESS_KEY} $${S3_SECRET_ACCESS_KEY}; mc mb --ignore-existing local/$${S3_BUCKET_NAME}; mc anonymous set download local/$${S3_BUCKET_NAME}"
+    mongo:
+        image: mongo:7
+        ports: ["27017:27017"]
+        volumes: ["mongo_data:/data/db"]
 
-  mailhog:
-    image: mailhog/mailhog
-    ports: ["1025:1025", "8025:8025"]
+    # [NOTE]: move to garagehq or seaweedfs instead
+    minio:
+        image: minio/minio
+        command: server /data --console-address ":9001"
+        ports: ["9000:9000", "9001:9001"]
+        volumes: ["minio_data:/data"]
+        environment:
+            MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+            MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY}
+
+    createbucket:
+        image: minio/mc
+        depends_on:
+            - minio
+        env_file: .env
+        entrypoint: /bin/sh -c "mc alias set local http://minio:9000 $${S3_ACCESS_KEY} $${S3_SECRET_ACCESS_KEY}; mc mb --ignore-existing local/$${S3_BUCKET_NAME}; mc anonymous set download local/$${S3_BUCKET_NAME}"
 
 volumes:
-  mongo_data:
-  minio_data:
+    mongo_data:
+    minio_data:

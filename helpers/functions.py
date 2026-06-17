@@ -1,9 +1,22 @@
-from fastapi import Request
-from hashlib import blake2s
 from base64 import b85decode, b85encode
+from hashlib import blake2s
+from io import BytesIO
 from urllib.parse import urlparse
-from .generator import Generator
+from uuid import UUID
+
+from fastapi import Request
+from tinytag import TinyTag
+
 from .config import Config
+from .generator import Generator
+
+
+def audio_length(data: bytes) -> int:
+    try:
+        tag = TinyTag.get(file_obj=BytesIO(data))
+        return int(tag.duration)
+    except Exception:
+        return 0
 
 
 def is_app_link(url: str) -> bool:
@@ -75,9 +88,21 @@ def str2b85(data: str) -> str:
     return b85encode(data.encode()).decode()
 
 
+def is_valid_uuid4(uuid_str: str) -> bool:
+    try:
+        return UUID(uuid_str) == 4
+    except ValueError:
+        return False
+
+
 def get_ip(request: Request) -> str:
     """since our servers under cloudflare, we need CF-Connecting-IP instead of X-Forwarded-For"""
-    return request.headers.get("CF-Connecting-IP") or request.client.host or "1.1.1.1"
+    return (
+        request.headers.get("CF-Connecting-IP")
+        or request.headers.get("X-Forwarded-For")
+        or request.client.host
+        or "1.1.1.1"
+    )
 
 
 def get_hashed_ip(request: Request) -> str:

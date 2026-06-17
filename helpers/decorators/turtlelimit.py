@@ -2,8 +2,7 @@ from functools import wraps
 from json import dumps
 from uuid import UUID
 
-from helpers.fish import FISH
-
+from helpers.aquarium import Aether
 from helpers.config import Config
 from helpers.processors.cache import CacheProcessor
 from objects import Errors
@@ -25,6 +24,10 @@ def turtlelimiter(
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
+            # if turtlelimiter is disabled, just simply walk around it
+            if not Config.ENABLE_TURTLELIMIT:
+                return await func(*args, **kwargs)
+
             request = kwargs.get("request")
 
             # if there is no valid session, just skipping it
@@ -40,8 +43,8 @@ def turtlelimiter(
             uid = UUID(request.state.session["uid"]).hex
 
             # for multi rate limiting
-            inspector = FISH.cook(
-                dumps({"case": tag, "user": uid}, ensure_ascii=False).encode()
+            inspector = Aether.encode(
+                dumps({"case": tag, "user": uid}, ensure_ascii=False)
             )
             turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
             if turtle is None:
@@ -64,8 +67,8 @@ def turtlelimiter(
                 inspector, prefix="turtlelimiter:", expiring_after=cooldown
             )
 
-            # TEMP
-            return await func(*args, **kwargs)
+            # Bypass for testing
+            # return await func(*args, **kwargs)
 
             return Errors.VerificationRequired(
                 Config.API_BASE_URL + "/api/v1/turtle/hello?inspector=" + inspector
