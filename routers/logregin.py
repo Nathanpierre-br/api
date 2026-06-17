@@ -1,4 +1,5 @@
 from base64 import b64decode, b64encode
+from json import dumps
 from math import ceil
 from smtplib import SMTP
 from time import time as timestamp
@@ -379,12 +380,14 @@ async def login(request: Request):
             await SessionProcessor.End(request.headers.get("NDCAUTH"))
             await db.close()
 
-            ferrets_meal = {
-                "p": ip,
-                "t": tmstmp,
-                "i": row["id"],
-                "h": passwordHash,
-            }
+            ferrets_meal = dumps(
+                {
+                    "p": ip,
+                    "t": tmstmp,
+                    "i": row["id"],
+                    "h": passwordHash,
+                }
+            )
             return Base.Answer(
                 {
                     "auid": row["id"],
