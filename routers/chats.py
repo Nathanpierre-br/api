@@ -765,7 +765,9 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         extensions.update({"replyMessageId": data["replyMessageId"]})
 
     if data.get("stickerId"):
-        if data["stickerId"][2:].isdigit():
+        if data["stickerId"][2:].isdigit() or is_hex_str(
+            data["stickerId"][2:], limited_to=8
+        ):
             extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
             data["mediaType"] = 113
             mediaLink = f"ndcsticker://{data['stickerId'][2:]}"

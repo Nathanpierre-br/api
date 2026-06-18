@@ -363,13 +363,12 @@ async def login(request: Request):
             {"passwordHash": passwordHash, "email": data["email"]}
         )
 
-        if row.get("status", 0) == 9:
-            await db.close()
-            return Errors.UserBanned(timestamp() - t1)
-
         if row is None:
             await db.close()
             return Errors.InvalidLogin(timestamp() - t1)
+        elif row.get("status", 0) == 9:
+            await db.close()
+            return Errors.UserBanned(timestamp() - t1)
         else:
             table = await db.get("x0", "Users")
             additionalRow = await table.find_one({"id": row["id"]})
