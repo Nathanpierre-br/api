@@ -21,7 +21,8 @@ def audio_length(data: bytes) -> int:
     try:
         tag = TinyTag.get(file_obj=BytesIO(data))
         return int(tag.duration)
-    except Exception:
+    except Exception as e:
+        print("Can't calculate audio length:", e)
         return 0
 
 

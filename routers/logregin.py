@@ -65,7 +65,7 @@ async def requestCode(request: Request):
     if not EmailProcessor.Validate(reciever):
         return Errors.InvalidEmail(timestamp() - t1)
 
-    inspector = Aether.encode("email:" + reciever)
+    inspector = Aether.encode("email:" + reciever).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
         await CacheProcessor.Make(

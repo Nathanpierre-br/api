@@ -398,7 +398,7 @@ async def get_community_info(request: Request, ndcId: int = 0):
         return Base.Answer(
             {
                 "community": ndc_info,
-                "isCurrentUserJoined": True,  # thats funny but this fixes join button!
+                "isCurrentUserJoined": bool(ndc_info.get("membershipStatus", 0)),
                 "currentUserInfo": (full_user_data or {})
                 | {"membershipStatus": ndc_info.get("membershipStatus", 0)},
             },

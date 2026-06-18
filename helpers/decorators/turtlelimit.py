@@ -45,7 +45,7 @@ def turtlelimiter(
             # for multi rate limiting
             inspector = Aether.encode(
                 dumps({"case": tag, "user": uid}, ensure_ascii=False)
-            )
+            ).decode()
             turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
             if turtle is None:
                 await CacheProcessor.Make(

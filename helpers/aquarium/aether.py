@@ -1,3 +1,4 @@
+from base64 import b85decode, b85encode
 from os import urandom
 
 from cryptography.hazmat.primitives import padding
@@ -30,7 +31,7 @@ class _Aether:
         padded_data = padder.update(data) + padder.finalize()
 
         encryptor = self.cipher.encryptor()
-        return encryptor.update(padded_data) + encryptor.finalize()
+        return b85encode(encryptor.update(padded_data) + encryptor.finalize())
 
     # alias for encrypt
     def encode(self, data: bytes | str) -> bytes:
@@ -38,7 +39,7 @@ class _Aether:
 
     def decrypt(self, data: bytes) -> bytes:
         decryptor = self.cipher.decryptor()
-        decrypted_padded = decryptor.update(data) + decryptor.finalize()
+        decrypted_padded = decryptor.update(b85decode(data)) + decryptor.finalize()
 
         unpadder = padding.PKCS7(128).unpadder()
         return unpadder.update(decrypted_padded) + unpadder.finalize()
