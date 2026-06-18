@@ -1,20 +1,20 @@
-FROM valkey/valkey:trixie AS base
+FROM debian:trixie-slim
 
 WORKDIR /app
-COPY . .
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-ENV PYTHONUNBUFFERED=1
-ENV UV_LINK_MODE=copy \
+ENV PYTHONUNBUFFERED=1 \
+    UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
 
-RUN apt-get update && apt-get install -y ca-certificates
+RUN useradd -U -u 1000 -m appuser && \
+    mkdir -p /home/appuser/.cache/uv && \
+    chown -R 1000:1000 /app /home/appuser/
 
-RUN useradd -U -u 1000 appuser
-RUN mkdir -p /home/appuser/.cache/uv
-RUN chown -R 1000:1000 /app /home/appuser/
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --chown=1000:1000 . .
+
 USER 1000
 
 RUN uv sync
 
-CMD ["uv", "run", "supervisord", "-c", "files/supervisord.conf"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8081"]
