@@ -21,7 +21,9 @@ class Base:
             "api:message": api_message,
             "api:timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         } | data
-        headers = {"NDC-MSG-SIG": SignatureProcessor.Generate(final_data)}
+        headers = {
+            # "NDC-MSG-SIG": SignatureProcessor.Generate(final_data)
+        }
         return JSONResponse(
             final_data,
             status_code=html_status_code,
