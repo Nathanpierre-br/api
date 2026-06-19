@@ -74,10 +74,11 @@ async def joined_communities(
         result = {
             "communityList": communityList,
             "userInfoInCommunities": {
-                # experimental fix
-                str(item): User.OwnNonSensetiveProfile(
-                    row2, ndcId=item, membershipStatus=1
-                )
+                str(item): {
+                    "userProfile": User.OwnNonSensetiveProfile(
+                        row2, ndcId=item, membershipStatus=1
+                    )
+                }
                 | {"joined": True, "membershipStatus": 1, "accountMembershipStatus": 1}
                 for item in cl_needed
             },
@@ -261,6 +262,7 @@ async def join_community(request: Request, ndcId: int):
             new_profile["modifiedTime"] = new_timestamp
 
             await table_community_users.insert_one(new_profile)
+            user_info = new_profile
 
         # update community profile that user joined
         await table_community_users.update_one(
@@ -291,7 +293,10 @@ async def join_community(request: Request, ndcId: int):
             {"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}}
         )
 
-        return Base.Answer({}, spent_time=timestamp() - t1)
+        return Base.Answer(
+            {"userProfile": User.OwnNonSensetiveProfile(user_info)},
+            spent_time=timestamp() - t1,
+        )
     except Exception as e:
         print(f"Error in join_community: {e}")
         return Errors.InternalServerError(timestamp() - t1)

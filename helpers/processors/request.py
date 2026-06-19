@@ -88,13 +88,9 @@ class RequestProcessor:
         coders or because of time they need to wait. 
         """
 
-        # TODO:
-        # deprecate "service.aminoapps.com" and "service.narvii.com"
-        # since its useless
         if headers.get("Host") not in [
-            "service.narvii.com",
-            "service.aminoapps.com",
             Config.API_DOMAIN,
+            "dev-" + Config.API_DOMAIN,
         ]:
             return [False, Errors.SUS()]
 

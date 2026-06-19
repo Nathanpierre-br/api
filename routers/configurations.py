@@ -151,16 +151,21 @@ async def reminder_stats(request: Request, ndcId: int = 0):
 @configurations.get("/g/s/reminder/check")
 @configurations.get("/x{ndcId}/s/reminder/check")
 @validauth_required
-async def reminder_configs(request: Request, ndcId: int = 0):
+async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
+    chunks = ndcIds.split(",") or []
+
     return Base.Answer(
         {
             "reminderCheckResult": {
-                "noticesCount": 0,
                 "noticesCount2": 0,
+                "hasCheckInToday": False,
+                "consecutiveCheckInDays": 0,
+                "checkInHistory": None,
                 "notificationsCount": 0,
+                "noticesCount": 0,
             },
-            "treatedNdcIds": [],
-            "reminderCheckResultInCommunities": {},
+            "treatedNdcIds": [int(chunk) for chunk in chunks],
+            "reminderCheckResultInCommunities": {chunk: [] for chunk in chunks},
         }
     )
 
