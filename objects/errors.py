@@ -204,14 +204,21 @@ class Errors:
         return Base.Answer(
             data={
                 "url": url,
-                "title": "Please verify that you aren't a robot.",
+                "title": "Hold on! Are you a robot?",
                 "okButtonText": "Verify",
                 "cancelButtonText": "Cancel",
                 "noCancelButton": False,
+                "extensions": {
+                    "url": url,
+                    "title": "Hold on! Are you a robot?",
+                    "okButtonText": "Verify",
+                    "cancelButtonText": "Cancel",
+                    "noCancelButton": False,
+                },
             },
             api_status_code=270,
             html_status_code=400,
-            api_message="Uh-oh! Looks like you need to verify that you aren't a robot.",
+            api_message="Action you made requires verification that you aren't a robot. Please solve a challenge. 👉👈",
             spent_time=spent_time,
         )
 
