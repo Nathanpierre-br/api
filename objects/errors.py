@@ -208,13 +208,6 @@ class Errors:
                 "okButtonText": "Verify",
                 "cancelButtonText": "Cancel",
                 "noCancelButton": False,
-                "extensions": {
-                    "url": url,
-                    "title": "Hold on! Are you a robot?",
-                    "okButtonText": "Verify",
-                    "cancelButtonText": "Cancel",
-                    "noCancelButton": False,
-                },
             },
             api_status_code=270,
             html_status_code=400,

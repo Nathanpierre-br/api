@@ -2,6 +2,7 @@ from typing import Union
 from helpers.database.mongo import Database
 from .user import User
 from .medialist import MediaList
+from hashlib import md5
 
 """
 this is top tier bullshit
@@ -138,7 +139,14 @@ class Communities:
             "themePack": {
                 "themeColor": data.get("themeColor", "#000000"),
                 "themePackUrl": data.get("themeUrl"),
-                "themePackHash": data.get("themeHash"),
+                "themePackHash": data.get(
+                    "themeHash",
+                    md5(
+                        data.get("themeUrl", "https://trolo.lol/example").encode(
+                            "utf-8"
+                        )
+                    ).hexdigest(),
+                ),
                 "themePackRevision": data.get("themeRevision"),
             },
             "mediaList": [],  # for description

@@ -1,6 +1,9 @@
+from datetime import UTC, datetime
 from typing import Union
-from datetime import datetime, UTC
+
 from fastapi.responses import JSONResponse
+
+from helpers.processors.signature import SignatureProcessor
 
 
 class Base:
@@ -12,15 +15,17 @@ class Base:
         api_message="OK",
         html_status_code: int = 200,
     ):
+        final_data = {
+            "api:statuscode": api_status_code,
+            "api:duration": f"{round(spent_time + 0.001, 4)}s",
+            "api:message": api_message,
+            "api:timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        } | data
+        headers = {"NDC-MSG-SIG": SignatureProcessor.Generate(final_data)}
         return JSONResponse(
-            {
-                "api:statuscode": api_status_code,
-                "api:duration": f"{round(spent_time + 0.001, 4)}s",
-                "api:message": api_message,
-                "api:timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            }
-            | data,
+            final_data,
             status_code=html_status_code,
+            headers=headers,
         )
 
     @staticmethod

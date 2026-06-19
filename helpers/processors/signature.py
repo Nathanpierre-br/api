@@ -1,8 +1,9 @@
-from hmac import new
+from base64 import b64decode, b64encode
 from hashlib import sha1
+from hmac import new
 from typing import Union
+
 from orjson import dumps
-from base64 import b64encode, b64decode
 
 
 class SignatureProcessor:
@@ -46,4 +47,24 @@ class SignatureProcessor:
 
         return signature == b64encode(
             prefix + new(sig_keys[prefix], data, sha1).digest()
+        ).decode("utf-8")
+
+    @staticmethod
+    def Generate(prefix: bytes, data: Union[str, bytes, dict]) -> str:
+        if isinstance(data, dict):
+            data = dumps(data)
+        elif isinstance(data, str):
+            data = data.encode()
+        elif isinstance(data, bytes):
+            pass
+        else:
+            raise Exception(
+                f"Invalid type of data (expected str, bytes or dict, but recieved {type(data)} instead)"
+            )
+
+        if prefix not in SignatureProcessor.sig_keys:
+            raise Exception(f"Invalid prefix: {prefix}")
+
+        return b64encode(
+            prefix + new(SignatureProcessor.sig_keys[prefix], data, sha1).digest()
         ).decode("utf-8")
