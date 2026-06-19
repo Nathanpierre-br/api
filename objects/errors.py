@@ -204,9 +204,10 @@ class Errors:
         return Base.Answer(
             data={
                 "url": url,
-                "api:url": url,
-                "api:link": url,
-                "extensions": {"url": url},
+                "title": "Please verify that you aren't a robot.",
+                "okButtonText": "Verify",
+                "cancelButtonText": "Cancel",
+                "noCancelButton": False,
             },
             api_status_code=270,
             html_status_code=400,
