@@ -152,7 +152,10 @@ async def reminder_stats(request: Request, ndcId: int = 0):
 @configurations.get("/x{ndcId}/s/reminder/check")
 @validauth_required
 async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
-    chunks = ndcIds.split(",") or []
+    if ndcIds:
+        chunks = ndcIds.split(",") or []
+    else:
+        chunks = []
 
     return Base.Answer(
         {
