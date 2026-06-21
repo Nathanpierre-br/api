@@ -145,7 +145,7 @@ async def all_communities_list(
     pageToken: str | None = None,
 ):
     t1 = timestamp()
-    uid = request.state.session["uid"]
+    uid = request.state.session.get("uid")
     start = parse_page_token(pageToken, start)
 
     db = await Database().init()

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+ENV_FILE_PATH=$1
+
+if [ -z "$ENV_FILE_PATH" ]; then
+	echo "Please provide an .env file."
+	exit 1
+fi
+
+uv run --env-file $ENV_FILE_PATH uvicorn main:app --host 0.0.0.0 --port 33333 --reload

@@ -5,17 +5,18 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse, RedirectResponse
-from routers.altacm import altacm
+from routers.static_things import static_things
 
 from objects import Errors
+
+# routes
+from routers.altacm import altacm
 from routers.blogs import blog_methods
 from routers.chats import chats
 from routers.communities import communities
 from routers.configurations import configurations
 from routers.links import links
 from routers.logregin import logregin
-
-# routers
 from routers.mock import mock
 from routers.moderation_tools import moderation_tools
 from routers.profile import profile_methods
@@ -49,6 +50,7 @@ app.include_router(communities, prefix="/api/v1")
 app.include_router(blog_methods, prefix="/api/v1")
 app.include_router(moderation_tools, prefix="/api/v1")
 app.include_router(altacm, prefix="/api/v1")
+app.include_router(static_things)
 
 # brotli can break amino libraries, but it's easy to fix
 # either enable support for brotli, or just remove "brotli" from headers

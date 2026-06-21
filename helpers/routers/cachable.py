@@ -1,15 +1,16 @@
+# from re import findall
 from re import findall
 from typing import Callable
-from orjson import loads, dumps
-from fastapi.routing import APIRoute
+
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
+from orjson import dumps, loads
 
-from objects.errors import Errors
-from helpers.functions import make_hash
-from helpers.functions import get_hashed_ip
+from helpers.functions import get_hashed_ip, make_hash
 from helpers.processors.cache import CacheProcessor
 from helpers.processors.request import RequestProcessor
+from objects.errors import Errors
 
 
 class CachableRoute(APIRoute):

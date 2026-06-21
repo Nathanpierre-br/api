@@ -44,7 +44,7 @@ class Config:
     # [WARNING]
     # might be deprecated soon since mostly we use default ports in the internet
     # for now it's here for backward compatibility and to avoid breaking changes
-    SMTP_STARTTLS = environ.get("SMTP_STARTTLS", "").lower() in ["true", "1"]
+    SMTP_STARTTLS = environ.get("SMTP_STARTTLS", "true").lower() in ["true", "1"]
     SMTP_SSL = environ.get("SMTP_SSL", "").lower() in ["true", "1"]
 
     # aquarium encryption keys (required)

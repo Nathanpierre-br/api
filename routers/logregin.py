@@ -1,13 +1,12 @@
+from asyncio import to_thread as asyncio_thread
 from base64 import b64decode, b64encode
 from json import dumps
 from math import ceil
-from smtplib import SMTP
 from time import time as timestamp
 from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
-from redmail import EmailSender
 
 from helpers.aquarium import Aether, Blake, Ferret
 from helpers.config import Config
@@ -38,6 +37,41 @@ async def seeVerificationCode(code):
         return Errors.InvalidVerificationCode()
     img, _, __ = ImageTools.generate_captcha(row["captchaAnswer"])
     return StreamingResponse(img)
+
+
+@logregin.post("/g/s/auth/change-password")
+async def changePassword(request: Request):
+    t1 = timestamp()
+    try:
+        data = await request.json()
+        oldSecret = data["secret"]
+        validationContext = data["validationContext"]
+        updateSecret = data["updateSecret"]
+        code = validationContext["data"]["code"]
+        email = validationContext["identity"]
+        deviceId = data["deviceID"]
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+    if not Config.ENABLE_EMAIL:
+        table = db.get(table="VerificationCodes")
+        row = await table.find_one({"deviceId": deviceId, "email": email})
+        if row is None:
+            return Errors.UnverifiedEmail(timestamp() - t1)
+        if str(code) != str(row["captchaAnswer"]):
+            return Errors.InvalidVerificationCode(timestamp() - t1)
+
+    table = db.get(table="Users")
+    row = await table.find_one({"email": email, "secret": Blake(oldSecret).hash})
+    if row is None:
+        return Errors.UserUnavailable(timestamp() - t1)
+
+    table.update_one({"email": email}, {"$set": {"secret": Blake(updateSecret).hash}})
+    return Base.Answer(
+        {},
+        spent_time=timestamp() - t1,
+    )
 
 
 """
@@ -126,21 +160,13 @@ async def requestCode(request: Request):
     verification_link = f"{Config.SITE_DOMAIN}/verify?code={uniqueCode}"
     html = html.replace("[LINK]", verification_link)
     text = text.replace("[LINK]", verification_link)
+    subject = "Confirmation code for AltAmino"
 
     try:
-        email = EmailSender(
-            host=Config.SMTP_SERVER,
-            port=Config.SMTP_PORT,
-            username=Config.SMTP_USER,
-            password=Config.SMTP_PSWD,
-            use_starttls=True,
-            cls_smtp=SMTP,
-        )
-        email.domain_name = Config.SITE_DOMAIN
-        email.send(
-            sender=Config.SMTP_SNDR,
-            subject="Confirmation code for AltAmino",
-            receivers=[reciever],
+        await asyncio_thread(
+            EmailProcessor.SendEmail,
+            email=reciever,
+            subject=subject,
             html=html,
             text=text,
             body_images={"IMAGE": c_img},

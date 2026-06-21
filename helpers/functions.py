@@ -1,6 +1,6 @@
 from base64 import b85decode, b85encode
 from hashlib import blake2s
-from io import BytesIO
+from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -17,10 +17,18 @@ def is_hex_str(s: str, limited_to: int | None = None) -> bool:
     return all(c in "0123456789abcdefABCDEF" for c in s)
 
 
-def audio_length(data: bytes) -> int:
+def audio_length(data: bytes) -> float:
     try:
-        tag = TinyTag.get(file_obj=BytesIO(data))
-        return int(tag.duration)
+        with NamedTemporaryFile(
+            mode="w+b",
+            delete=True,
+            prefix="audio_note-",
+            suffix=".m4a",
+        ) as fakefile:
+            fakefile.write(data)
+            fakefile.seek(0)
+            tag = TinyTag.get(filename=fakefile.name, file_obj=fakefile)
+            return round(tag.duration, 2)
     except Exception as e:
         print("Can't calculate audio length:", e)
         return 0

@@ -16,6 +16,7 @@ from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import (
+    audio_length,
     calculate_page_tokens,
     detect_file_ext,
     is_app_link,
@@ -703,14 +704,15 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
                 mediaLink = Config.MEDIA_BASE_URL + filename
             elif data["mediaType"] == 110:
+                audio_bytes = b64decode(data["mediaUploadValue"])
                 filename = (
                     Config.S3_VOICES_FOLDER
                     + "".join([choice(ascii_letters + digits) for _ in range(64)])
-                    + ".aac"  # TODO: add support to opus/ogg/mp3/m4a
+                    + ".aac"
                 )
-                extensions = extensions | {"duration": 0.00}
+                extensions = extensions | {"duration": audio_length(audio_bytes)}
                 s3.Bucket(Config.S3_BUCKET_NAME).put_object(
-                    Key=filename, Body=b64decode(data["mediaUploadValue"])
+                    Key=filename, Body=audio_bytes
                 )
                 mediaLink = Config.MEDIA_BASE_URL + filename
             elif data["mediaType"] == 103:

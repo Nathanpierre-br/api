@@ -405,6 +405,15 @@ class Errors:
         )
 
     @staticmethod
+    def UserUnavailable(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=225,
+            html_status_code=400,
+            api_message="User not found.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
     def ViewModeEnabled(spent_time: Union[int, float] = 0):
         return Base.Answer(
             api_status_code=1663,
