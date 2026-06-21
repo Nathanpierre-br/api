@@ -4,8 +4,8 @@ from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 from uuid import UUID
 
+import mutagen
 from fastapi import Request
-from tinytag import TinyTag
 
 from .config import Config
 from .generator import Generator
@@ -23,12 +23,12 @@ def audio_length(data: bytes) -> float:
             mode="w+b",
             delete=True,
             prefix="audio_note-",
-            suffix=".m4a",
+            suffix=".aac",
         ) as fakefile:
             fakefile.write(data)
             fakefile.seek(0)
-            tag = TinyTag.get(filename=fakefile.name, file_obj=fakefile)
-            return round(tag.duration, 2)
+            tag = mutagen.File(fakefile)
+            return round(tag.info.length, 2)
     except Exception as e:
         print("Can't calculate audio length:", e)
         return 0

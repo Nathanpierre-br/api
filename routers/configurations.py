@@ -1,14 +1,26 @@
-from fastapi import APIRouter, Request
 from typing import Union
 from uuid import uuid4
 
-from objects import Base, Errors
-from helpers.routers.cachable import CachableRoute
-from helpers.decorators.validauth import validauth_required
+from fastapi import APIRouter, Request
+
 from helpers.database.mongo import Database
+from helpers.decorators.validauth import validauth_required
+from helpers.routers.cachable import CachableRoute
+from objects import Base, Errors
 
 configurations = APIRouter()
 configurations.route_class = CachableRoute
+
+
+@configurations.post("/g/s/safe-browsing")
+@configurations.post("/x{ndcId}/s/safe-browsing")
+async def safe_browsing(request: Request, ndcId: int = 0):
+    data = await request.json()
+    url = data.get("url")
+    if url is None:
+        return Errors.InvalidRequest()
+
+    return Base.Answer({})
 
 
 @configurations.get("/g/s/community/configuration")

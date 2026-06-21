@@ -16,6 +16,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "marshmallow<4.0",
     "motor>=3.7.1",
+    "mutagen>=1.47.0",
     "numpy>=2.4.3",
     "opencv-contrib-python-headless>=4.13.0.92",
     "orjson>=3.11.7",
@@ -24,7 +25,6 @@ dependencies = [
     "redis>=7.4.0",
     "redmail>=0.6.0",
     "requests>=2.32.5",
-    "tinytag>=2.2.1",
     "uvicorn>=0.42.0",
     "websockets>=16.0",
 ]

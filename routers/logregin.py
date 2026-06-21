@@ -39,14 +39,50 @@ async def seeVerificationCode(code):
     return StreamingResponse(img)
 
 
+@logregin.post("/g/s/auth/verify-password")
+async def verifyPassword(request: Request):
+    t1 = timestamp()
+    uid = request.state.session.get("uid")
+    try:
+        data = await request.json()
+        secret = Blake(
+            data=data["secret"],
+            key=Config.PASSWORD_SALT,
+            digest_size=64,
+        ).hash
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+
+    table = await db.get(table="Users")
+    row = await table.find_one({"id": uid, "passwordHash": secret})
+    if row is None:
+        return Errors.InvalidLogin(timestamp() - t1)
+
+    return Base.Answer(
+        {},
+        spent_time=timestamp() - t1,
+    )
+
+
 @logregin.post("/g/s/auth/change-password")
 async def changePassword(request: Request):
     t1 = timestamp()
+    uid = request.state.session.get("uid")
     try:
         data = await request.json()
-        oldSecret = data["secret"]
+        oldSecret = Blake(
+            data=data["secret"],
+            key=Config.PASSWORD_SALT,
+            digest_size=64,
+        ).hash
         validationContext = data["validationContext"]
-        updateSecret = data["updateSecret"]
+        updateSecret = Blake(
+            data=data["updateSecret"],
+            key=Config.PASSWORD_SALT,
+            digest_size=64,
+        ).hash
         code = validationContext["data"]["code"]
         email = validationContext["identity"]
         deviceId = data["deviceID"]
@@ -62,12 +98,15 @@ async def changePassword(request: Request):
         if str(code) != str(row["captchaAnswer"]):
             return Errors.InvalidVerificationCode(timestamp() - t1)
 
-    table = db.get(table="Users")
-    row = await table.find_one({"email": email, "secret": Blake(oldSecret).hash})
+    table = await db.get(table="Users")
+    row = await table.find_one({"email": email, "passwordHash": oldSecret})
     if row is None:
         return Errors.UserUnavailable(timestamp() - t1)
+    print(uid, row.get("id"))
+    # if row.get("id") != uid:
+    #    return Errors.SUS()
 
-    table.update_one({"email": email}, {"$set": {"secret": Blake(updateSecret).hash}})
+    table.update_one({"email": email}, {"$set": {"passwordHash": updateSecret}})
     return Base.Answer(
         {},
         spent_time=timestamp() - t1,
@@ -96,18 +135,18 @@ async def requestCode(request: Request):
     except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
 
-    if not EmailProcessor.Validate(reciever):
+    if not await EmailProcessor.Validate(reciever):
         return Errors.InvalidEmail(timestamp() - t1)
 
     inspector = Aether.encode("email:" + reciever).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
     if turtle is None:
         await CacheProcessor.Make(
-            inspector, "X", prefix="turtlelimiter:", expiring_after=180
+            inspector, "X", prefix="turtlelimiter:", expiring_after=60
         )
         turtle = "X"
 
-    if turtle == "X":
+    if turtle != "X":
         return Errors.VerificationRequired(
             Config.API_BASE_URL + "/api/v1/turtle/hello/email?inspector=" + inspector,
             timestamp() - t1,
@@ -157,7 +196,7 @@ async def requestCode(request: Request):
 
     html = """<h3>You have requested a confirmation code for AltAmino. Please enter this code.</h3>{{ IMAGE }}<p>Can't see the code? Please click on the link below to see the code.</p>[LINK]<br><p>If this is not your AltAmino account, don't worry. Someone may have misspelled their email address.</p><p>If you have any difficulties or questions, please contact us.</p><br><p>Thanks,<br>Team AltAmino</p>"""
     text = "You have requested a confirmation code for AltAmino. Please visit the link to see the code: [LINK]"
-    verification_link = f"{Config.SITE_DOMAIN}/verify?code={uniqueCode}"
+    verification_link = f"{Config.API_BASE_URL}/verify?code={uniqueCode}"
     html = html.replace("[LINK]", verification_link)
     text = text.replace("[LINK]", verification_link)
     subject = "Confirmation code for AltAmino"
@@ -165,7 +204,7 @@ async def requestCode(request: Request):
     try:
         await asyncio_thread(
             EmailProcessor.SendEmail,
-            email=reciever,
+            receiver=reciever,
             subject=subject,
             html=html,
             text=text,
@@ -206,7 +245,9 @@ async def check_code(request: Request):
         if (
             (not DeviceProcessor.Validate(data["deviceID"]))
             or (data["deviceID"] != request.headers["NDCDEVICEID"])
-            or (not EmailProcessor.Validate(data["validationContext"]["identity"]))
+            or (
+                not await EmailProcessor.Validate(data["validationContext"]["identity"])
+            )
             or (
                 data["validationContext"]["type"] != 1
                 or len(data["validationContext"]["data"]["code"]) != 6
@@ -255,7 +296,7 @@ async def register(request: Request):
         if (
             (not DeviceProcessor.Validate(data["deviceID"]))
             or (data["deviceID"] != request.headers["NDCDEVICEID"])
-            or (not EmailProcessor.Validate(reciever))
+            or (not await EmailProcessor.Validate(reciever))
             or (data["secret"][:2] != "0 " or data["nickname"].strip() in [None, ""])
         ):
             raise Exception()
@@ -352,8 +393,9 @@ async def register_check(request: Request):
             raise Exception()
 
         if data.get("email"):
-            if not EmailProcessor.Validate(data["email"]):
+            if not await EmailProcessor.Validate(data["email"]):
                 raise Exception()
+            return Errors.EmailWasTaken(timestamp() - t1)
         elif data.get("secret"):
             if data["secret"][:2] != "0 ":
                 raise Exception()
@@ -361,7 +403,6 @@ async def register_check(request: Request):
             raise Exception()
     except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
-
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -373,7 +414,7 @@ async def login(request: Request):
     if data.get("email") is None or data.get("secret") is None:
         return Errors.InvalidLogin(timestamp() - t1)
 
-    if not EmailProcessor.Validate(data["email"]):
+    if not await EmailProcessor.Validate(data["email"]):
         return Errors.InvalidRequest(timestamp() - t1)
 
     secretSplitted = data["secret"].split()

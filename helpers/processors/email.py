@@ -65,7 +65,7 @@ class EmailProcessor:
 
     @staticmethod
     def SendEmail(
-        email: str,
+        receiver: str,
         subject: str,
         html: str,
         text: str | None = None,
@@ -84,7 +84,7 @@ class EmailProcessor:
             email.send(
                 sender=Config.SMTP_SNDR,
                 subject=subject,
-                receivers=[email],
+                receivers=[receiver],
                 html=html,
                 text=text,
                 body_images=body_images,

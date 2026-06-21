@@ -40,7 +40,9 @@ async def turnstile_validation(request: Request, why: str = None):
         return TurtleAnswers.ERR("This inspector is not working on this case.")
 
     if why == "email":
-        await CacheProcessor.Update(inspector, value="OK", prefix="turtlelimiter:")
+        await CacheProcessor.Update(
+            inspector, value="OK", prefix="turtlelimiter:", expiring_after=300
+        )
     else:
         await CacheProcessor.Delete(inspector, prefix="turtlelimiter:")
 

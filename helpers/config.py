@@ -4,9 +4,6 @@ from os import environ
 class Config:
     """
     Config class that contains all configuration variables from ENV.
-
-    Please DO NOT use .env files in prod!
-    Set up environment variables instead or use a Docker Compose / Docker Swarm config.
     """
 
     # database connection settings (required)
