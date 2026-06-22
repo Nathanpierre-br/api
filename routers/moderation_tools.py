@@ -13,7 +13,7 @@ ALLOWED_ROLES = [100, 101, 102, 250, 251, 555]
 
 
 async def check_rights(db, uid: str) -> bool:
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
     user = await table.find_one({"id": uid})
     return user and user.get("role") in ALLOWED_ROLES
 
@@ -59,15 +59,15 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
 
     db = await Database().init()
     if not await check_rights(db, request.state.session["uid"]):
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
     is_unban = "unban" in request.url.path
     status = 0 if is_unban else 9
 
-    table = await db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", "Users")
     await table.update_one({"id": uid}, {"$set": {"status": status}})
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -82,7 +82,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
 
     db = await Database().init()
     if not await check_rights(db, request.state.session["uid"]):
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
     table_map = {
@@ -95,7 +95,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
 
     table_name = table_map.get(object_type)
     if not table_name:
-        await db.close()
+        db.close()
         return Errors.InvalidRequest()
 
     operation = data["adminOpName"]
@@ -107,7 +107,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
         elif operation == 19:
             status = 0
         else:
-            await db.close()
+            db.close()
             return Errors.UnimplementedPath()
 
     else:
@@ -117,14 +117,14 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
             elif value == 9:
                 status = 9
             else:
-                await db.close()
+                db.close()
                 return Errors.UnimplementedPath()
         else:
-            await db.close()
+            db.close()
             return Errors.UnimplementedPath()
 
-    table = await db.get(f"x{ndcId}", table_name)
+    table = db.get(f"x{ndcId}", table_name)
     await table.update_one({"id": object_id}, {"$set": {"status": status}})
-    await db.close()
+    db.close()
 
     return Base.Answer(spent_time=timestamp() - t1)

@@ -51,7 +51,7 @@ async def user_search(
     start = parse_page_token(pageToken, 0)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Chats")
+    table = db.get(f"x{ndcId}", "Chats")
     query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
     chats = [
         item
@@ -77,10 +77,10 @@ async def user_search(
             },
             spent_time=timestamp() - t1,
         )
-        await db.close()
+        db.close()
         return answer
     else:
-        await db.close()
+        db.close()
         return Base.Answer(
             {"messageList": [], "paging": {}}, spent_time=timestamp() - t1
         )
@@ -113,7 +113,7 @@ async def get_recommended_chats(request: Request, ndcId: int = 0):
         answer = {"threadList": [c for c in chats if c is not None]}
     else:
         answer = {"threadList": []}
-    await con.close()
+    con.close()
     return Base.Answer(answer, spent_time=timestamp() - t1)
 
 
@@ -152,10 +152,10 @@ async def vvchat_permission(request: Request, chatId: str, ndcId: int = 0):
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Chats")
+    table = db.get(f"x{ndcId}", "Chats")
     chat_info = await table.find_one({"id": chatId})
     if not chat_info:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     # AltAmino client only needs a successful ack for this request.
@@ -165,7 +165,7 @@ async def vvchat_permission(request: Request, chatId: str, ndcId: int = 0):
         "uid": trigger_uid,
         "vvChatJoinType": vv_chat_join_type,
     }
-    await db.close()
+    db.close()
     return Base.Answer(response, spent_time=timestamp() - t1)
 
 
@@ -185,7 +185,7 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Chats")
+    table = db.get(f"x{ndcId}", "Chats")
     chat_info = await table.find_one({"id": chatId})
 
     if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
@@ -228,11 +228,11 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
             spent_time=timestamp() - t1,
         )
 
-        await db.close()
+        db.close()
         return answer
 
     else:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
 
@@ -249,7 +249,7 @@ async def edit_background_chat(chatId: str, request: Request, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Chats")
+    table = db.get(f"x{ndcId}", "Chats")
     chat_info = await table.find_one({"id": chatId})
 
     if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
@@ -296,7 +296,7 @@ async def edit_background_chat(chatId: str, request: Request, ndcId: int = 0):
             spent_time=timestamp() - t1,
         )
 
-        await db.close()
+        db.close()
         return answer
 
     return Errors.NotEnoughRights()
@@ -315,14 +315,14 @@ async def delete_chat(chatId: str, request: Request, ndcId: int = 0):
 
     trigger_uid = request.state.session["uid"]
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Chats")
+    table = db.get(f"x{ndcId}", "Chats")
     chat_info = await table.find_one({"id": chatId})
     if chat_info["hostId"] == trigger_uid:
         await table.delete_one({"id": chatId})
-        await db.close()
+        db.close()
         return Base.Answer()
     else:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
 
@@ -346,7 +346,7 @@ async def if_chat_exists(
     uid = request.state.session["uid"]
     if type == "exist-single" and q:
         db = await Database().init()
-        table = await db.get(f"x{ndcId}", "Chats")
+        table = db.get(f"x{ndcId}", "Chats")
         query = {
             "chatType": 0,
             "$or": [
@@ -365,7 +365,7 @@ async def if_chat_exists(
                 }
             )
 
-            await db.close()
+            db.close()
             return r
         else:
             return Errors.MythicData(timestamp() - t1)
@@ -377,7 +377,7 @@ async def if_chat_exists(
         size = size if 0 < size < 101 else 25
 
         db = await Database().init()
-        table = await db.get(f"x{ndcId}", "Chats")
+        table = db.get(f"x{ndcId}", "Chats")
         joined = await table.find({"memberList": uid}).distinct("id") or []
         invited = await table.find({"invitedList": uid}).distinct("id") or []
         row = (joined + invited)[start : start + size]
@@ -392,13 +392,13 @@ async def if_chat_exists(
             spent_time=timestamp() - t1,
         )
 
-        await db.close()
+        db.close()
         return info
     elif type == "public-all":
         size = size if 0 < size < 101 else 25
 
         db = await Database().init()
-        table = await db.get(f"x{ndcId}", "Chats")
+        table = db.get(f"x{ndcId}", "Chats")
         items = [
             await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
             async for item in table.find({"chatType": 2})
@@ -407,7 +407,7 @@ async def if_chat_exists(
             .sort("lastMessageTimestamp", DESCENDING)
         ]
 
-        await db.close()
+        db.close()
         return Base.Answer(
             {"threadList": items},
             spent_time=timestamp() - t1,
@@ -416,7 +416,7 @@ async def if_chat_exists(
         size = size if 0 < size < 101 else 25
 
         db = await Database().init()
-        table = await db.get(f"x{ndcId}", "Chats")
+        table = db.get(f"x{ndcId}", "Chats")
         query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
         items = [
             await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
@@ -426,7 +426,7 @@ async def if_chat_exists(
             .sort("timestamp", DESCENDING)
         ]
 
-        await db.close()
+        db.close()
         return Base.Answer(
             {"threadList": items},
             spent_time=timestamp() - t1,
@@ -458,7 +458,7 @@ async def create_chat(request: Request, ndcId: int = 0):
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Chats")
+    table = db.get(f"x{ndcId}", "Chats")
 
     if data["type"] == 0:
         query = {
@@ -528,8 +528,8 @@ async def create_chat(request: Request, ndcId: int = 0):
             )
         )
 
-    xndc_users = await db.get(f"x{ndcId}", "Users")
-    history = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    xndc_users = db.get(f"x{ndcId}", "Users")
+    history = db.get(f"x{ndcId}", f"_Chat:{chatId}")
     await history.insert_many(messages)
     await table.update_one(
         {"id": chatId},
@@ -549,7 +549,7 @@ async def create_chat(request: Request, ndcId: int = 0):
         for message in messages
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer(
         {"thread": chatInfo_obj, "messageList": messages_obj},
         spent_time=timestamp() - t1,
@@ -573,7 +573,7 @@ async def get_chat_messages(
     start = parse_page_token(pageToken, 0)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
     messages = [
         item
         async for item in table.find()
@@ -581,7 +581,7 @@ async def get_chat_messages(
         .limit(size)
         .sort("timestamp", DESCENDING)
     ]
-    xndc_users = await db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
     messageList = [
         await Chat.LongMessage(
             message, chatId, xndc_users, history_table=table, ndcId=ndcId
@@ -596,10 +596,10 @@ async def get_chat_messages(
             },
             spent_time=timestamp() - t1,
         )
-        await db.close()
+        db.close()
         return answer
     else:
-        await db.close()
+        db.close()
         return Base.Answer(
             {"messageList": [], "paging": {}}, spent_time=timestamp() - t1
         )
@@ -658,21 +658,21 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         return Errors.InvalidMessage(timestamp() - t1)
 
     db = await Database().init()
-    chat = await db.get(f"x{ndcId}", "Chats")
+    chat = db.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
 
     staff = [chat_info["hostId"]] + chat_info.get("cohostsIds", [])
     if chat_info["isViewMode"] and trigger_uid not in staff:
-        await db.close()
+        db.close()
         return Errors.ViewModeEnabled(timestamp() - t1)
 
     if trigger_uid not in chat_info["memberList"]:
-        await db.close()
+        db.close()
         return Errors.UserNotJoined(timestamp() - t1)
 
     if data.get("content"):
         if len(data["content"]) > Config.MAX_TEXT_SIZE:
-            await db.close()
+            db.close()
             return Errors.BigMessage(timestamp() - t1)
 
     extensions = data.get("extensions", {})
@@ -680,7 +680,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     if data.get("mediaUploadValue"):
         try:
             if len(data.get("mediaUploadValue")) > Config.MAX_FILE_SIZE:
-                await db.close()
+                db.close()
                 return Errors.BigMediaContent(timestamp() - t1)
             s3 = resource(
                 service_name=Config.S3_SERVICE_NAME,
@@ -721,7 +721,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 mediaLink = None
         except Exception as e:
             print(e)
-            await db.close()
+            db.close()
             return Errors.InvalidMessage(timestamp() - t1)
     else:
         mediaLink = None
@@ -783,8 +783,8 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
 
     messageId = str(uuid4())
-    xndc_users = await db.get(f"x{ndcId}", "Users")
-    table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    xndc_users = db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
     message = ModelFabric.Construct(
         Community.Message,
         messageId=messageId,
@@ -823,7 +823,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
     asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
 
-    await db.close()
+    db.close()
     return answer
 
 
@@ -841,33 +841,33 @@ async def get_message(request: Request, chatId: str, messageId: str, ndcId: int 
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    chat_table = await db.get(f"x{ndcId}", "Chats")
+    chat_table = db.get(f"x{ndcId}", "Chats")
     chat_info = await chat_table.find_one({"id": chatId})
 
     if not chat_info:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
     if chat_info.get("chatType") != 2:
         if trigger_uid not in chat_info.get("memberList", []):
-            await db.close()
+            db.close()
             return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
-    message_table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    message_table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
     message_data = await message_table.find_one({"messageId": messageId})
 
     if not message_data:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-    xndc_users = await db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
 
     message_obj = await Chat.LongMessage(
         message_data, chatId, xndc_users, ndcId=ndcId, history_table=message_table
     )
 
     answer = Base.Answer({"message": message_obj}, spent_time=timestamp() - t1)
-    await db.close()
+    db.close()
     return answer
 
 
@@ -886,10 +886,10 @@ async def delete_message(request: Request, chatId: str, messageId: str, ndcId: i
     work = False
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
     original_message = await table.find_one({"messageId": messageId})
     if original_message["authorId"] != trigger_uid:
-        chat = await db.get(f"x{ndcId}", "Chats")
+        chat = db.get(f"x{ndcId}", "Chats")
         chat_info = await chat.find_one({"id": chatId})
         if (
             trigger_uid not in chat_info.get("cohostsIds", [])
@@ -908,7 +908,7 @@ async def delete_message(request: Request, chatId: str, messageId: str, ndcId: i
             {"messageId": messageId}, {"$set": {"content": None, "messageType": 100}}
         )
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -940,14 +940,14 @@ async def get_chat_members(
         return Errors.InvalidRequest(timestamp() - t1)
 
     connection = await Database().init()
-    chat_table = await connection.get(f"x{ndcId}", "Chats")
+    chat_table = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat_table.find_one({"id": chatId})
 
     if not chat_info:
-        await connection.close()
+        connection.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-    xndc_users = await connection.get(f"x{ndcId}", "Users")
+    xndc_users = connection.get(f"x{ndcId}", "Users")
 
     if pageToken:
         start = parse_page_token(pageToken, start)
@@ -957,7 +957,7 @@ async def get_chat_members(
             {"id": chatId}, {"memberList": 1, "invitedList": 1}
         )
         if not chat_info:
-            await connection.close()
+            connection.close()
             return Errors.DataNotExist(spent_time=timestamp() - t1)
 
         members_in_chat = chat_info.get("memberList", [])
@@ -981,7 +981,7 @@ async def get_chat_members(
     elif type == "at":
         chat_info = await chat_table.find_one({"id": chatId}, {"memberList": 1})
         if not chat_info:
-            await connection.close()
+            connection.close()
             return Errors.DataNotExist(spent_time=timestamp() - t1)
 
         members_in_chat = chat_info.get("memberList", [])
@@ -999,7 +999,7 @@ async def get_chat_members(
             {"id": chatId}, {"memberList": 1, "cohostsIds": 1}
         )
         if not chat_info:
-            await connection.close()
+            connection.close()
             return Errors.DataNotExist(spent_time=timestamp() - t1)
 
         members_in_chat = chat_info.get("memberList", [])
@@ -1028,7 +1028,7 @@ async def get_chat_members(
         ]
 
     else:
-        await connection.close()
+        connection.close()
         return Errors.InvalidRequest(timestamp() - t1)
 
     answer = Base.Answer(
@@ -1038,7 +1038,7 @@ async def get_chat_members(
         },
         spent_time=timestamp() - t1,
     )
-    await connection.close()
+    connection.close()
     return answer
 
 
@@ -1065,22 +1065,22 @@ async def get_chat_cohosts(
     trigger_uid = request.state.session["uid"]
 
     connection = await Database().init()
-    chat_table = await connection.get(f"x{ndcId}", "Chats")
+    chat_table = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat_table.find_one(
         {"id": chatId}, {"cohostsIds": 1, "hostId": 1}
     )
 
     if not chat_info:
-        await connection.close()
+        connection.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
     if trigger_uid != chat_info["hostId"]:
-        await connection.close()
+        connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     cohosts_ids_all = chat_info.get("cohostsIds", [])
     cohosts_ids_sliced = cohosts_ids_all[start : start + size]
-    xndc_users = await connection.get(f"x{ndcId}", "Users")
+    xndc_users = connection.get(f"x{ndcId}", "Users")
 
     users_data = {
         u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts_ids_sliced}})
@@ -1098,7 +1098,7 @@ async def get_chat_cohosts(
         },
         spent_time=timestamp() - t1,
     )
-    await connection.close()
+    connection.close()
     return answer
 
 
@@ -1118,21 +1118,21 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
     new_cohosts = data.get("uidList", [])
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
+    chat = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
     if not chat_info:
-        await connection.close()
+        connection.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
     if trigger_uid != chat_info["hostId"]:
-        await connection.close()
+        connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     await chat.update_one(
         {"id": chatId}, {"$push": {"cohostsIds": {"$each": new_cohosts}}}
     )
 
-    xndc_users = await connection.get(f"x{ndcId}", "Users")
+    xndc_users = connection.get(f"x{ndcId}", "Users")
     users_data = {
         u["id"]: u async for u in xndc_users.find({"id": {"$in": new_cohosts}})
     }
@@ -1148,7 +1148,7 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
         spent_time=timestamp() - t1,
     )
 
-    await connection.close()
+    connection.close()
     return answer
 
 
@@ -1166,21 +1166,21 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
+    chat = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
     if not chat_info:
-        await connection.close()
+        connection.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
     if trigger_uid != chat_info["hostId"]:
-        await connection.close()
+        connection.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     await chat.update_one({"id": chatId}, {"$pull": {"cohostsIds": uid}})
 
     chat_info = await chat.find_one({"id": chatId})
     cohosts = chat_info.get("cohostsIds", [])
-    xndc_users = await connection.get(f"x{ndcId}", "Users")
+    xndc_users = connection.get(f"x{ndcId}", "Users")
 
     users_data = {u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts}})}
 
@@ -1195,7 +1195,7 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
         spent_time=timestamp() - t1,
     )
 
-    await connection.close()
+    connection.close()
     return answer
 
 
@@ -1218,12 +1218,12 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
         return Errors.InvalidSession(timestamp() - t1)
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
+    chat = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
     staff = [chat_info["hostId"]] + chat_info.get("cohostsId", [])
     if uid not in staff or uid not in chat_info["memberList"]:
         if not data["canMembersInvite"]:
-            await connection.close()
+            connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
 
     actuallyInvite = []
@@ -1238,7 +1238,7 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
         {"id": chatId}, {"$push": {"invitedList": {"$each": actuallyInvite}}}
     )
 
-    await connection.close()
+    connection.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -1263,18 +1263,18 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         return Errors.InvalidRequest(timestamp() - t1)
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
+    chat = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
     if userId in chat_info["memberList"]:
-        await connection.close()
+        connection.close()
         return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
     if userId in chat_info["bannedUids"]:
-        await connection.close()
+        connection.close()
         return Errors.RemovedFromChat(timestamp() - t1)
 
     messageId = str(uuid4())
 
-    table = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+    table = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
     message = ModelFabric.Construct(
         Community.Message,
         messageId=messageId,
@@ -1297,7 +1297,7 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         },
     )
 
-    xndc_users = await connection.get(f"x{ndcId}", "Users")
+    xndc_users = connection.get(f"x{ndcId}", "Users")
     messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
     ws_send_obj = {
         "t": 1000,
@@ -1311,7 +1311,7 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
     target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
     asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
 
-    await connection.close()
+    connection.close()
     return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
 
 
@@ -1338,7 +1338,7 @@ async def leave_chat(
         return Errors.InvalidSession(timestamp() - t1)
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
+    chat = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat.find_one({"id": chatId})
 
     if userId == uid:
@@ -1348,10 +1348,10 @@ async def leave_chat(
     if userId != uid:
         print("user not leaving, its kick")
         if userId == chat_info["hostId"]:
-            await connection.close()
+            connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
         elif uid not in chat_info.get("cohostsIds", []) and uid != chat_info["hostId"]:
-            await connection.close()
+            connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
         else:
             work = True
@@ -1369,7 +1369,7 @@ async def leave_chat(
         ban = False
 
     if work:
-        table = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+        table = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
         message = ModelFabric.Construct(
             Community.Message,
             messageId=messageId,
@@ -1390,7 +1390,7 @@ async def leave_chat(
             | isBan,
         )
 
-        xndc_users = await connection.get(f"x{ndcId}", "Users")
+        xndc_users = connection.get(f"x{ndcId}", "Users")
         messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
         ws_send_obj = {
             "t": 1000,
@@ -1405,7 +1405,7 @@ async def leave_chat(
         target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
         asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
 
-    await connection.close()
+    connection.close()
     return Base.Answer({"membershipStatus": 0}, spent_time=timestamp() - t1)
 
 
@@ -1430,8 +1430,8 @@ async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
         return Errors.InvalidMessage(timestamp() - t1)
 
     connection = await Database().init()
-    chat = await connection.get(f"x{ndcId}", "Chats")
-    history = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+    chat = connection.get(f"x{ndcId}", "Chats")
+    history = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
     msg = await history.find_one({"messageId": data["messageId"]})
     if msg:
         readTimestamp = msg["createdTime"]
@@ -1439,10 +1439,10 @@ async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
             {"id": chatId}, {"$set": {f"lastReadedList.{uid}": readTimestamp}}
         )
 
-        await connection.close()
+        connection.close()
         return Base.Answer({"lastReadTime": readTimestamp}, spent_time=timestamp() - t1)
 
-    await connection.close()
+    connection.close()
     return Errors.DataNotExist(spent_time=timestamp() - t1)
 
 
@@ -1470,7 +1470,7 @@ async def toggle_things(
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Chats")
+    table = db.get(f"x{ndcId}", "Chats")
     chat_info = await table.find_one({"id": chatId})
 
     if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
@@ -1482,7 +1482,7 @@ async def toggle_things(
                 {"$set": {"isViewMode": True if mode == "enable" else False}},
             )
 
-            history = await db.get(f"x{ndcId}", f"_Chat:{chatId}")
+            history = db.get(f"x{ndcId}", f"_Chat:{chatId}")
             messageId = str(uuid4())
             message = ModelFabric.Construct(
                 Community.Message,
@@ -1502,7 +1502,7 @@ async def toggle_things(
                 },
             )
 
-            xndc_users = await db.get(f"x{ndcId}", "Users")
+            xndc_users = db.get(f"x{ndcId}", "Users")
             messageObj = await Chat.LongMessage(
                 message, chatId, xndc_users, ndcId=ndcId
             )
@@ -1523,9 +1523,9 @@ async def toggle_things(
                 {"$set": {"canMembersInvite": True if mode == "enable" else False}},
             )
 
-        await db.close()
+        db.close()
         return Base.Answer(spent_time=timestamp() - t1)
 
     else:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)

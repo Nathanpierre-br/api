@@ -75,12 +75,12 @@ async def lang_configs(request: Request):
     uid = request.state.session.get("uid", str(uuid4()))
 
     db = await Database().init()
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
     row = await table.find_one({"id": uid})
     if row is None:
         return Base.Answer({"contentLanguageSettings": {"language": "en"}})
 
-    await db.close()
+    db.close()
     return Base.Answer({"contentLanguageSettings": {"language": row.get("lang", "en")}})
 
 

@@ -25,24 +25,20 @@ class EmailProcessor:
     ]
 
     @staticmethod
-    def NotWorking(email: str) -> bool:
+    async def Validate(email: str) -> bool:
         """
-        True if our mail server cant send code to provided email, False if bad
+        True if email is good, False if bad
         """
+
+        # if not an email, return false
         if not match(
             r"^([a-z0-9]+(?:[._-][a-z0-9]+)*)@([a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]{2,})$",
             email,
         ):
             return False
 
-        return email.partition("@")[2] in EmailProcessor.CANT_SEND_HERE
-
-    @staticmethod
-    async def Validate(email: str) -> bool:
-        """
-        True if email is good, False if bad
-        """
-        if EmailProcessor.NotWorking(email):
+        # if we can't send email here, also return false
+        if email.partition("@")[2] in EmailProcessor.CANT_SEND_HERE:
             return False
 
         # No need to check if permatrusted emails are disposable
@@ -53,15 +49,16 @@ class EmailProcessor:
         try:
             # timeout set to 10s to avoid thread blocking
             # (potential fix for #12)
-            async with AsyncClient() as client:
+            async with AsyncClient(timeout=10) as client:
                 request = await client.get(
-                    "https://disposable.debounce.io", {"email": email}, timeout=10
+                    "https://disposable.debounce.io", params={"email": email}
                 )
                 info = request.json()
         except Exception:
             info = {}
 
-        return info.get("disposable", False)
+        judge_said = info.get("disposable", "false").lower()
+        return judge_said == "false"
 
     @staticmethod
     def SendEmail(

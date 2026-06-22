@@ -39,7 +39,7 @@ async def get_latest_blog_posts(
     start = parse_page_token(pageToken, start)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     query = {}
     if q:
@@ -60,7 +60,7 @@ async def get_latest_blog_posts(
         for item in blogs
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer(
         {
             "blogList": blogList,
@@ -85,7 +85,7 @@ async def get_blogs(
     start = parse_page_token(pageToken, start)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     query = {"blogType": 0}
     if q:
@@ -106,7 +106,7 @@ async def get_blogs(
         for item in blogs
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer(
         {
             "blogList": blogList,
@@ -126,21 +126,21 @@ async def get_blog(
     t1 = timestamp()
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     blog = await table.find_one({"id": blogId})
     if blog:
         blog_info = await Blog.Info(
             blog, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
         )
-        await db.close()
+        db.close()
 
         return Base.Answer(
             {"blog": blog_info},
             spent_time=timestamp() - t1,
         )
 
-    await db.close()
+    db.close()
     return Errors.DataNotExist(timestamp() - t1)
 
 
@@ -165,10 +165,10 @@ async def get_blog_comments(
         return list(result.items())
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     blog_info = await table.find_one({"id": blogId})
     if blog_info is None:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     wall_data = blog_info.get("wall", {})
@@ -188,7 +188,7 @@ async def get_blog_comments(
         if _item_info["isSubWM"] is False:
             wall_chunk.append((_item_id, _item_info))
 
-    xndc_users = await db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
     wall_chunk = wall_chunk[start : start + size]
     wc_list = [
         await Comments.Parent(
@@ -197,7 +197,7 @@ async def get_blog_comments(
         for item in wall_chunk
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
 
 
@@ -224,15 +224,15 @@ async def get_blog_comment_answers(
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     blog_info = await table.find_one({"id": blogId})
     if blog_info is None:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     wall_data = blog_info.get("wall", {})
     if commentId not in wall_data:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     wall_thread = wall_data[commentId].get("subWMs", [])
@@ -241,7 +241,7 @@ async def get_blog_comment_answers(
         if _item_id in wall_thread:
             certain_wall.append((_item_id, _item_info))
 
-    xndc_users = await db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
     certain_wall = certain_wall[start : start + size]
     wc_list = [
         await Comments.Son(
@@ -257,7 +257,7 @@ async def get_blog_comment_answers(
         for item in certain_wall
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
 
 
@@ -288,10 +288,10 @@ async def post_blog_comment(
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     blog_info = await table.find_one({"id": blogId})
     if not blog_info:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     commentUid = str(uuid4())
@@ -303,7 +303,7 @@ async def post_blog_comment(
         isSubWM=True if data.get("respondTo") else False,
     )
 
-    xndc_users = await db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
     if data.get("respondTo"):
         await table.update_one(
             {"id": blogId},
@@ -326,7 +326,7 @@ async def post_blog_comment(
 
     await table.update_one({"id": blogId}, {"$set": {f"wall.{commentUid}": wm}})
 
-    await db.close()
+    db.close()
     return Base.Answer({"comment": wmObj}, spent_time=timestamp() - t1)
 
 
@@ -344,15 +344,15 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     data = await request.json()
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     blog = await table.find_one({"id": blogId})
     if not blog:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     if blog["authorId"] != trigger_uid:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     preparedQueries = {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
@@ -391,7 +391,7 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     updated_blog = await table.find_one({"id": blogId})
     blog_info = await Blog.Info(updated_blog, db, ndcId=ndcId, trigger_uid=trigger_uid)
 
-    await db.close()
+    db.close()
     return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
 
 
@@ -408,20 +408,20 @@ async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     blog = await table.find_one({"id": blogId})
     if not blog:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     if blog["authorId"] != trigger_uid:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     await table.delete_one({"id": blogId})
 
-    await db.close()
+    db.close()
     return Base.Answer({}, spent_time=timestamp() - t1)
 
 
@@ -445,7 +445,7 @@ async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
     value = data.get("value", 4)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     # upvote
     if value in [1, 2, 3, 4]:
@@ -466,7 +466,7 @@ async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
             },
         )
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -485,13 +485,13 @@ async def remove_vote_from_blog(request: Request, blogId: str, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     await table.update_one(
         {"id": blogId}, {"$pull": {"upvote": trigger_uid, "downvote": trigger_uid}}
     )
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -512,16 +512,16 @@ async def get_blog_voters(
     t1 = timestamp()
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     blog = await table.find_one({"id": blogId})
     if blog is None:
-        await db.close()
+        db.close()
         return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
     votes = blog.get("upvote", []) + blog.get("downvote", [])
     votes_selected = votes[start : start + size]
 
-    xndc_users = await db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
     trigger_uid = request.state.session.get("uid")
     voters_list = [
         User.GetUserInfo(u, ndcId=ndcId, triggerUserId=trigger_uid)
@@ -529,7 +529,7 @@ async def get_blog_voters(
         if (u := await xndc_users.find_one({"id": item}))
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
 
 
@@ -561,10 +561,10 @@ async def post_blog(request: Request, ndcId: int = 0):
     db = await Database().init()
 
     if ndcId > 0:
-        xndcid_users = await db.get(f"x{ndcId}", "Users")
+        xndcid_users = db.get(f"x{ndcId}", "Users")
         user_in_community = await xndcid_users.find_one({"id": trigger_uid})
         if not user_in_community:
-            await db.close()
+            db.close()
             return Errors.NotEnoughRights(timestamp() - t1)
     else:
         return Errors.NotEnoughRights(timestamp() - t1)
@@ -593,12 +593,12 @@ async def post_blog(request: Request, ndcId: int = 0):
         extensions=useful_extensions,
     )
 
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     await table.insert_one(blog_data)
 
     blog_info = await Blog.Info(blog_data, db, ndcId=ndcId, trigger_uid=trigger_uid)
 
-    await db.close()
+    db.close()
     return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
 
 
@@ -619,20 +619,20 @@ async def delete_blog_comment(
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     blog_info = await table.find_one({"id": blogId})
     if not blog_info:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     wall_data = blog_info.get("wall", {})
     if commentId not in wall_data:
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     wm = wall_data[commentId]
     if wm["authorId"] != trigger_uid and blog_info["authorId"] != trigger_uid:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     unset_fields = {f"wall.{commentId}": ""}
@@ -650,7 +650,7 @@ async def delete_blog_comment(
                 break
 
     await table.update_one({"id": blogId}, {"$unset": unset_fields})
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -677,10 +677,10 @@ async def vote_blog_comment(
     value = data.get("value", 0)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     blog_info = await table.find_one({"id": blogId})
     if not blog_info or commentId not in blog_info.get("wall", {}):
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     if value == 1:
@@ -700,10 +700,10 @@ async def vote_blog_comment(
             },
         )
     else:
-        await db.close()
+        db.close()
         return Errors.InvalidRequest(timestamp() - t1)
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -724,7 +724,7 @@ async def remove_blog_comment_vote(
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
 
     await table.update_one(
         {"id": blogId},
@@ -736,7 +736,7 @@ async def remove_blog_comment_vote(
         },
     )
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -758,10 +758,10 @@ async def get_blog_comment_voters(
     t1 = timestamp()
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Blogs")
+    table = db.get(f"x{ndcId}", "Blogs")
     blog = await table.find_one({"id": blogId})
     if blog is None:
-        await db.close()
+        db.close()
         return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
     try:
@@ -769,10 +769,10 @@ async def get_blog_comment_voters(
         votes = comment.get("upvotes", []) + comment.get("downvotes", [])
         votes_selected = votes[start : start + size]
     except Exception:
-        await db.close()
+        db.close()
         return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
-    xndc_users = await db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
     trigger_uid = request.state.session.get("uid")
     voters_list = [
         User.GetUserInfo(u, ndcId=ndcId, triggerUserId=trigger_uid)
@@ -780,5 +780,5 @@ async def get_blog_comment_voters(
         if (u := await xndc_users.find_one({"id": item}))
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)

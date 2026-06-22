@@ -30,9 +30,9 @@ logregin.route_class = CachableRoute
 async def seeVerificationCode(code):
     timestamp()
     db = await Database().init()
-    table = await db.get(table="VerificationCodes")
+    table = db.get(table="VerificationCodes")
     row = await table.find_one({"uniqueCode": code})
-    await db.close()
+    db.close()
     if row is None:
         return Errors.InvalidVerificationCode()
     img, _, __ = ImageTools.generate_captcha(row["captchaAnswer"])
@@ -55,7 +55,7 @@ async def verifyPassword(request: Request):
 
     db = await Database().init()
 
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
     row = await table.find_one({"id": uid, "passwordHash": secret})
     if row is None:
         return Errors.InvalidLogin(timestamp() - t1)
@@ -98,7 +98,7 @@ async def changePassword(request: Request):
         if str(code) != str(row["captchaAnswer"]):
             return Errors.InvalidVerificationCode(timestamp() - t1)
 
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
     row = await table.find_one({"email": email, "passwordHash": oldSecret})
     if row is None:
         return Errors.UserUnavailable(timestamp() - t1)
@@ -161,7 +161,7 @@ async def requestCode(request: Request):
         )
 
     db = await Database().init()
-    table = await db.get(table="VerificationCodes")
+    table = db.get(table="VerificationCodes")
     code_req = {"$or": [{"deviceId": data["deviceID"]}, {"email": reciever}]}
     row = await table.find_one(code_req)
     uniqueCode, captchaAnswer = None, None
@@ -192,7 +192,7 @@ async def requestCode(request: Request):
             email=reciever,
         )
     )
-    await db.close()
+    db.close()
 
     html = """<h3>You have requested a confirmation code for AltAmino. Please enter this code.</h3>{{ IMAGE }}<p>Can't see the code? Please click on the link below to see the code.</p>[LINK]<br><p>If this is not your AltAmino account, don't worry. Someone may have misspelled their email address.</p><p>If you have any difficulties or questions, please contact us.</p><br><p>Thanks,<br>Team AltAmino</p>"""
     text = "You have requested a confirmation code for AltAmino. Please visit the link to see the code: [LINK]"
@@ -268,7 +268,7 @@ async def check_code(request: Request):
         )
 
     db = await Database().init()
-    table = await db.get(table="VerificationCodes")
+    table = db.get(table="VerificationCodes")
     row = await table.find_one({"deviceId": data["deviceID"], "email": email})
     if row is None:
         return Errors.UnverifiedEmail(timestamp() - t1)
@@ -282,7 +282,7 @@ async def check_code(request: Request):
         )
     )
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -314,7 +314,7 @@ async def register(request: Request):
     db = await Database().init()
 
     if Config.ENABLE_EMAIL:
-        codes = await db.get(table="VerificationCodes")
+        codes = db.get(table="VerificationCodes")
         codes_row = await codes.find_one(
             {"deviceId": data["deviceID"], "email": reciever}
         )
@@ -334,10 +334,10 @@ async def register(request: Request):
             print("Code not verified")
             return Errors.InvalidRequest(timestamp() - t1)
 
-    users = await db.get(table="Users")
+    users = db.get(table="Users")
     row = await users.find_one({"email": data["email"]})
     if row is not None:
-        await db.close()
+        db.close()
         return Errors.EmailWasTaken(timestamp() - t1)
 
     uid = str(uuid4())
@@ -358,13 +358,13 @@ async def register(request: Request):
         )
     )
     row1 = await users.find_one({"id": uid})
-    table = await db.get(database="x0", table="Users")
+    table = db.get(database="x0", table="Users")
     await table.insert_one(
         ModelFabric.Construct(Community.Users, id=uid, nickname=data["nickname"])
     )
     row2 = await table.find_one({"id": uid})
     await codes.delete_one({"deviceId": data["deviceID"], "email": reciever})
-    await db.close()
+    db.close()
 
     return Base.Answer(
         {
@@ -411,6 +411,9 @@ async def login(request: Request):
     t1 = timestamp()
     data = await request.json()
 
+    print(data)
+    print(request.headers)
+
     if data.get("email") is None or data.get("secret") is None:
         return Errors.InvalidLogin(timestamp() - t1)
 
@@ -425,26 +428,26 @@ async def login(request: Request):
         ).hash
 
         db = await Database().init()
-        table = await db.get(table="Users")
+        table = db.get(table="Users")
         row = await table.find_one(
             {"passwordHash": passwordHash, "email": data["email"]}
         )
 
         if row is None:
-            await db.close()
+            db.close()
             return Errors.InvalidLogin(timestamp() - t1)
         elif row.get("status", 0) == 9:
-            await db.close()
+            db.close()
             return Errors.UserBanned(timestamp() - t1)
         else:
-            table = await db.get("x0", "Users")
+            table = db.get("x0", "Users")
             additionalRow = await table.find_one({"id": row["id"]})
 
             ip = get_ip(request)
             tmstmp = ceil(timestamp())
 
             await SessionProcessor.End(request.headers.get("NDCAUTH"))
-            await db.close()
+            db.close()
 
             ferrets_meal = dumps(
                 {
@@ -473,18 +476,18 @@ async def login(request: Request):
         data = Ferret.decrypt(junk)
 
         db = await Database().init()
-        table = await db.get(table="Users")
+        table = db.get(table="Users")
         row = await table.find_one({"id": data["i"]})
         if row is None or row["passwordHash"] != data["h"]:
-            await db.close()
+            db.close()
             return Errors.InvalidLogin(spent_time=timestamp() - t1)
         if row.get("status", 0) == 9:
-            await db.close()
+            db.close()
             return Errors.UserBanned(timestamp() - t1)
 
-        table = await db.get(database="x0", table="Users")
+        table = db.get(database="x0", table="Users")
         additionalRow = await table.find_one({"id": row["id"]})
-        await db.close()
+        db.close()
 
         ip = get_ip(request)
         tmstmp = ceil(timestamp())
@@ -508,18 +511,18 @@ async def login(request: Request):
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
         decodedPswdHash = b64decode(secretSplitted[3]).decode()
         db = await Database().init()
-        table = await db.get(table="Users")
+        table = db.get(table="Users")
         row = await table.find_one({"id": secretSplitted[1]})
         if row is None or row["passwordHash"] != decodedPswdHash:
-            await db.close()
+            db.close()
             return Errors.InvalidLogin(spent_time=timestamp() - t1)
         if row.get("status", 0) == 9:
-            await db.close()
+            db.close()
             return Errors.UserBanned(timestamp() - t1)
 
-        table = await db.get(database="x0", table="Users")
+        table = db.get(database="x0", table="Users")
         additionalRow = await table.find_one({"id": row["id"]})
-        await db.close()
+        db.close()
 
         ip = get_ip(request)
         tmstmp = ceil(timestamp())
@@ -558,9 +561,9 @@ async def dev_device(request: Request):
 
     if uid:
         db = await Database().init()
-        table = await db.get(table="Users")
+        table = db.get(table="Users")
         row = await table.find_one({"id": uid})
-        await db.close()
+        db.close()
         if row["status"] == 9:
             return Errors.UserBanned(timestamp() - t1)
 
@@ -575,9 +578,9 @@ async def device(request: Request, ndcId: int = 0):
     uid = request.state.session.get("uid")
     if uid:
         db = await Database().init()
-        table = await db.get(f"x{ndcId}", "Users")
+        table = db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
-        await db.close()
+        db.close()
         if row["status"] == 9:
             return Errors.UserBanned(timestamp() - t1)
 

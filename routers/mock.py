@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Request
 from time import time as timestamp
 
-from objects import Errors, Base
+from fastapi import APIRouter, Request
+
 from helpers.routers.cachable import CachableRoute
+from objects import Base, Errors
 
 mock = APIRouter()
 mock.route_class = CachableRoute

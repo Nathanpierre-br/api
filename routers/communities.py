@@ -53,18 +53,18 @@ async def joined_communities(
 
     db = await Database().init()
     try:
-        table = await db.get(table="Users")
+        table = db.get(table="Users")
         row1 = await table.find_one({"id": uid})
         if row1 is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
         # experimental ios freezing fix: giving full profile info
-        table = await db.get("x0", "Users")
+        table = db.get("x0", "Users")
         row2 = await table.find_one({"id": uid})
         if row2 is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
-        table = await db.get(table="Communities")
+        table = db.get(table="Communities")
         cl_needed = row1.get("communityList", [])[start : start + size]
 
         communityList = [
@@ -87,7 +87,7 @@ async def joined_communities(
             "showStoreBadge": False,
         }
     finally:
-        await db.close()
+        db.close()
 
     # print(result)
     return Base.Answer(
@@ -116,7 +116,7 @@ async def search_community(
     uid = request.state.session["uid"]
     db = await Database().init()
     try:
-        table = await db.get(table="Communities")
+        table = db.get(table="Communities")
 
         query = {"name": {"$regex": regex_escape(q), "$options": "i"}, "lang": language}
         items = [item async for item in table.find(query).skip(start).limit(size)]
@@ -130,7 +130,7 @@ async def search_community(
             spent_time=timestamp() - t1,
         )
     finally:
-        await db.close()
+        db.close()
 
 
 # all communities available
@@ -150,7 +150,7 @@ async def all_communities_list(
 
     db = await Database().init()
     try:
-        table = await db.get(table="Communities")
+        table = db.get(table="Communities")
 
         items = [
             item
@@ -165,7 +165,7 @@ async def all_communities_list(
             spent_time=timestamp() - t1,
         )
     finally:
-        await db.close()
+        db.close()
 
 
 # community search by aminoid
@@ -190,7 +190,7 @@ async def search_community_by_amino_id(
     uid = request.state.session["uid"]
     db = await Database().init()
     try:
-        table = await db.get(table="Communities")
+        table = db.get(table="Communities")
 
         query = {"aminoId": {"$regex": regex_escape(q), "$options": "i"}}
         items = [item async for item in table.find(query).skip(start).limit(size)]
@@ -205,7 +205,7 @@ async def search_community_by_amino_id(
             spent_time=timestamp() - t1,
         )
     finally:
-        await db.close()
+        db.close()
 
 
 # community join
@@ -221,25 +221,25 @@ async def join_community(request: Request, ndcId: int):
     db = await Database().init()
     try:
         # checking if user is banned globally
-        table_accounts = await db.get(table="Users")
+        table_accounts = db.get(table="Users")
         account = await table_accounts.find_one({"id": trigger_uid})
         if account and account.get("status") == 9:
             return Errors.UserBanned(timestamp() - t1)
 
-        table_communities = await db.get(table="Communities")
+        table_communities = db.get(table="Communities")
         community = await table_communities.find_one({"id": ndcId})
         if not community:
             return Errors.DataNotExist(timestamp() - t1)
 
         # adding profile info if not exist
-        table_community_users = await db.get(f"x{ndcId}", "Users")
+        table_community_users = db.get(f"x{ndcId}", "Users")
         user_info = await table_community_users.find_one({"id": trigger_uid})
 
         if user_info and user_info.get("status") == 9:
             return Errors.UserBanned(timestamp() - t1)
 
         if not user_info:
-            g_table = await db.get("x0", "Users")
+            g_table = db.get("x0", "Users")
             g_data = await g_table.find_one({"id": trigger_uid})
             if not g_data:
                 return Errors.AccountNotExist(timestamp() - t1)
@@ -288,7 +288,7 @@ async def join_community(request: Request, ndcId: int):
         )
 
         # update global user info
-        table_global_users = await db.get(table="Users")
+        table_global_users = db.get(table="Users")
         await table_global_users.update_one(
             {"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}}
         )
@@ -301,7 +301,7 @@ async def join_community(request: Request, ndcId: int):
         print(f"Error in join_community: {e}")
         return Errors.InternalServerError(timestamp() - t1)
     finally:
-        await db.close()
+        db.close()
 
 
 # community leave
@@ -316,7 +316,7 @@ async def leave_community(request: Request, ndcId: int):
 
     db = await Database().init()
     try:
-        table_communities = await db.get(table="Communities")
+        table_communities = db.get(table="Communities")
         community = await table_communities.find_one({"id": ndcId})
 
         if not community:
@@ -350,13 +350,13 @@ async def leave_community(request: Request, ndcId: int):
         )
 
         # update global user info
-        table_global_users = await db.get(table="Users")
+        table_global_users = db.get(table="Users")
         await table_global_users.update_one(
             {"id": trigger_uid}, {"$pull": {"communityList": ndcId}}
         )
 
         # update community user info
-        table_xndc_users = await db.get(f"x{ndcId}", "Users")
+        table_xndc_users = db.get(f"x{ndcId}", "Users")
         user_info = await table_xndc_users.find_one({"id": trigger_uid})
         role = (
             0
@@ -372,7 +372,7 @@ async def leave_community(request: Request, ndcId: int):
         print(f"Error in leave_community: {e}")
         return Errors.InternalServerError(timestamp() - t1)
     finally:
-        await db.close()
+        db.close()
 
 
 # get community info
@@ -393,7 +393,7 @@ async def get_community_info(request: Request, ndcId: int = 0):
         if not ndc_info:
             return Errors.DataNotExist(timestamp() - t1)
 
-        users_table = await db.get(f"x{ndcId}", "Users")
+        users_table = db.get(f"x{ndcId}", "Users")
         user_info = await users_table.find_one({"id": uid})
         if not user_info:
             full_user_data = None
@@ -410,7 +410,7 @@ async def get_community_info(request: Request, ndcId: int = 0):
             spent_time=timestamp() - t1,
         )
     finally:
-        await db.close()
+        db.close()
 
 
 # guidelines
@@ -447,7 +447,7 @@ async def get_community_guidelines(request: Request, ndcId: int = 0):
 
     db = await Database().init()
     try:
-        table = await db.get(table="Communities")
+        table = db.get(table="Communities")
         info = await table.find_one({"id": ndcId})
 
         if not info:
@@ -463,7 +463,7 @@ async def get_community_guidelines(request: Request, ndcId: int = 0):
             spent_time=timestamp() - t1,
         )
     finally:
-        await db.close()
+        db.close()
 
 
 @communities.get("/x{ndcId}/s/user-profile")
@@ -498,7 +498,7 @@ async def get_community_profiles(
 
     db = await Database().init()
     try:
-        table = await db.get(f"x{ndcId}", "Users")
+        table = db.get(f"x{ndcId}", "Users")
 
         items = [
             User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1)
@@ -516,7 +516,7 @@ async def get_community_profiles(
             spent_time=timestamp() - t1,
         )
     finally:
-        await db.close()
+        db.close()
 
 
 @communities.get("/g/s/user-group/{userGroupType}")

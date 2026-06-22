@@ -1,8 +1,10 @@
-from typing import Union
-from helpers.database.mongo import Database
-from .user import User
-from .medialist import MediaList
 from hashlib import md5
+from typing import Union
+
+from helpers.database.mongo import Database
+
+from .medialist import MediaList
+from .user import User
 
 """
 this is top tier bullshit
@@ -85,14 +87,14 @@ class Communities:
         if not connection:
             connection = await Database().init()
         if isinstance(ndcId, int) or isinstance(ndcId, str):
-            comms = await connection.get(table="Communities")
+            comms = connection.get(table="Communities")
             data = await comms.find_one({"id": ndcId})
         else:
             data = ndcId
             ndcId = data["id"]
 
-        # host_global = await connection.get(table="Users").find_one({"id": data["agent"]})
-        table = await connection.get(f"x{ndcId}", "Users")
+        # host_global = connection.get(table="Users").find_one({"id": data["agent"]})
+        table = connection.get(f"x{ndcId}", "Users")
         host_xndcId = await table.find_one({"id": data["agent"]})
         agent = User.OwnNonSensetiveProfile(host_xndcId, ndcId) if host_xndcId else None
 
@@ -269,5 +271,5 @@ class Communities:
         "iTagIdList": [
             100006
         ]
-    }   
+    }
     """

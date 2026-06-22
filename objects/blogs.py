@@ -1,7 +1,7 @@
-from .user import User
-from .medialist import MediaList
-
 from typing import Union
+
+from .medialist import MediaList
+from .user import User
 
 
 class Blog:
@@ -14,7 +14,7 @@ class Blog:
         xndc_users=None,
     ):
         if isinstance(blogId, str):
-            blogs = await connection.get(f"x{ndcId}", "Blogs")
+            blogs = connection.get(f"x{ndcId}", "Blogs")
             data = await blogs.find_one({"id": blogId})
         else:
             data = blogId
@@ -22,7 +22,7 @@ class Blog:
         if xndc_users is not None:
             author_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
         else:
-            xndc_users = await connection.get(f"x{ndcId}", "Users")
+            xndc_users = connection.get(f"x{ndcId}", "Users")
             author_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
 
         extensions = data.get("extensions", {})

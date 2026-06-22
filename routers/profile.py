@@ -29,17 +29,17 @@ async def change_aminoId(request: Request):
     uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
 
     possible_find = await table.find_one(
         {"aminoId": {"$regex": regex_escape(data["aminoId"]), "$options": "i"}}
     )
     if possible_find:
-        await db.close()
+        db.close()
         return Errors.AminoIdWasTaken()
 
     await table.update_one({"id": uid}, {"$set": {"aminoId": data["aminoId"]}})
-    await db.close()
+    db.close()
 
     return Base.Answer(spent_time=timestamp() - t1)
 
@@ -72,8 +72,8 @@ async def user_search(
 
     db = await Database().init()
     g_users, xndc_users = (
-        await db.get(table="Users"),
-        await db.get(f"x{ndcId}", "Users"),
+        db.get(table="Users"),
+        db.get(f"x{ndcId}", "Users"),
     )
     query = {"nickname": {"$regex": regex_escape(q), "$options": "i"}}
     users = [
@@ -97,10 +97,10 @@ async def user_search(
             },
             spent_time=timestamp() - t1,
         )
-        await db.close()
+        db.close()
         return answer
     else:
-        await db.close()
+        db.close()
         return Base.Answer(
             {"messageList": [], "paging": {}}, spent_time=timestamp() - t1
         )
@@ -119,7 +119,7 @@ async def affiliations_config(request: Request):
 
     trigger_uid = request.state.session["uid"]
     db = await Database().init()
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
 
     info = await table.find_one({"id": trigger_uid})
     if info is None:
@@ -138,7 +138,7 @@ async def get_user_following(
     t1 = timestamp()
 
     db = await Database().init()
-    xndcid_table = await db.get(f"x{ndcId}", "Users")
+    xndcid_table = db.get(f"x{ndcId}", "Users")
     row = await xndcid_table.find_one({"id": uid})
     following = row["following"][start : start + size]
     following_list = [
@@ -149,7 +149,7 @@ async def get_user_following(
         for item in following
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"userProfileList": following_list}, spent_time=timestamp() - t1)
 
 
@@ -165,7 +165,7 @@ async def get_user_followers(
     t1 = timestamp()
 
     db = await Database().init()
-    xndcid_table = await db.get(f"x{ndcId}", "Users")
+    xndcid_table = db.get(f"x{ndcId}", "Users")
     row = await xndcid_table.find_one({"id": uid})
     followers = row["whoFollows"][start : start + size]
     followers_list = [
@@ -176,7 +176,7 @@ async def get_user_followers(
         for item in followers
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"userProfileList": followers_list}, spent_time=timestamp() - t1)
 
 
@@ -202,10 +202,10 @@ async def get_user_wall(
         return list(result.items())
 
     db = await Database().init()
-    xndcid_table = await db.get(f"x{ndcId}", "Users")
+    xndcid_table = db.get(f"x{ndcId}", "Users")
     row = await xndcid_table.find_one({"id": uid})
     if row is None:
-        await db.close()
+        db.close()
         return Errors.AccountNotExist(timestamp() - t1)
 
     wall_data = row.get("wall", {})
@@ -233,7 +233,7 @@ async def get_user_wall(
         for item in wall_comments
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
 
 
@@ -254,15 +254,15 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    xndcid_table = await db.get(f"x{ndcId}", "Users")
+    xndcid_table = db.get(f"x{ndcId}", "Users")
     row = await xndcid_table.find_one({"id": uid})
     if row is None:
-        await db.close()
+        db.close()
         return Errors.AccountNotExist(timestamp() - t1)
 
     all_wall = row.get("wall", {})
     if commentId not in all_wall:
-        await db.close()
+        db.close()
         return Errors.NotFound(timestamp() - t1)
 
     comment_thread = all_wall[commentId].get("subWMs", [])
@@ -284,7 +284,7 @@ async def get_user_wall_answers(uid, commentId, request: Request, ndcId: int = 0
         for item in certain_wall
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"commentList": wc_list}, spent_time=timestamp() - t1)
 
 
@@ -306,11 +306,11 @@ async def delete_post_from_wall(
 
     if uid == trigger_uid:
         db = await Database().init()
-        table = await db.get(f"x{ndcId}", "Users")
+        table = db.get(f"x{ndcId}", "Users")
         user_info = await table.find_one({"id": uid})
 
         if user_info is None:
-            await db.close()
+            db.close()
             return Errors.AccountNotExist(timestamp() - t1)
 
         wall = user_info.get("wall", {})
@@ -338,7 +338,7 @@ async def delete_post_from_wall(
 
             await table.update_one({"id": uid}, {"$unset": unset_fields})
 
-        await db.close()
+        db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -372,7 +372,7 @@ async def post_on_user_wall(
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    xndcid_table = await db.get(f"x{ndcId}", "Users")
+    xndcid_table = db.get(f"x{ndcId}", "Users")
 
     commentUid = str(uuid4())
     wm = ModelFabric.Construct(
@@ -403,7 +403,7 @@ async def post_on_user_wall(
 
     await xndcid_table.update_one({"id": uid}, {"$set": {f"wall.{commentUid}": wm}})
 
-    await db.close()
+    db.close()
     return Base.Answer({"comment": commentObj}, spent_time=timestamp() - t1)
 
 
@@ -423,14 +423,14 @@ async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 
 
     value = data.get("value", 0)
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", "Users")
     user_info = await table.find_one({"id": uid})
     if user_info is None:
-        await db.close()
+        db.close()
         return Errors.InvalidLogin(timestamp() - t1)
 
     if commentId not in user_info.get("wall", {}):
-        await db.close()
+        db.close()
         return Errors.DataNotExist(timestamp() - t1)
 
     if value == 1:
@@ -450,10 +450,10 @@ async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 
             },
         )
     else:
-        await db.close()
+        db.close()
         return Errors.InvalidRequest()
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -469,15 +469,15 @@ async def remove_comment_vote(
 
     trigger_uid = request.state.session["uid"]
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", "Users")
 
     user_info = await table.find_one({"id": uid})
     if user_info is None:
-        await db.close()
+        db.close()
         return Errors.AccountNotExist(timestamp() - t1)
 
     if commentId not in user_info.get("wall", {}):
-        await db.close()
+        db.close()
         return Errors.NotFound(timestamp() - t1)
 
     await table.update_one(
@@ -490,7 +490,7 @@ async def remove_comment_vote(
         },
     )
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -510,7 +510,7 @@ async def get_comment_voted_users(
     t1 = timestamp()
 
     db = await Database().init()
-    xndcid_table = await db.get(f"x{ndcId}", "Users")
+    xndcid_table = db.get(f"x{ndcId}", "Users")
     row = await xndcid_table.find_one({"id": uid})
     if row is None:
         return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
@@ -520,7 +520,7 @@ async def get_comment_voted_users(
         votes = comment.get("upvotes", []) + comment.get("downvotes", [])
         votes_selected = votes[start : start + size]
     except Exception:
-        await db.close()
+        db.close()
         return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
     voters_list = [
@@ -531,7 +531,7 @@ async def get_comment_voted_users(
         for item in votes_selected
     ]
 
-    await db.close()
+    db.close()
     return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
 
 
@@ -551,14 +551,14 @@ async def follow_user(uid, request: Request, ndcId=0):
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", "Users")
     target_user = await table.find_one({"id": uid})
     inited_user = await table.find_one({"id": suid})
     if suid not in target_user["whoFollows"] or uid not in inited_user["following"]:
         await table.update_one({"id": uid}, {"$push": {"whoFollows": suid}})
         await table.update_one({"id": suid}, {"$push": {"following": uid}})
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -578,11 +578,11 @@ async def unfollow_user(uid: str, request: Request, ndcId=0):
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", "Users")
     await table.update_one({"id": uid}, {"$pull": {"whoFollows": suid}})
     await table.update_one({"id": suid}, {"$pull": {"following": uid}})
 
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -597,16 +597,16 @@ async def get_user_info(uid, request: Request, ndcId=0):
 
     db = await Database().init()
 
-    table = await db.get(database=f"x{ndcId}", table="Users")
+    table = db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
 
     if ndcId == 0:
-        table = await db.get(table="Users")
+        table = db.get(table="Users")
         row2 = (await table.find_one({"id": uid}) or {}) | row2
 
-    await db.close()
+    db.close()
     return Base.Answer(
         {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)},
         spent_time=timestamp() - t1,
@@ -623,15 +623,15 @@ async def get_self_info(request: Request, ndcId: int = 0):
     uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
     row1 = await table.find_one({"id": uid})
     if row1 is None:
         return Errors.AccountNotExist(timestamp() - t1)
-    table = await db.get(database=f"x{ndcId}", table="Users")
+    table = db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
-    await db.close()
+    db.close()
     return Base.Answer(
         {"userProfile": User.GetUserInfo(row1 | row2, ndcId=ndcId)},
         spent_time=timestamp() - t1,
@@ -648,11 +648,11 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
     row = await table.find_one({"id": trigger_uid})
     if row is None:
         return Errors.AccountNotExist(timestamp() - t1)
-    await db.close()
+    db.close()
     return Base.Answer(
         {
             "wallet": {
@@ -687,11 +687,11 @@ async def get_wallet_ads_info(request: Request):
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
-    table = await db.get(table="Users")
+    table = db.get(table="Users")
     row = await table.find_one({"id": trigger_uid})
     if row is None:
         return Errors.AccountNotExist(timestamp() - t1)
-    await db.close()
+    db.close()
     return Base.Answer(
         {"estimatedCoinsEarnedByAds": 0, "coinsEarnedByAds": {"total": 0, "weekly": 0}},
         spent_time=timestamp() - t1,
@@ -763,17 +763,17 @@ async def edit_user_info(uid, request: Request, ndcId=0):
     db = await Database().init()
 
     if preparedQueries:
-        table = await db.get(database=f"x{ndcId}", table="Users")
+        table = db.get(database=f"x{ndcId}", table="Users")
         await table.update_one({"id": uid}, {"$set": preparedQueries})
 
     if lang:
-        table = await db.get(table="Users")
+        table = db.get(table="Users")
         await table.update_one({"id": uid}, {"$set": lang})
 
-    table = await db.get(database=f"x{ndcId}", table="Users")
+    table = db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
 
-    await db.close()
+    db.close()
 
     if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)

@@ -12,7 +12,7 @@ class Database:
         )
         return self
 
-    async def get(
+    def get(
         self, database: str = Config.MONGODB_MAIN_DB, table: Union[None, str] = None
     ):
         return (
@@ -21,12 +21,8 @@ class Database:
             else self.__connection[database][table]
         )
 
-    async def close(self):
+    def close(self):
         return self.__connection.close()
-
-    # [DEPRECATED] just an compatibility layer for now
-    async def get_connection(self):
-        return self.__connection
 
     @property
     def connection(self):

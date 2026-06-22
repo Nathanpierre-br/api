@@ -1,10 +1,11 @@
-from .user import User
+from datetime import UTC, datetime
 from typing import Union
-from datetime import datetime, UTC
 
 # import sys
 # sys.path.append('../')
 from helpers.database.mongo import Database
+
+from .user import User
 
 
 class Chat:
@@ -85,7 +86,7 @@ class Chat:
         if extensions.get("replyMessageId"):
             if history_table is None:
                 con = await Database().init()
-                history_table = await con.get(f"x{ndcId}", f"_Chat:{threadId}")
+                history_table = con.get(f"x{ndcId}", f"_Chat:{threadId}")
 
             reply_msg_data = await history_table.find_one(
                 {"messageId": extensions["replyMessageId"]}
@@ -147,7 +148,7 @@ class Chat:
             connection = await Database().init()
 
         if isinstance(chatId, str):
-            chats = await connection.get(f"x{ndcId}", "Chats")
+            chats = connection.get(f"x{ndcId}", "Chats")
             data = await chats.find_one({"id": chatId})
         else:
             data = chatId
@@ -158,7 +159,7 @@ class Chat:
             )
 
         try:
-            messages = await connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+            messages = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
             message = await messages.find_one({"messageId": data["lastMessageId"]})
             if message is None:
                 message = Chat.BoilerplateMessage
@@ -169,7 +170,7 @@ class Chat:
         if xndc_users is not None:
             host_xndcId = await xndc_users.find_one({"id": data["hostId"]}) or {}
         else:
-            xndc_users = await connection.get(f"x{ndcId}", "Users")
+            xndc_users = connection.get(f"x{ndcId}", "Users")
             host_xndcId = await xndc_users.find_one({"id": data["hostId"]}) or {}
 
         membershipStatus = 0

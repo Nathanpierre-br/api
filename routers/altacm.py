@@ -34,15 +34,15 @@ async def create_community(request: Request):
 
     # do you have rights to create a community?
     db = await Database().init()
-    sensitive_table = await db.get(table="Users")
+    sensitive_table = db.get(table="Users")
 
     user = await sensitive_table.find_one({"id": trigger_uid})
     if not user or user.get("role", 0) not in [200, 201, 555]:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     # cool! lets begin from grabbing the latest community id
-    ndclist_table = await db.get(table="Communities")
+    ndclist_table = db.get(table="Communities")
     latest_community = await ndclist_table.find_one(sort=[("id", -1)])
     if latest_community and latest_community.get("id"):
         ndcId = latest_community["id"] + 1  # new one for new community!
@@ -66,8 +66,8 @@ async def create_community(request: Request):
     # but what about members?
     # there should be TA account, Astral (if exist) and an agent themselves!
     aminoIds = ["teamaltamino", "astral", agentAminoId]
-    global_table = await db.get("x0", "Users")
-    new_users_table = await db.get(f"x{ndcId}", "Users")
+    global_table = db.get("x0", "Users")
+    new_users_table = db.get(f"x{ndcId}", "Users")
     who_joined = []
     for aminoId in aminoIds:
         aid2id_request = await sensitive_table.find_one(
@@ -121,7 +121,7 @@ async def create_community(request: Request):
     )
 
     # hooray! we are done
-    await db.close()
+    db.close()
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -135,11 +135,11 @@ async def edit_community(request: Request, ndcId: int = 0):
     conf = data.get("configuration", {})
 
     db = await Database().init()
-    table = await db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", "Users")
 
     user = await table.find_one({"id": trigger_uid})
     if not user or user.get("role", 0) not in [100, 102, 200, 201, 555]:
-        await db.close()
+        db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
     preparedQueries = {
@@ -166,8 +166,8 @@ async def edit_community(request: Request, ndcId: int = 0):
         if key in conf:
             preparedQueries["configuration"][key] = data[key]
 
-    table = await db.get(table="Communities")
+    table = db.get(table="Communities")
     await table.update_one({"id": ndcId}, {"$set": preparedQueries})
 
-    await db.close()
+    db.close()
     return Base.Answer({}, spent_time=timestamp() - t1)

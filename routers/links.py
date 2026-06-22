@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Request
 from time import time as timestamp
 
-from objects import Base, Errors, Links
-from helpers.database.mongo import Database
+from fastapi import APIRouter, Request
+
 from helpers.database.models import Global, ModelFabric
+from helpers.database.mongo import Database
 from helpers.generator import Generator
 from helpers.routers.cachable import CachableRoute
+from objects import Base, Errors, Links
 
 links = APIRouter()
 links.route_class = CachableRoute
@@ -22,24 +23,24 @@ async def make_link(request: Request, ndcId: int = 0):
     data = await request.json()
 
     db = await Database().init()
-    links_table = await db.get(table="Links")
+    links_table = db.get(table="Links")
 
     if data["objectType"] == 0:
         if str(ndcId) in request.url.path:
-            check_table = await db.get(f"x{ndcId}", "Users")
+            check_table = db.get(f"x{ndcId}", "Users")
         else:
-            check_table = await db.get(table="Users")
+            check_table = db.get(table="Users")
     elif data["objectType"] == 1:
-        check_table = await db.get(f"x{ndcId}", "Blogs")
+        check_table = db.get(f"x{ndcId}", "Blogs")
     elif data["objectType"] == 12:
-        check_table = await db.get(f"x{ndcId}", "Chats")
+        check_table = db.get(f"x{ndcId}", "Chats")
     else:
-        await db.close()
+        db.close()
         return Errors.UnimplementedPath(timestamp() - t1)
 
     check = await check_table.find_one({"id": data["objectId"]})
     if check is None:
-        await db.close()
+        db.close()
         return Errors.MythicData(timestamp() - t1)
 
     link = await links_table.find_one(
@@ -57,7 +58,7 @@ async def make_link(request: Request, ndcId: int = 0):
             ndcId=ndcId,
         )
         await links_table.insert_one(link)
-    await db.close()
+    db.close()
 
     if data["objectType"] == 0:
         return Base.Answer(Links.User(link), spent_time=timestamp() - t1)
@@ -75,7 +76,7 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
     t1 = timestamp()
 
     db = await Database().init()
-    links_table = await db.get(table="Links")
+    links_table = db.get(table="Links")
 
     q = (
         q.replace("http://aminoapps.com/", "http://altamino.top/")
@@ -87,7 +88,7 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
     link = await links_table.find_one({"code": q})
     print(q)
     print(link)
-    await db.close()
+    db.close()
 
     if link is None:
         return Errors.InvalidRequest(timestamp() - t1)
