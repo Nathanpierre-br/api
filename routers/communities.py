@@ -251,7 +251,7 @@ async def join_community(request: Request, ndcId: int):
             new_profile["wall"] = {}
             new_profile["role"] = (
                 0
-                if new_profile["role"] not in [200, 201, 253, 254, 555]
+                if new_profile["role"] not in [200, 201, 254, 555]
                 else new_profile["role"]
             )
             for field in ["_id", "createdTime", "modifiedTime"]:
@@ -360,7 +360,7 @@ async def leave_community(request: Request, ndcId: int):
         user_info = await table_xndc_users.find_one({"id": trigger_uid})
         role = (
             0
-            if not user_info or user_info["role"] not in [200, 201, 555]
+            if not user_info or user_info["role"] not in [200, 201, 254, 555]
             else user_info["role"]
         )
         await table_xndc_users.update_one(

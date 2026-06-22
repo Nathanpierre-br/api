@@ -12,6 +12,42 @@ from objects import Base, Errors
 altacm = APIRouter()
 altacm.route_class = CachableRoute
 
+WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
+
+
+@altacm.post("/altacm/s/community/x{ndcId}/user/{userId}/promote")
+@altacm.delete("/altacm/s/community/x{ndcId}/user/{userId}/promote")
+@validauth_required
+async def promotions(request: Request, ndcId: int, userId: str):
+    t1 = timestamp()
+
+    trigger_uid = request.state.session["uid"]
+    destruction_mode = request.method == "DELETE"
+    data = await request.json()
+    role = data.get("role")
+    if not destruction_mode and (role is None or not role.isdigit()):
+        return Errors.InvalidRequest()
+
+    db = await Database().init()
+    sensitive_table = db.get(table="Users")
+    ndc_users_table = db.get(f"x{ndcId}", "Users")
+
+    user = await sensitive_table.find_one({"id": trigger_uid})
+    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+        db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+
+    if destruction_mode:
+        role = 0
+    else:
+        role = int(role)
+        if role < 100 or role > 102:
+            return Errors.InvalidRequest()
+
+    await ndc_users_table.update_one({"id": userId}, {"$set": {"role": role}})
+
+    return Base.Answer(spent_time=timestamp() - t1)
+
 
 @altacm.post("/altacm/s/community/create")
 @validauth_required
@@ -37,7 +73,7 @@ async def create_community(request: Request):
     sensitive_table = db.get(table="Users")
 
     user = await sensitive_table.find_one({"id": trigger_uid})
-    if not user or user.get("role", 0) not in [200, 201, 555]:
+    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -61,7 +97,7 @@ async def create_community(request: Request):
     shape["aminoId"] = data["aminoId"]
     shape["lang"] = data["lang"] if data["lang"] in ["en", "ru", "es", "ar"] else "en"
     for key in ["_id", "theme"]:  # [NOTE] theme is old key that is not used
-        data.pop(key, None)
+        shape.pop(key, None)
 
     # but what about members?
     # there should be TA account, Astral (if exist) and an agent themselves!
@@ -125,6 +161,45 @@ async def create_community(request: Request):
     return Base.Answer(spent_time=timestamp() - t1)
 
 
+@altacm.delete("/altacm/s/community/x{ndcId}/destroy")
+@validauth_required
+async def destroy_community(request: Request, ndcId: int):
+    t1 = timestamp()
+
+    # how you dare destroying community!
+    #
+    # btw it can helps if there is some
+    # malicious community going around
+    # that can hurt us in any ways
+
+    trigger_uid = request.state.session["uid"]
+
+    # do you even have rights to do this act?
+    db = Database()
+    sensitive_table = db.get(table="Users")
+
+    user = await sensitive_table.find_one({"id": trigger_uid})
+    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+        db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+
+    # well.. fine. we will delete everything
+    # starting from communities table
+    ndclist_table = db.get(table="Communities")
+    await ndclist_table.delete_one({"id": ndcId})
+
+    # now we can nuke community database
+    await db.connection.drop_database(f"x{ndcId}")
+
+    # but what about who joined community?
+    condition = {"communityList": ndcId}
+    await sensitive_table.update_many(condition, {"$pull": condition})
+
+    # *sigh*... we are done.
+    db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
 @altacm.post("/altacm/s/community/x{ndcId}/edit")
 @validauth_required
 async def edit_community(request: Request, ndcId: int = 0):
@@ -138,7 +213,7 @@ async def edit_community(request: Request, ndcId: int = 0):
     table = db.get(f"x{ndcId}", "Users")
 
     user = await table.find_one({"id": trigger_uid})
-    if not user or user.get("role", 0) not in [100, 102, 200, 201, 555]:
+    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 

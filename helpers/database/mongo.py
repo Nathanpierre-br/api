@@ -6,6 +6,11 @@ from ..config import Config
 
 
 class Database:
+    def __init__(self):
+        self.__connection = motor.motor_asyncio.AsyncIOMotorClient(
+            Config.MONGODB_CONNECTION_STRING, uuidRepresentation="pythonLegacy"
+        )
+
     async def init(self) -> motor.motor_asyncio.AsyncIOMotorClient:
         self.__connection = motor.motor_asyncio.AsyncIOMotorClient(
             Config.MONGODB_CONNECTION_STRING, uuidRepresentation="pythonLegacy"

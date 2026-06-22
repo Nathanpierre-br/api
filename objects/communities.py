@@ -1,4 +1,4 @@
-from hashlib import md5
+from hashlib import sha256
 from typing import Union
 
 from helpers.database.mongo import Database
@@ -143,7 +143,7 @@ class Communities:
                 "themePackUrl": data.get("themeUrl"),
                 "themePackHash": data.get(
                     "themeHash",
-                    md5(
+                    sha256(
                         data.get("themeUrl", "https://trolo.lol/example").encode(
                             "utf-8"
                         )

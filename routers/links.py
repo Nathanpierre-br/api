@@ -46,11 +46,14 @@ async def make_link(request: Request, ndcId: int = 0):
     link = await links_table.find_one(
         {"objectId": data["objectId"], "objectType": data["objectType"], "ndcId": ndcId}
     )
+
     if link is None:
         link = ModelFabric.Construct(
             Global.Links,
             code=(
-                check["aminoId"] if data["objectType"] == 0 else Generator.RealString(8)
+                check["aminoId"]
+                if data["objectType"] == 0 and ndcId == 0
+                else Generator.RealString(8)
             ),
             targetCode=data.get("targetCode", 1),
             objectId=data["objectId"],
@@ -72,6 +75,8 @@ async def make_link(request: Request, ndcId: int = 0):
 @links.get("/x{ndcId}/s/link-resolution")
 @links.get("/g/s/link-translation")
 @links.get("/x{ndcId}/s/link-translation")
+@links.get("/g/s/link-identify")
+@links.get("/x{ndcId}/s/link-identify")
 async def resolute_link(request: Request, q: str, ndcId: int = 0):
     t1 = timestamp()
 

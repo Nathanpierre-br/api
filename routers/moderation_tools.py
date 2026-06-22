@@ -9,13 +9,20 @@ from objects import Base, Errors
 moderation_tools = APIRouter()
 moderation_tools.route_class = CachableRoute
 
-ALLOWED_ROLES = [100, 101, 102, 250, 251, 555]
+ALLOWED_ROLES = [100, 101, 102, 200, 201, 254, 555]
 
 
-async def check_rights(db, uid: str) -> bool:
+async def check_rights(db, uid: str, no_curators: bool = False) -> bool:
     table = db.get(table="Users")
     user = await table.find_one({"id": uid})
-    return user and user.get("role") in ALLOWED_ROLES
+    if user is None:
+        return False
+
+    role = user.get("role", 0)
+    if no_curators and role == 101:
+        return False
+
+    return role in ALLOWED_ROLES
 
 
 # f"/x{self.comId}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}",

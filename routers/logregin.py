@@ -1,5 +1,5 @@
 from asyncio import to_thread as asyncio_thread
-from base64 import b64decode, b64encode
+from base64 import b64decode
 from json import dumps
 from math import ceil
 from time import time as timestamp
@@ -411,9 +411,6 @@ async def login(request: Request):
     t1 = timestamp()
     data = await request.json()
 
-    print(data)
-    print(request.headers)
-
     if data.get("email") is None or data.get("secret") is None:
         return Errors.InvalidLogin(timestamp() - t1)
 
@@ -462,8 +459,8 @@ async def login(request: Request):
                     "auid": row["id"],
                     "account": User.OwnSensetiveProfile(row),
                     "userProfile": User.OwnNonSensetiveProfile(additionalRow | row),
-                    "newSecret": f"54 {Ferret.encrypt(ferrets_meal)}",
-                    "secret": f"31 {row['id']} {ip} {b64encode(passwordHash.encode()).decode()} {tmstmp} {31 * tmstmp}",
+                    "secret": f"54 {Ferret.encrypt(ferrets_meal)}",
+                    # "secret": f"31 {row['id']} {ip} {b64encode(passwordHash.encode()).decode()} {tmstmp} {31 * tmstmp}",
                     "sid": await SessionProcessor.Make(
                         row["id"], ip, data["clientType"]
                     ),
@@ -564,7 +561,7 @@ async def dev_device(request: Request):
         table = db.get(table="Users")
         row = await table.find_one({"id": uid})
         db.close()
-        if row["status"] == 9:
+        if row.get("status", 0) == 9:
             return Errors.UserBanned(timestamp() - t1)
 
     return Base.Answer({"devOptions": None}, timestamp() - t1)
@@ -581,7 +578,7 @@ async def device(request: Request, ndcId: int = 0):
         table = db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
         db.close()
-        if row["status"] == 9:
+        if row.get("status", 0) == 9:
             return Errors.UserBanned(timestamp() - t1)
 
     return Base.Answer({"devOptions": None}, timestamp() - t1)
