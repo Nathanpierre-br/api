@@ -34,6 +34,8 @@ async def make_link(request: Request, ndcId: int = 0):
         check_table = db.get(f"x{ndcId}", "Blogs")
     elif data["objectType"] == 12:
         check_table = db.get(f"x{ndcId}", "Chats")
+    elif data["objectType"] == 15:
+        check_table = db.get(f"x{ndcId}", "Communities")
     else:
         db.close()
         return Errors.UnimplementedPath(timestamp() - t1)
