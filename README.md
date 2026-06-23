@@ -15,3 +15,7 @@ Don't forget to set up S3 bucket!
 ## TODO (in code):
 
 - full [ty](https://github.com/astral-sh/ty) check pass
+
+## Contributors
+
+![everyone who helped making this](https://contrib.rocks/image?repo=altamino/api)

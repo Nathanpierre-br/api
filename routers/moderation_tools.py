@@ -10,9 +10,12 @@ moderation_tools = APIRouter()
 moderation_tools.route_class = CachableRoute
 
 ALLOWED_ROLES = [100, 101, 102, 200, 201, 254, 555]
+BASICALLY_GODS = [200, 201, 254, 555]
 
 
-async def check_rights(db, uid: str, no_curators: bool = False) -> bool:
+async def check_rights(
+    db, uid: str, no_curators: bool = False, only_gods: bool = False
+) -> bool:
     table = db.get(table="Users")
     user = await table.find_one({"id": uid})
     if user is None:
@@ -21,6 +24,9 @@ async def check_rights(db, uid: str, no_curators: bool = False) -> bool:
     role = user.get("role", 0)
     if no_curators and role == 101:
         return False
+
+    if only_gods:
+        return role in BASICALLY_GODS
 
     return role in ALLOWED_ROLES
 
@@ -57,7 +63,9 @@ async def moderation_history(
     return Base.Answer()
 
 
+@moderation_tools.post("/g/s/user-profile/{uid}/ban")
 @moderation_tools.post("/x{ndcId}/s/user-profile/{uid}/ban")
+@moderation_tools.post("/g/s/user-profile/{uid}/unban")
 @moderation_tools.post("/x{ndcId}/s/user-profile/{uid}/unban")
 async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
     t1 = timestamp()
@@ -65,7 +73,7 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
         return Errors.InvalidSession(timestamp() - t1)
 
     db = await Database().init()
-    if not await check_rights(db, request.state.session["uid"]):
+    if not await check_rights(db, request.state.session["uid"], only_gods=(ndcId == 0)):
         db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
@@ -80,7 +88,9 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
 
 @moderation_tools.post("/x{ndcId}/s/{object_type}/{object_id}/admin")
 @moderation_tools.post("/x{ndcId}/s/chat/{object_type}/{object_id}/admin")
-async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Request):
+@moderation_tools.post("/g/s/{object_type}/{object_id}/admin")
+@moderation_tools.post("/g/s/chat/{object_type}/{object_id}/admin")
+async def toggle_hide(request: Request, object_type: str, object_id: str, ndcId: int):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -88,7 +98,7 @@ async def toggle_hide(ndcId: int, object_type: str, object_id: str, request: Req
     data = await request.json()
 
     db = await Database().init()
-    if not await check_rights(db, request.state.session["uid"]):
+    if not await check_rights(db, request.state.session["uid"], only_gods=(ndcId == 0)):
         db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 

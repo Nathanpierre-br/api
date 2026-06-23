@@ -23,10 +23,13 @@ async def promotions(request: Request, ndcId: int, userId: str):
 
     trigger_uid = request.state.session["uid"]
     destruction_mode = request.method == "DELETE"
-    data = await request.json()
-    role = data.get("role")
-    if not destruction_mode and (role is None or not role.isdigit()):
-        return Errors.InvalidRequest()
+    if not destruction_mode:
+        data = await request.json()
+        role = data.get("role")
+        if role is None or role < 100 or role > 102:
+            return Errors.InvalidRequest()
+    else:
+        role = 0
 
     db = await Database().init()
     sensitive_table = db.get(table="Users")
@@ -36,13 +39,6 @@ async def promotions(request: Request, ndcId: int, userId: str):
     if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
-
-    if destruction_mode:
-        role = 0
-    else:
-        role = int(role)
-        if role < 100 or role > 102:
-            return Errors.InvalidRequest()
 
     await ndc_users_table.update_one({"id": userId}, {"$set": {"role": role}})
 

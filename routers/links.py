@@ -1,3 +1,4 @@
+from re import search
 from time import time as timestamp
 
 from fastapi import APIRouter, Request
@@ -87,27 +88,64 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
     db = await Database().init()
     links_table = db.get(table="Links")
 
-    q = (
+    """q = (
         q.replace("http://aminoapps.com/", "http://altamino.top/")
         .replace("https://aminoapps.com/", "http://altamino.top/")
         .replace("http://altamino.top/u/", "")
         .replace("http://altamino.top/p/", "")
         .replace("http://altamino.top/c/", "")
-    )
+    )"""
 
-    link = await links_table.find_one({"code": q})
-    print(q)
-    print(link)
-    db.close()
-
-    if link is None:
+    match = search(r"(http|https):\/\/altamino.top\/(?P<type>.*)\/(?P<code>.*)", q)
+    if match is None:
         return Errors.InvalidRequest(timestamp() - t1)
 
-    if link["objectType"] == 0:
-        return Base.Answer(Links.User(link), spent_time=timestamp() - t1)
-    elif link["objectType"] == 1:
-        return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
-    elif link["objectType"] == 12:
-        return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)
-    elif link["objectType"] == 15:
-        return Base.Answer(Links.Community(link), spent_time=timestamp() - t1)
+    code_type, query = match.group("type"), match.group("code")
+    if code_type == "c":
+        cum_table = db.get(table="Communities")
+        cum_data = await cum_table.find_one({"aminoId": query})
+        if cum_data is None:
+            return Errors.DataNotExist(timestamp() - t1)
+
+        db.close()
+        return Base.Answer(
+            Links.Community(
+                {
+                    "objectType": 15,
+                    "ndcId": cum_data.get("id"),
+                    "code": query,
+                    "objectId": str(cum_data.get("id")),
+                }
+            ),
+            spent_time=timestamp() - t1,
+        )
+    else:
+        link = await links_table.find_one({"code": query})
+        if link is None and code_type == "u":
+            gl_users_table = db.get(table="Users")
+            link = await gl_users_table.find_one({"aminoId": query})
+            if link is None:
+                return Errors.DataNotExist(timestamp() - t1)
+
+            return Base.Answer(
+                Links.User(
+                    {
+                        "objectType": 0,
+                        "ndcId": 0,
+                        "code": query,
+                        "objectId": str(link.get("id")),
+                    }
+                ),
+                spent_time=timestamp() - t1,
+            )
+
+        db.close()
+        if link is None:
+            return Errors.DataNotExist(timestamp() - t1)
+
+        if link["objectType"] == 0:
+            return Base.Answer(Links.User(link), spent_time=timestamp() - t1)
+        elif link["objectType"] == 1:
+            return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
+        elif link["objectType"] == 12:
+            return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)

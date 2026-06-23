@@ -54,6 +54,7 @@ class User:
         ndcId for another communities
         triggerUserId is who triggered this shit
         """
+        ndcId = int(ndcId)
         return {
             "status": row["status"],
             "uid": row["id"],
@@ -121,6 +122,7 @@ class User:
         extensions: dict = {},
         membershipStatus: int | None = None,
     ):
+        ndcId = int(ndcId)
         followingStatus = 0
         if triggerUserId is None:
             followingStatus = 0
@@ -206,6 +208,7 @@ class User:
         extensions: dict = {},
         membershipStatus: int | None = None,
     ):
+        ndcId = int(ndcId)
         followingStatus = 0
         if triggerUserId is None:
             followingStatus = 0
