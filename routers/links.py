@@ -71,6 +71,8 @@ async def make_link(request: Request, ndcId: int = 0):
         return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
     elif data["objectType"] == 12:
         return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)
+    elif link["objectType"] == 15:
+        return Base.Answer(Links.Community(link), spent_time=timestamp() - t1)
 
 
 @links.get("/g/s/link-resolution")
@@ -106,3 +108,5 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
         return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
     elif link["objectType"] == 12:
         return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)
+    elif link["objectType"] == 15:
+        return Base.Answer(Links.Community(link), spent_time=timestamp() - t1)
