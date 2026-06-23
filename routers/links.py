@@ -92,6 +92,7 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
         .replace("https://aminoapps.com/", "http://altamino.top/")
         .replace("http://altamino.top/u/", "")
         .replace("http://altamino.top/p/", "")
+        .replace("http://altamino.top/c/", "")
     )
 
     link = await links_table.find_one({"code": q})
