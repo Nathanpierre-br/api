@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
+from re import IGNORECASE as REGEX_IGNORECASE_FLAG
 from re import escape as regex_escape
+from re import match as re_match
 from time import time as timestamp
 from typing import Union
 from uuid import uuid4
@@ -43,7 +45,7 @@ async def get_latest_blog_posts(
 
     query = {}
     if q:
-        query["title"] = {"$regex": regex_escape(q), "$options": "i"}
+        query["title"] = {"$regex": regex_escape(q.strip()), "$options": "i"}
 
     blogs = [
         item
@@ -79,6 +81,7 @@ async def get_blogs(
     size: int = 25,
     pageToken: str | None = None,
     start: int = 0,
+    type: str | None = None,
 ):
     t1 = timestamp()
     size = size if 0 < size < 101 else 25
@@ -90,7 +93,15 @@ async def get_blogs(
     query = {"blogType": 0}
     # /api/v1/x1/s/blog?size=25&q=de838eb4-312c-4ba0-9d81-9aad3fc984e1&pagingType=t&type=user
     if q:
-        query["title"] = {"$regex": regex_escape(q), "$options": "i"}
+        q = regex_escape(q.strip())
+        if type == "user" and re_match(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            q,
+            REGEX_IGNORECASE_FLAG,
+        ):
+            query = {"authorId": q}
+        else:
+            query["title"] = {"$regex": regex_escape(q), "$options": "i"}
 
     blogs = [
         item

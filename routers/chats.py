@@ -99,17 +99,19 @@ async def get_recommended_chats(request: Request, ndcId: int = 0):
     trigger_uid = request.state.session.get("uid")
     con = await Database().init()
     if ndcId == 0:
+        chatIds = [
+            "e92cde26-3067-457f-930a-0be3b99dc9b5",  # EN
+            "0f668f3a-c5f5-42e0-b552-58b270e7841c",  # RU
+            "670cebaa-7d52-40a1-bcc7-5524a15ea3ed",  # ES
+            "6036bac0-d6fa-4413-8244-56d0cc6fa7b6",  # AR
+        ]
         chats = [
             await Chat.Info(
-                "e92cde26-3067-457f-930a-0be3b99dc9b5",
+                chatId,
                 trigger_uid=trigger_uid,
                 connection=con,
-            ),
-            await Chat.Info(
-                "0f668f3a-c5f5-42e0-b552-58b270e7841c",
-                trigger_uid=trigger_uid,
-                connection=con,
-            ),
+            )
+            for chatId in chatIds
         ]
         answer = {"threadList": [c for c in chats if c is not None]}
     else:

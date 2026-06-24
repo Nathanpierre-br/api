@@ -273,6 +273,12 @@ async def join_community(request: Request, ndcId: int):
             {"id": trigger_uid}, {"$set": {"status": 0}}
         )
 
+        if account.get("isVerified"):
+            await table_community_users.update_one(
+                {"id": trigger_uid},
+                {"$set": {"isVerified": True, "tagList": account.get("tagList", [])}},
+            )
+
         # update community
         await table_communities.update_one(
             {"id": ndcId},
