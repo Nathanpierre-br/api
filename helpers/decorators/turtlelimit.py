@@ -38,9 +38,16 @@ def turtlelimiter(
             ) or not request.state.session.get("uid"):
                 return await func(*args, **kwargs)
 
+            uid = request.state.session["uid"]
+            # [WARN]: it should be like this, make it properly
+            # i just dont have much time left to code this
+            # ill fully back in november           -shader
+            if uid == "80b66fa4-349c-4976-8b48-5b30bc48d1dc":
+                return await func(*args, **kwargs)
+
             # we are rate limiting by user id since ip-based rate limiting
             # is easily can be bypassed using a VPN or proxy
-            uid = UUID(request.state.session["uid"]).hex
+            uid = UUID(uid).hex
 
             # for multi rate limiting
             inspector = Aether.encode(
