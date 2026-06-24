@@ -395,8 +395,12 @@ async def register_check(request: Request):
         if data.get("email"):
             if not await EmailProcessor.Validate(data["email"]):
                 raise Exception()
-            # [TODO]: FUCKING FIND REASON WHY IT SHOULD BE CALLED
-            # return Errors.EmailWasTaken(timestamp() - t1)
+
+            db = await Database().init()
+            gl_users = db.get(table="Users")
+            row = await gl_users.find_one({"email": data["email"]})
+            if row is not None:
+                return Errors.EmailWasTaken(timestamp() - t1)
         elif data.get("secret"):
             if data["secret"][:2] != "0 ":
                 raise Exception()
