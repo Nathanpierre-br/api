@@ -88,6 +88,7 @@ async def get_blogs(
     table = db.get(f"x{ndcId}", "Blogs")
 
     query = {"blogType": 0}
+    # /api/v1/x1/s/blog?size=25&q=de838eb4-312c-4ba0-9d81-9aad3fc984e1&pagingType=t&type=user
     if q:
         query["title"] = {"$regex": regex_escape(q), "$options": "i"}
 

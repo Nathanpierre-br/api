@@ -118,7 +118,11 @@ async def search_community(
     try:
         table = db.get(table="Communities")
 
-        query = {"name": {"$regex": regex_escape(q), "$options": "i"}, "lang": language}
+        query = {
+            "name": {"$regex": regex_escape(q), "$options": "i"},
+            "lang": language,
+            "hidden": False,
+        }
         items = [item async for item in table.find(query).skip(start).limit(size)]
         communityList = [await Communities.Info(item, db, uid) for item in items]
         return Base.Answer(

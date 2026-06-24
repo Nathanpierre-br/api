@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Request
+from fastapi.templating import Jinja2Templates
 
 static_things = APIRouter()
+templates = Jinja2Templates(directory="templates")
 
 
 @static_things.get("/static")
 async def static_catcher(request: Request):
-    print(request.headers)
-    print(await request.body())
-
-    return {"api:message": "Unknown route."}
+    return templates.TemplateResponse(request=request, name="change_password.html")

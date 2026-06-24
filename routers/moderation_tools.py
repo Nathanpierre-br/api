@@ -3,6 +3,7 @@ from time import time as timestamp
 from fastapi import APIRouter, Request
 
 from helpers.database.mongo import Database
+from helpers.decorators.validauth import validauth_required
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors
 
@@ -31,9 +32,11 @@ async def check_rights(
     return role in ALLOWED_ROLES
 
 
+# MODERATION HISTORY
 # f"/x{self.comId}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}",
 @moderation_tools.get("/g/s/admin/operation")
 @moderation_tools.get("/x{ndcId}/s/admin/operation")
+@validauth_required
 async def moderation_history(
     request: Request,
     ndcId: int = 0,
@@ -67,6 +70,7 @@ async def moderation_history(
 @moderation_tools.post("/x{ndcId}/s/user-profile/{uid}/ban")
 @moderation_tools.post("/g/s/user-profile/{uid}/unban")
 @moderation_tools.post("/x{ndcId}/s/user-profile/{uid}/unban")
+@validauth_required
 async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -90,7 +94,10 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
 @moderation_tools.post("/x{ndcId}/s/chat/{object_type}/{object_id}/admin")
 @moderation_tools.post("/g/s/{object_type}/{object_id}/admin")
 @moderation_tools.post("/g/s/chat/{object_type}/{object_id}/admin")
-async def toggle_hide(request: Request, object_type: str, object_id: str, ndcId: int):
+@validauth_required
+async def toggle_hide(
+    request: Request, object_type: str, object_id: str, ndcId: int = 0
+):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)

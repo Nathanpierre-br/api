@@ -14,6 +14,7 @@ from helpers.adminWS import send_admin_ws
 from helpers.config import Config
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
+from helpers.decorators.bbnonsfw import bbnonsfw_manual_check
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import (
     audio_length,
@@ -693,6 +694,10 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 filetype = detect_file_ext(image_bytes)
                 if filetype is None:
                     return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+
+                if await bbnonsfw_manual_check(image_bytes):
+                    return Errors.NSFWContent(spent_time=timestamp() - t1)
+
                 filename = (
                     Config.S3_IMAGES_FOLDER
                     + "".join([choice(ascii_letters + digits) for _ in range(64)])
@@ -726,6 +731,9 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     else:
         mediaLink = None
 
+    # link snippet
+    # it's bugged so for now we ignore it
+    """
     if (
         data.get("extensions", {}).get("linkSnippetList")
         and len(data["extensions"]["linkSnippetList"]) >= 1
@@ -761,7 +769,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 "mediaList": [[100, mediaLink, None]],
             }
         ]
-
+    """
     if data.get("replyMessageId"):
         extensions.update({"replyMessageId": data["replyMessageId"]})
 

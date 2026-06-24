@@ -10,6 +10,8 @@ from orjson import loads
 
 from helpers.config import Config
 from helpers.database.mongo import Database
+from helpers.decorators.bbnonsfw import bbnonsfw
+from helpers.decorators.validauth import validauth_required
 from helpers.functions import detect_file_ext
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
@@ -23,11 +25,11 @@ upload_media.route_class = CachableRoute
 @upload_media.post("/x{ndcId}/s/media/upload")
 @upload_media.post("/g/s/media/upload/target/{target}")
 @upload_media.post("/x{ndcId}/s/media/upload/target/{target}")
+@validauth_required
+@bbnonsfw(target="body")
 async def upload(request: Request, ndcId: int = 0, target: str = ""):
     t1 = timestamp()
     uid = request.state.session.get("uid")
-    if uid is None:
-        return Errors.InvalidSession(timestamp() - t1)
 
     # this is getting data
     body = await request.body()

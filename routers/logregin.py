@@ -146,7 +146,7 @@ async def requestCode(request: Request):
         )
         turtle = "X"
 
-    if turtle != "X":
+    if turtle == "X":
         return Errors.VerificationRequired(
             Config.API_BASE_URL + "/api/v1/turtle/hello/email?inspector=" + inspector,
             timestamp() - t1,

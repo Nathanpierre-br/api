@@ -182,6 +182,15 @@ class Errors:
         )
 
     @staticmethod
+    def NSFWContent(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=403,
+            html_status_code=403,
+            api_message="Content is forbidden to upload.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
     def BigMediaContent(spent_time: Union[int, float] = 0):
         return Base.Answer(
             api_status_code=102,
