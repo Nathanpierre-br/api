@@ -1,5 +1,5 @@
 from asyncio import to_thread as asyncio_thread
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from json import dumps
 from math import ceil
 from time import time as timestamp
@@ -464,8 +464,8 @@ async def login(request: Request):
                     "auid": row["id"],
                     "account": User.OwnSensetiveProfile(row),
                     "userProfile": User.OwnNonSensetiveProfile(additionalRow | row),
-                    "secret": f"54 {Ferret.encrypt(ferrets_meal)}",
-                    # "secret": f"31 {row['id']} {ip} {b64encode(passwordHash.encode()).decode()} {tmstmp} {31 * tmstmp}",
+                    "secondSecret": f"54 {Ferret.encrypt(ferrets_meal)}",
+                    "secret": f"31 {row['id']} {ip} {b64encode(passwordHash.encode()).decode()} {tmstmp} {31 * tmstmp}",
                     "sid": await SessionProcessor.Make(
                         row["id"], ip, data["clientType"]
                     ),
