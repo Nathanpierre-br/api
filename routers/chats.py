@@ -37,6 +37,8 @@ chats.route_class = CachableRoute
 # /g/s/chat/thread/explore/search?q=Hello&size=25
 
 
+WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
+
 @chats.get("/g/s/chat/thread/explore/search")
 @chats.get("/x{ndcId}/s/chat/thread/explore/search")
 async def user_search(
@@ -320,7 +322,9 @@ async def delete_chat(chatId: str, request: Request, ndcId: int = 0):
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Chats")
     chat_info = await table.find_one({"id": chatId})
-    if chat_info["hostId"] == trigger_uid:
+    sensitive_table = db.get(table="Users")
+    user = await sensitive_table.find_one({"id": trigger_uid})
+    if chat_info["hostId"] == trigger_uid or (user and user.get("role", 0) in WHO_HAVE_POWER_OF_GOD):
         await table.delete_one({"id": chatId})
         db.close()
         return Base.Answer()
@@ -1134,9 +1138,14 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
         connection.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
+
+
     if trigger_uid != chat_info["hostId"]:
-        connection.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        sensitive_table = connection.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
 
     await chat.update_one(
         {"id": chatId}, {"$push": {"cohostsIds": {"$each": new_cohosts}}}
@@ -1183,8 +1192,11 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
     if trigger_uid != chat_info["hostId"]:
-        connection.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        sensitive_table = connection.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
 
     await chat.update_one({"id": chatId}, {"$pull": {"cohostsIds": uid}})
 
