@@ -13,5 +13,5 @@ altteam.route_class = CachableRoute
 
 @altteam.get("/g/s/altteam")
 @altteam.get("/x{ndcId}/s/altteam")
-async def storesections_mock(request: Request, ndcId: int = 0):
+async def mock(request: Request, ndcId: int = 0):
     return Base.Answer()
