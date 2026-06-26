@@ -1042,15 +1042,15 @@ async def get_chat_members(
         ]
     elif type == "organizer-transfer-candidates":
         chat_info = await chat_table.find_one(
-            {"id": chatId}, {"memberList": 1, "invitedList": 1}
+            {"id": chatId}, {"memberList": 1, "cohostsIds": 1}
         )
         if not chat_info:
             connection.close()
             return Errors.DataNotExist(spent_time=timestamp() - t1)
 
         members_in_chat = chat_info.get("memberList", [])
-        invited_in_chat = chat_info.get("invitedList", [])
-        all_ids = members_in_chat + invited_in_chat
+        cohosts_in_chat = chat_info.get("cohostsIds", [])
+        all_ids = members_in_chat + cohosts_in_chat
         target_ids = all_ids[start:start + size]
 
         users_data = {
@@ -1059,7 +1059,7 @@ async def get_chat_members(
 
         member_list = []
         for uid in target_ids:
-            if uid not in users_data or uid == chat_info["hostId"]:
+            if uid not in users_data or uid == chat_info.get("hostId"):
                 continue
             user = User.GetUserInfo(
                 users_data[uid],
