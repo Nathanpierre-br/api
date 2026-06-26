@@ -273,7 +273,8 @@ async def get_blog_comments(
 
 # get replies to blog's wall post
 
-
+@blog_methods.get("/g/s/blog/{blogId}/g-comment/{commentId}")
+@blog_methods.get("/g/s/blog/{blogId}/g-comment/{commentId}/response")
 @blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}")
 @blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}/response")
 @blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment/{commentId}")
@@ -499,7 +500,7 @@ async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
 # add vote to blog
 @blog_methods.post("/g/s/blog/{blogId}/vote")
 @blog_methods.post("/g/s/item/{blogId}/vote")
-@blog_methods.post("/g/s/item/{blogId}/g-vote")
+@blog_methods.post("/g/s/blog/{blogId}/g-vote")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/vote")
 @blog_methods.post("/x{ndcId}/s/item/{blogId}/vote")
 async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
@@ -542,7 +543,7 @@ async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
 
 # remove vote from blog
 
-@blog_methods.delete("/g/s/item/{blogId}/g-vote")
+@blog_methods.delete("/g/s/blog/{blogId}/g-vote")
 @blog_methods.delete("/g/s/blog/{blogId}/vote")
 @blog_methods.delete("/g/s/item/{blogId}/vote")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}/vote")
@@ -567,7 +568,7 @@ async def remove_vote_from_blog(request: Request, blogId: str, ndcId: int = 0):
 
 # see who voted for blog
 
-@blog_methods.get("/g/s/item/{blogId}/g-vote")
+@blog_methods.get("/g/s/blog/{blogId}/g-vote")
 @blog_methods.get("/g/s/blog/{blogId}/vote")
 @blog_methods.get("/g/s/item/{blogId}/vote")
 @blog_methods.get("/x{ndcId}/s/blog/{blogId}/vote")
@@ -684,7 +685,7 @@ async def post_blog(request: Request, ndcId: int = 0):
 
 # delete comment from blog
 
-
+@blog_methods.delete("/g/s/blog/{blogId}/g-comment/{commentId}")
 @blog_methods.delete("/g/s/blog/{blogId}/comment/{commentId}")
 @blog_methods.delete("/g/s/item/{blogId}/comment/{commentId}")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}/comment/{commentId}")
@@ -736,7 +737,7 @@ async def delete_blog_comment(
 
 # vote for blog comment
 
-
+@blog_methods.post("/g/s/blog/{blogId}/g-comment/{commentId}/vote")
 @blog_methods.post("/g/s/blog/{blogId}/comment/{commentId}/vote")
 @blog_methods.post("/g/s/item/{blogId}/comment/{commentId}/vote")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/vote")
@@ -791,6 +792,7 @@ async def vote_blog_comment(
 
 
 @blog_methods.delete("/g/s/blog/{blogId}/comment/{commentId}/vote")
+@blog_methods.delete("/g/s/blog/{blogId}/g-comment/{commentId}/vote")
 @blog_methods.delete("/g/s/item/{blogId}/comment/{commentId}/vote")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/vote")
 @blog_methods.delete("/x{ndcId}/s/item/{blogId}/comment/{commentId}/vote")

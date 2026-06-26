@@ -43,34 +43,35 @@ async def joined_communities(
             },
             spent_time=timestamp() - t1,
         )
-
     # parse page token
     if pageToken:
         start = parse_page_token(pageToken, start)
-
     uid = request.state.session["uid"]
     size = size if 0 < size < 101 else 25
-
     db = await Database().init()
     try:
         table = db.get(table="Users")
         row1 = await table.find_one({"id": uid})
         if row1 is None:
             return Errors.AccountNotExist(timestamp() - t1)
-
         # experimental ios freezing fix: giving full profile info
         table = db.get("x0", "Users")
         row2 = await table.find_one({"id": uid})
         if row2 is None:
             return Errors.AccountNotExist(timestamp() - t1)
-
         table = db.get(table="Communities")
         cl_needed = row1.get("communityList", [])[start : start + size]
 
+        items_by_id = {}
+        async for item in table.find({"id": {"$in": cl_needed}}):
+            info = await Communities.Info(item, db, uid) | {"membershipStatus": 1}
+            items_by_id[item["id"]] = info
+
+
         communityList = [
-            await Communities.Info(item, db, uid) | {"membershipStatus": 1}
-            async for item in table.find({"id": {"$in": cl_needed}})
+            items_by_id[ndcId] for ndcId in cl_needed if ndcId in items_by_id
         ]
+
         result = {
             "communityList": communityList,
             "userInfoInCommunities": {
@@ -88,13 +89,11 @@ async def joined_communities(
         }
     finally:
         db.close()
-
     # print(result)
     return Base.Answer(
         result,
         spent_time=timestamp() - t1,
     )
-
 
 # communities search
 @communities.get("/g/s/community/search")

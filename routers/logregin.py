@@ -583,6 +583,8 @@ async def device(request: Request, ndcId: int = 0):
         table = db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
         db.close()
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
         if row.get("status", 0) == 9:
             return Errors.UserBanned(timestamp() - t1)
 
