@@ -15,9 +15,9 @@ BASICALLY_GODS = [200, 201, 254, 555]
 
 
 async def check_rights(
-    db, uid: str, no_curators: bool = False, only_gods: bool = False
+    db, uid: str, ndcId: int = 0, no_curators: bool = False, only_gods: bool = False
 ) -> bool:
-    table = db.get(table="Users")
+    table = db.get(f"x{ndcId}", table="Users")
     user = await table.find_one({"id": uid})
     if user is None:
         return False
@@ -77,7 +77,7 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
         return Errors.InvalidSession(timestamp() - t1)
 
     db = await Database().init()
-    if not await check_rights(db, request.state.session["uid"], only_gods=(ndcId == 0)):
+    if not await check_rights(db, request.state.session["uid"], ndcId, only_gods=(ndcId == 0)):
         db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
@@ -105,7 +105,7 @@ async def toggle_hide(
     data = await request.json()
 
     db = await Database().init()
-    if not await check_rights(db, request.state.session["uid"], only_gods=(ndcId == 0)):
+    if not await check_rights(db, request.state.session["uid"], ndcId, only_gods=(ndcId == 0)):
         db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
