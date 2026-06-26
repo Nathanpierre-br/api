@@ -93,15 +93,15 @@ async def get_blogs(
     query = {"blogType": 0}
     # /api/v1/x1/s/blog?size=25&q=de838eb4-312c-4ba0-9d81-9aad3fc984e1&pagingType=t&type=user
     if q:
-        q = regex_escape(q.strip())
+        raw_q = q.strip()
         if type == "user" and re_match(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-            q,
+            raw_q,
             REGEX_IGNORECASE_FLAG,
         ):
-            query = {"authorId": q}
+            query = {"authorId": raw_q}
         else:
-            query["title"] = {"$regex": regex_escape(q), "$options": "i"}
+            query["title"] = {"$regex": regex_escape(raw_q), "$options": "i"}
 
     print(f"query: {query}, ndcId: {ndcId}")
     count = await table.count_documents(query)
