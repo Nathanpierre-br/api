@@ -1286,9 +1286,8 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
             return Errors.NotEnoughRights(timestamp() - t1)
 
     await chat.update_one(
-        {"id": chatId}, {"$push": {"hostId": {"$set": host_candidates[0]}}}
+        {"id": chatId}, {"$set": {"hostId": host_candidates[0]}}
     )
-
     answer = Base.Answer(
         spent_time=timestamp() - t1,
     )
