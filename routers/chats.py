@@ -1008,7 +1008,7 @@ async def get_chat_members(
             async for u in xndc_users.find(query).skip(start).limit(size)
         ]
 
-    elif type in ("co-host", "organizer-transfer-candidates"):
+    elif type == "co-host":
         chat_info = await chat_table.find_one(
             {"id": chatId}, {"memberList": 1, "cohostsIds": 1}
         )
@@ -1040,6 +1040,34 @@ async def get_chat_members(
             for uid in target_ids
             if uid in users_data
         ]
+    elif type == "organizer-transfer-candidates":
+        chat_info = await chat_table.find_one(
+            {"id": chatId}, {"memberList": 1, "invitedList": 1}
+        )
+        if not chat_info:
+            connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+        members_in_chat = chat_info.get("memberList", [])
+        invited_in_chat = chat_info.get("invitedList", [])
+        all_ids = members_in_chat + invited_in_chat
+        target_ids = all_ids[start:start + size]
+
+        users_data = {
+            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
+        }
+
+        member_list = []
+        for uid in target_ids:
+            if uid not in users_data or uid == chat_info["hostId"]:
+                continue
+            user = User.GetUserInfo(
+                users_data[uid],
+                membershipStatus=(1 if uid in members_in_chat else 2),
+                ndcId=ndcId,
+            )
+            user["isAvailableCandidate"] = True
+            member_list.append(user)
 
     else:
         connection.close()
