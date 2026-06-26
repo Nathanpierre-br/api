@@ -1042,7 +1042,7 @@ async def get_chat_members(
         ]
     elif type == "organizer-transfer-candidates":
         chat_info = await chat_table.find_one(
-            {"id": chatId}, {"memberList": 1, "cohostsIds": 1}
+            {"id": chatId}, {"memberList": 1, "cohostsIds": 1, "hostId": 1}
         )
         if not chat_info:
             connection.close()
