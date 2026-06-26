@@ -161,7 +161,27 @@ async def announcement(request: Request, start: int = 0, size: int = 25, languag
 		spent_time=timestamp() - t1,
 	)
 
+@blog_methods.get("/g/s/announcement/{blogId}")
+async def get_announcement(
+	request: Request,
+	blogId: str,
+):
+	t1 = timestamp()
 
+	db = await Database().init()
+	table = db.get(f"x0", "Blogs")
+
+	blog = await table.find_one({"id": blogId})
+	if blog:
+		blog_info = await Blog.Info(
+			blog, db, ndcId=0, trigger_uid=request.state.session.get("uid")
+		)
+		db.close()
+
+		return Base.Answer(
+			{"blog": blog_info},
+			spent_time=timestamp() - t1,
+		)
 
 
 
@@ -196,7 +216,7 @@ async def get_blog(
 
 # get blog's wall
 
-
+@blog_methods.get("/g/s/blog/{blogId}/g-comment")
 @blog_methods.get("/g/s/blog/{blogId}/comment")
 @blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment")
 async def get_blog_comments(

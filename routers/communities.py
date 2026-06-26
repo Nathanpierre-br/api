@@ -1,6 +1,6 @@
 from re import escape as regex_escape
 from time import time as timestamp
-
+from pymongo import DESCENDING
 from fastapi import APIRouter, Request
 
 from helpers.aioyaml import aioyaml
@@ -487,7 +487,7 @@ async def get_community_profiles(
     if type == "featured":
         return Base.Answer(
             {
-                "userProfileCount": 0,  # temm
+                "userProfileCount": 0,
                 "userProfileList": [],
             },
         )
@@ -513,14 +513,13 @@ async def get_community_profiles(
         items = [
             User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1)
             async for item in table.find(query)
-            .skip(start)
-            .limit(size)
-            .sort({"createdTime": -1})
+                .skip(start)
+                .limit(size)
+                .sort([("role", DESCENDING), ("createdTime", -1)])
         ]
-
         return Base.Answer(
             {
-                "userProfileCount": 0,  # temm
+                "userProfileCount": 0,
                 "userProfileList": items,
             },
             spent_time=timestamp() - t1,
