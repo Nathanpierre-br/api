@@ -1281,12 +1281,12 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(table="Users")
         user = await sensitive_table.find_one({"id": trigger_uid})
-        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD+[100,101,102]:
             connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
 
     await chat.update_one(
-        {"id": chatId}, {"$push": {"hostId": {"$each": host_candidates[0]}}}
+        {"id": chatId}, {"$push": {"hostId": {"$set": host_candidates[0]}}}
     )
 
     answer = Base.Answer(
@@ -1295,12 +1295,6 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
 
     connection.close()
     return answer
-
-
-
-
-
-
 
 
 
