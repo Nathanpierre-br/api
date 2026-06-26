@@ -966,7 +966,7 @@ async def get_chat_members(
     if pageToken:
         start = parse_page_token(pageToken, start)
 
-    if type in ("default","organizer-transfer-candidates"):
+    if type == "default":
         chat_info = await chat_table.find_one(
             {"id": chatId}, {"memberList": 1, "invitedList": 1}
         )
@@ -975,7 +975,7 @@ async def get_chat_members(
             return Errors.DataNotExist(spent_time=timestamp() - t1)
 
         members_in_chat = chat_info.get("memberList", [])
-        invited_in_chat = chat_info.get("invitedList", []) if type == "default" else []
+        invited_in_chat = chat_info.get("invitedList", [])
         all_ids = members_in_chat + invited_in_chat
         target_ids = all_ids[start : start + size]
 
@@ -1040,6 +1040,25 @@ async def get_chat_members(
             for uid in target_ids
             if uid in users_data
         ]
+    elif type == "organizer-transfer-candidates":
+        chat_info = await chat_table.find_one(
+            {"id": chatId}, {"memberList": 1, "cohostsIds": 1}
+        )
+        if not chat_info:
+            connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+        members_in_chat = chat_info.get("memberList", [])
+        cohosts_in_chat = chat_info.get("cohostsIds", [])
+
+        target_ids = []
+        seen_ids = set()
+        for uid in members_in_chat + cohosts_in_chat:
+            if uid not in seen_ids:
+                target_ids.append(uid)
+                seen_ids.add(uid)
+        member_list=target_ids[start : start + size]
+
 
     else:
         connection.close()
