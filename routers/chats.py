@@ -1281,6 +1281,11 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(table="Users")
         user = await sensitive_table.find_one({"id": trigger_uid})
+        print(user)
+        if user:
+            print(user.get("role"))
+            print(type(user.get("role")))
+            print(user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD+[100,101,102])
         if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD+[100,101,102]:
             connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
