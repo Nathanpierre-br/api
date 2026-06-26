@@ -1,12 +1,9 @@
 from base64 import b64encode
 from functools import wraps
 from typing import Literal
-
 from httpx import AsyncClient
-
 from helpers.config import Config
 from objects.errors import Errors
-
 
 async def bbnonsfw_manual_check(image: str | bytes) -> bool:
     """
@@ -19,7 +16,6 @@ async def bbnonsfw_manual_check(image: str | bytes) -> bool:
             image = image.decode()
         except Exception:
             image = b64encode(image).decode()
-
     async with AsyncClient() as client:
         response = await client.post(
             Config.BBNONSFW_API_URL,
@@ -28,13 +24,12 @@ async def bbnonsfw_manual_check(image: str | bytes) -> bool:
                 "Authorization": f"Bearer {Config.BBNONSFW_API_KEY}",
             },
         )
-        answer = response.json()
-        nsfw_score = (
-            answer[1]["score"] if answer[1]["label"] == "nsfw" else answer[0]["score"]
-        )
-        print(nsfw_score)
-        return nsfw_score > 0.9
-
+    answer = response.json()
+    nsfw_score = next(
+        (x["score"] for x in answer if x["label"] == "nsfw"), 0.0
+    )
+    print(nsfw_score)
+    return nsfw_score > 0.9
 
 def bbnonsfw(
     target: Literal["body", "json"],
@@ -45,15 +40,11 @@ def bbnonsfw(
         async def wrapper(*args, **kwargs):
             if not Config.ENABLE_BBNONSFW:
                 return await func(*args, **kwargs)
-
             request = kwargs.get("request")
             if target == "body":
                 body = b64encode(await request.body()).decode()
                 if await bbnonsfw_manual_check(body):
                     return Errors.NSFWContent()
-
             return await func(*args, **kwargs)
-
         return wrapper
-
     return decorator
