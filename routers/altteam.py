@@ -26,7 +26,7 @@ WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
 
 
 
-@altteam.get("/g/s/altteam/reset-password")
+@altteam.post("/g/s/altteam/reset-password")
 async def support_reset_password(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not Config.ENABLE_EMAIL:
