@@ -130,17 +130,6 @@ async def get_blogs(
 
 @blog_methods.get("/g/s/announcement")
 async def announcement(request: Request, start: int = 0, size: int = 25, language: str = "en", pageToken: str | None = None,):
-	"""
-async def get_blogs(
-	request: Request,
-	q: Union[str, None] = None,
-	ndcId: int = 0,
-	size: int = 25,
-	pageToken: str | None = None,
-	start: int = 0,
-	type: str | None = None,
-):
-	"""
 	t1 = timestamp()
 	size = size if 0 < size < 101 else 25
 	start = parse_page_token(pageToken, start)
@@ -628,7 +617,6 @@ async def post_blog(request: Request, ndcId: int = 0):
 	if is_special:
 		title = title.removeprefix(MARKER)
 		ndcId = 0
-	print(ndcId > 0)
 	if ndcId > 0:
 		xndcid_users = db.get(f"x{ndcId}", "Users")
 		user_in_community = await xndcid_users.find_one({"id": trigger_uid})
@@ -638,7 +626,6 @@ async def post_blog(request: Request, ndcId: int = 0):
 	else:
 		users = db.get(f"x0", "Users")
 		user = await users.find_one({"id": trigger_uid})
-		print(user.get("role"))
 		if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
 			db.close()
 			return Errors.NotEnoughRights(timestamp() - t1)
