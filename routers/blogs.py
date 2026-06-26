@@ -147,7 +147,7 @@ async def announcement(request: Request, start: int = 0, size: int = 25, languag
 
 	blogList = [
 		await Blog.Info(
-			item, db, ndcId="x0", trigger_uid=request.state.session.get("uid")
+			item, db, ndcId=0, trigger_uid=request.state.session.get("uid")
 		)
 		for item in blogs
 	]
