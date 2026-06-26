@@ -9,6 +9,8 @@ async def bbnonsfw_manual_check(image: str | bytes) -> bool:
     """
     False if image is OK, True if NSFW.
     """
+    #this shit always get bad request from BBNONSFW_API_URL
+    """
     if not Config.ENABLE_BBNONSFW:
         return False
         
@@ -39,6 +41,8 @@ async def bbnonsfw_manual_check(image: str | bytes) -> bool:
     
     print(f"NSFW Score: {nsfw_score}")
     return nsfw_score > 0.9
+    """
+    return False
 
 def bbnonsfw(
     target: Literal["body", "json"],

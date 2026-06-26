@@ -431,7 +431,7 @@ async def get_official_guidelines(
 ):
     try:
         file = await aioyaml("files/guidelines.yaml")
-        language = language.lower() if language.lower() in ["ru", "en"] else "en"
+        language = language.lower() if language.lower() in ["ru", "en", "ar", "es"] else "en"
         # we should also think about not hardcoding ndc langs
         guideline = file[language]
     except Exception as e:
@@ -555,6 +555,44 @@ async def live_layer(request: Request, ndcId: int = 0, topic: str | None = None)
             ]
         }
     )
+
+
+
+@communities.post("/g/s/community/joined/reorder")
+async def reorder_communities(request: Request):
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+    data = await request.json()
+    ndcIdList = data.get("ndcIdList", [])
+    if not ndcIdList:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+    try:
+        table = db.get(table="Users")
+        row1 = await table.find_one({"id": uid})
+        if row1 is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        current_order = row1.get("communityList", [])
+
+        new_front = [ndcId for ndcId in ndcIdList if ndcId in current_order]
+        new_front_set = set(new_front)
+
+        remaining = [ndcId for ndcId in current_order if ndcId not in new_front_set]
+
+        new_order = new_front + remaining
+
+        await table.update_one({"id": uid}, {"$set": {"communityList": new_order}})
+    finally:
+        db.close()
+
+    return Base.Answer(
+        spent_time=timestamp() - t1,
+    )
+
+
+
 
 
 # looks like this request allows precheck if you can do it
