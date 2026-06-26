@@ -950,7 +950,7 @@ async def get_chat_members(
 ):
     t1 = timestamp()
 
-    if type not in ["default", "co-host", "at"]:
+    if type not in ["default", "co-host", "at", "organizer-transfer-candidates"]:
         return Errors.InvalidRequest(timestamp() - t1)
 
     connection = await Database().init()
@@ -966,7 +966,7 @@ async def get_chat_members(
     if pageToken:
         start = parse_page_token(pageToken, start)
 
-    if type == "default":
+    if type in ("default","organizer-transfer-candidates"):
         chat_info = await chat_table.find_one(
             {"id": chatId}, {"memberList": 1, "invitedList": 1}
         )
@@ -975,7 +975,7 @@ async def get_chat_members(
             return Errors.DataNotExist(spent_time=timestamp() - t1)
 
         members_in_chat = chat_info.get("memberList", [])
-        invited_in_chat = chat_info.get("invitedList", [])
+        invited_in_chat = chat_info.get("invitedList", []) if type == "default" else []
         all_ids = members_in_chat + invited_in_chat
         target_ids = all_ids[start : start + size]
 
