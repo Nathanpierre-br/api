@@ -1058,8 +1058,9 @@ async def get_chat_members(
         }
 
         member_list = []
+        _temp = set()
         for uid in target_ids:
-            if uid not in users_data or uid == chat_info.get("hostId"):
+            if uid not in users_data or uid == chat_info.get("hostId") or uid in _temp:
                 continue
             user = User.GetUserInfo(
                 users_data[uid],
@@ -1068,6 +1069,7 @@ async def get_chat_members(
             )
             user["isAvailableCandidate"] = True
             member_list.append(user)
+            _temp.add(uid)
 
     else:
         connection.close()
@@ -1247,6 +1249,59 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
 
     connection.close()
     return answer
+
+
+
+#TODO: We will need to create a system for sending and receiving requests to assume the host role—though it is not yet clear exactly how.
+@chats.post("/g/s/chat/thread/{chatId}/transfer-organizer")
+@chats.post("/x{ndcId}/s/chat/thread/{chatId}/transfer-organizer")
+async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
+
+    data = await request.json()
+    trigger_uid = request.state.session["uid"]
+    host_candidates = data.get("uidList", [])
+    if not host_candidates:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    if isinstance(host_candidates, str):
+        host_candidates=[host_candidates]
+
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
+    if not chat_info:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+
+
+    if trigger_uid != chat_info["hostId"]:
+        sensitive_table = connection.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+    await chat.update_one(
+        {"id": chatId}, {"$push": {"hostId": {"$each": host_candidates[0]}}}
+    )
+
+    answer = Base.Answer(
+        spent_time=timestamp() - t1,
+    )
+
+    connection.close()
+    return answer
+
+
+
+
+
+
+
 
 
 # invite to chat
