@@ -103,6 +103,11 @@ async def get_blogs(
         else:
             query["title"] = {"$regex": regex_escape(q), "$options": "i"}
 
+    print(f"query: {query}, ndcId: {ndcId}")
+    count = await table.count_documents(query)
+    print(f"count: {count}")
+
+
     blogs = [
         item
         async for item in table.find(query)
@@ -126,6 +131,7 @@ async def get_blogs(
         },
         spent_time=timestamp() - t1,
     )
+
 
 
 @blog_methods.get("/g/s/blog/{blogId}")
