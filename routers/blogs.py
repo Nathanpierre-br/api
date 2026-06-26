@@ -18,7 +18,7 @@ from objects import Base, Blog, Comments, Errors, User
 
 blog_methods = APIRouter()
 blog_methods.route_class = CachableRoute
-
+WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
 
 @blog_methods.get("/x{ndcId}/s/feed/blog-recommended")
 async def get_recommended_blogs(request: Request, ndcId: int):
@@ -126,6 +126,54 @@ async def get_blogs(
         },
         spent_time=timestamp() - t1,
     )
+
+
+@blog_methods.get("/g/s/announcement")
+async def announcement(request: Request, start: int = 0, size: int = 25, language: str = "en", pageToken: str | None = None,):
+    """
+async def get_blogs(
+    request: Request,
+    q: Union[str, None] = None,
+    ndcId: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
+    start: int = 0,
+    type: str | None = None,
+):
+    """
+    t1 = timestamp()
+    size = size if 0 < size < 101 else 25
+    start = parse_page_token(pageToken, start)
+
+    db = await Database().init()
+    table = db.get(f"x0", "Blogs")
+
+    blogs = [
+        item
+        async for item in table.find({"blogType": 0})
+        .skip(start)
+        .limit(size)
+        .sort("createdTime", DESCENDING)
+    ]
+
+    blogList = [
+        await Blog.Info(
+            item, db, ndcId="x0", trigger_uid=request.state.session.get("uid")
+        )
+        for item in blogs
+    ]
+
+    db.close()
+    return Base.Answer(
+        {
+            "blogList": blogList,
+            "paging": calculate_page_tokens(start, size, blogList),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+
 
 
 
@@ -427,8 +475,9 @@ async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
     if not blog:
         db.close()
         return Errors.DataNotExist(timestamp() - t1)
-
-    if blog["authorId"] != trigger_uid:
+    users = db.get(f"x{ndcId}", "Users")
+    user = await users.find_one({"id": trigger_uid})
+    if blog["authorId"] != trigger_uid and (not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD):
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -573,6 +622,13 @@ async def post_blog(request: Request, ndcId: int = 0):
 
     db = await Database().init()
 
+
+    MARKER = "[X-SPEC]" #temporarily for posting updates in the Altamino team announcement
+    is_special = title.startswith(MARKER)
+    if is_special:
+        title = title.removeprefix(MARKER)
+        ndcId = 0
+
     if ndcId > 0:
         xndcid_users = db.get(f"x{ndcId}", "Users")
         user_in_community = await xndcid_users.find_one({"id": trigger_uid})
@@ -580,7 +636,11 @@ async def post_blog(request: Request, ndcId: int = 0):
             db.close()
             return Errors.NotEnoughRights(timestamp() - t1)
     else:
-        return Errors.NotEnoughRights(timestamp() - t1)
+        users = db.get(f"x0", "Users")
+        user = await users.find_one({"id": trigger_uid})
+        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+            db.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
 
     style = extensions.get("style", {})
     useful_extensions = {
