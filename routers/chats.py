@@ -159,7 +159,7 @@ async def chat_search(
         cursor = table.find(query).skip(start).limit(size)
 
         threadList = [
-            await Chat.Info(item, db, uid)
+            await Chat.Info(item, db, ndcId, uid)
             async for item in cursor
         ]
     finally:
