@@ -2,6 +2,7 @@ from re import escape as regex_escape
 from time import time as timestamp
 from pymongo import DESCENDING
 from fastapi import APIRouter, Request
+from datetime import datetime
 
 from helpers.aioyaml import aioyaml
 from helpers.database.models import dttmn
@@ -527,14 +528,21 @@ async def get_community_profiles(
     finally:
         db.close()
 
-
 @communities.get("/g/s/user-group/{userGroupType}")
 @communities.get("/x{ndcId}/s/user-group/{userGroupType}")
-async def get_user_groups(request: Request, userGroupType: str, ndcId: int = 0):
+async def get_user_groups(
+    request: Request,
+    userGroupType: str,
+    ndcId: int = 0,
+    start: int = 0,
+    size: int = 20,
+    stoptime: str | None = None,
+):
     t1 = timestamp()
     if userGroupType != UserGroupType.QuickAccess:
         return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
+    size = size if 0 < size < 101 else 20
     uid = request.state.session["uid"]
     db = await Database().init()
     try:
@@ -543,19 +551,29 @@ async def get_user_groups(request: Request, userGroupType: str, ndcId: int = 0):
         if row is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
-        favIds = row.get("quickAccessList", [])
+        favEntries = row.get("quickAccessList", [])
+
+        if stoptime:
+            favEntries = [e for e in favEntries if e.get("addedAt", "") < stoptime]
+
+        favEntries = sorted(favEntries, key=lambda e: e.get("addedAt", ""), reverse=True)
+        pageEntries = favEntries[start : start + size]
+        favIds = [e["id"] for e in pageEntries]
+
         if not favIds:
             return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
+        users_by_id = {}
+        async for u in table.find({"id": {"$in": favIds}}):
+            users_by_id[u["id"]] = User.GetUserInfo(u, ndcId=ndcId)
+
         userProfileList = [
-            User.GetUserInfo(u, ndcId=ndcId)
-            async for u in table.find({"id": {"$in": favIds}})
+            users_by_id[fid] for fid in favIds if fid in users_by_id
         ]
     finally:
         db.close()
 
     return Base.Answer({"userProfileList": userProfileList}, spent_time=timestamp() - t1)
-
 
 @communities.post("/g/s/user-group/{userGroupType}/{targetId}")
 @communities.post("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
@@ -576,7 +594,15 @@ async def add_to_user_group(request: Request, userGroupType: str, targetId: str,
         if target is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
-        await table.update_one({"id": uid}, {"$addToSet": {"quickAccessList": targetId}})
+        existing = row.get("quickAccessList", [])
+        if any(e["id"] == targetId for e in existing):
+            return Base.Answer({}, spent_time=timestamp() - t1)
+
+        entry = {
+            "id": targetId,
+            "addedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        await table.update_one({"id": uid}, {"$push": {"quickAccessList": entry}})
     finally:
         db.close()
 
@@ -598,7 +624,7 @@ async def remove_from_user_group(request: Request, userGroupType: str, targetId:
         if row is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
-        await table.update_one({"id": uid}, {"$pull": {"quickAccessList": targetId}})
+        await table.update_one({"id": uid}, {"$pull": {"quickAccessList": {"id": targetId}}})
     finally:
         db.close()
 
