@@ -536,7 +536,6 @@ async def get_community_profiles(
 from datetime import datetime
 
 
-# ---------- GET:  ----------
 @communities.get("/g/s/user-group/{userGroupType}")
 @communities.get("/x{ndcId}/s/user-group/{userGroupType}")
 async def get_user_groups(
@@ -588,75 +587,7 @@ async def get_user_groups(
     return Base.Answer({"userProfileList": userProfileList}, spent_time=timestamp() - t1)
 
 
-# ---------- POST: add user ----------
-@communities.post("/g/s/user-group/{userGroupType}/{targetId}")
-@communities.post("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
-async def add_to_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
-    t1 = timestamp()
-    if userGroupType != UserGroupType.QuickAccess:
-        return Errors.InvalidRequest(timestamp() - t1)
 
-    uid = request.state.session["uid"]
-    db = await Database().init()
-    try:
-        table = db.get(f"x{ndcId}", "Users")
-        row = await table.find_one({"id": uid})
-        if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
-
-        target = await table.find_one({"id": targetId})
-        if target is None:
-            return Errors.AccountNotExist(timestamp() - t1)
-
-        existing = row.get("quickAccessList", [])
-        existing_ids = {
-            (e["id"] if isinstance(e, dict) else e) for e in existing
-        }
-        if targetId in existing_ids:
-            return Base.Answer({}, spent_time=timestamp() - t1)  # уже в избранном
-
-        entry = {
-            "id": targetId,
-            "addedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        }
-        await table.update_one({"id": uid}, {"$push": {"quickAccessList": entry}})
-    finally:
-        db.close()
-
-    return Base.Answer({}, spent_time=timestamp() - t1)
-
-
-# ---------- DELETE: delete user ? need? ----------
-@communities.delete("/g/s/user-group/{userGroupType}/{targetId}")
-@communities.delete("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
-async def remove_from_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
-    t1 = timestamp()
-    if userGroupType != UserGroupType.QuickAccess:
-        return Errors.InvalidRequest(timestamp() - t1)
-
-    uid = request.state.session["uid"]
-    db = await Database().init()
-    try:
-        table = db.get(f"x{ndcId}", "Users")
-        row = await table.find_one({"id": uid})
-        if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
-
-        await table.update_one(
-            {"id": uid},
-            {"$pull": {"quickAccessList": targetId}},
-        )
-        await table.update_one(
-            {"id": uid},
-            {"$pull": {"quickAccessList": {"id": targetId}}},
-        )
-    finally:
-        db.close()
-
-    return Base.Answer({}, spent_time=timestamp() - t1)
-
-
-# ---------- POST: reorder ----------
 @communities.post("/g/s/user-group/{userGroupType}/position")
 @communities.post("/x{ndcId}/s/user-group/{userGroupType}/position")
 async def reorder_user_group(request: Request, userGroupType: str, ndcId: int = 0):
@@ -707,6 +638,70 @@ async def reorder_user_group(request: Request, userGroupType: str, ndcId: int = 
 
 
 
+@communities.post("/g/s/user-group/{userGroupType}/{targetId}")
+@communities.post("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
+async def add_to_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if userGroupType != UserGroupType.QuickAccess:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        row = await table.find_one({"id": uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        target = await table.find_one({"id": targetId})
+        if target is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        existing = row.get("quickAccessList", [])
+        existing_ids = {
+            (e["id"] if isinstance(e, dict) else e) for e in existing
+        }
+        if targetId in existing_ids:
+            return Base.Answer({}, spent_time=timestamp() - t1)  # уже в избранном
+
+        entry = {
+            "id": targetId,
+            "addedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        await table.update_one({"id": uid}, {"$push": {"quickAccessList": entry}})
+    finally:
+        db.close()
+
+    return Base.Answer({}, spent_time=timestamp() - t1)
+
+
+@communities.delete("/g/s/user-group/{userGroupType}/{targetId}")
+@communities.delete("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
+async def remove_from_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if userGroupType != UserGroupType.QuickAccess:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        row = await table.find_one({"id": uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        await table.update_one(
+            {"id": uid},
+            {"$pull": {"quickAccessList": targetId}},
+        )
+        await table.update_one(
+            {"id": uid},
+            {"$pull": {"quickAccessList": {"id": targetId}}},
+        )
+    finally:
+        db.close()
+
+    return Base.Answer({}, spent_time=timestamp() - t1)
 
 
 
