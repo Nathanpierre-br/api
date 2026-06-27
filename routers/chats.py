@@ -31,7 +31,7 @@ from objects import Base, Chat, Errors, User
 from objects.types import ChatType
 
 chats = APIRouter()
-chats.route_class = CachableRoute
+#chats.route_class = CachableRoute
 
 
 # chat search
