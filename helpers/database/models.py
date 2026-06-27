@@ -183,7 +183,7 @@ class Community:
         tags = List(String(), load_default=[])
         mediaList = List(Raw, load_default=[], allow_none=True)
         status = Integer(load_default=0)
-        content = String(load_default="")
+        content = String(load_default="", allow_none=True)
         liked = List(UUID(metadata={"as_string": True}), load_default=[])
         upvote = List(UUID(metadata={"as_string": True}), load_default=[])
         downvote = List(UUID(metadata={"as_string": True}), load_default=[])

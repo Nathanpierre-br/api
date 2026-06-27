@@ -15,6 +15,7 @@ from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Blog, Comments, Errors, User
+from objects.types import BlogType
 
 blog_methods = APIRouter()
 blog_methods.route_class = CachableRoute
@@ -335,6 +336,7 @@ async def get_blog_comment_answers(
 # post on blog's wall
 
 @blog_methods.post("/g/s/blog/{blogId}/g-comment")
+@blog_methods.post("/g/s/item/{blogId}/g-comment")
 @blog_methods.post("/g/s/blog/{blogId}/comment")
 @blog_methods.post("/g/s/item/{blogId}/comment")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment")
@@ -626,7 +628,10 @@ async def post_blog(request: Request, ndcId: int = 0):
 	except KeyError:
 		return Errors.InvalidRequest(timestamp() - t1)
 
-	if blog_type not in [0, 3, 7]:
+	if blog_type not in [BlogType.Basic, BlogType.Image, BlogType.Question]:
+		return Errors.InvalidRequest(timestamp() - t1)
+
+	if content is None and blog_type != BlogType.Image:
 		return Errors.InvalidRequest(timestamp() - t1)
 
 	db = await Database().init()

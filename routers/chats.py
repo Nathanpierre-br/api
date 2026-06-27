@@ -28,6 +28,7 @@ from helpers.functions import (
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Chat, Errors, User
+from objects.types import ChatType
 
 chats = APIRouter()
 chats.route_class = CachableRoute
@@ -456,20 +457,20 @@ async def create_chat(request: Request, ndcId: int = 0):
 
     data = await request.json()
     trigger_uid = request.state.session["uid"]
-    if data["type"] == 0 and (
+    if data["type"] == ChatType.Private and (
         data.get("inviteeUids", []) == [] or len(data.get("inviteeUids", [])) != 1
     ):
         return Errors.InvalidRequest(timestamp() - t1)
 
-    if data["type"] == 1 and data.get("inviteeUids", []) == []:
+    if data["type"] == ChatType.PrivateGroup and data.get("inviteeUids", []) == []:
         return Errors.InvalidRequest(timestamp() - t1)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Chats")
 
-    if data["type"] == 0:
+    if data["type"] == ChatType.Private:
         query = {
-            "chatType": 0,
+            "chatType": ChatType.Private,
             "$or": [
                 {"memberList": {"$all": [trigger_uid] + data["inviteeUids"]}},
                 {"invitedList": {"$all": [trigger_uid] + data["inviteeUids"]}},
@@ -484,7 +485,7 @@ async def create_chat(request: Request, ndcId: int = 0):
         chatObj = req
     else:
         chatId = str(uuid4())
-        if data["type"] == 2:
+        if data["type"] == ChatType.Public:
             bm = data.get("extensions", {}).get("bm") or [None, None]
             bg = bm[1] if len(bm) > 1 else None
             chatObj = ModelFabric.Construct(

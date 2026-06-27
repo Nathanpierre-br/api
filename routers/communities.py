@@ -11,6 +11,7 @@ from helpers.decorators.validauth import validauth_required
 from helpers.functions import calculate_page_tokens, is_app_link, parse_page_token
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Communities, Errors, User
+from objects.types import UserGroupType
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -530,9 +531,78 @@ async def get_community_profiles(
 @communities.get("/g/s/user-group/{userGroupType}")
 @communities.get("/x{ndcId}/s/user-group/{userGroupType}")
 async def get_user_groups(request: Request, userGroupType: str, ndcId: int = 0):
-    # dont reallt know why they need em except featured users
-    return Base.Answer({"userProfileList": []})
+    t1 = timestamp()
+    if userGroupType != UserGroupType.QuickAccess:
+        return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        row = await table.find_one({"id": uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        favIds = row.get("quickAccessList", [])
+        if not favIds:
+            return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
+
+        userProfileList = [
+            User.GetUserInfo(u, ndcId=ndcId)
+            async for u in table.find({"id": {"$in": favIds}})
+        ]
+    finally:
+        db.close()
+
+    return Base.Answer({"userProfileList": userProfileList}, spent_time=timestamp() - t1)
+
+
+@communities.post("/g/s/user-group/{userGroupType}/{targetId}")
+@communities.post("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
+async def add_to_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if userGroupType != UserGroupType.QuickAccess:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        row = await table.find_one({"id": uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        target = await table.find_one({"id": targetId})
+        if target is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        await table.update_one({"id": uid}, {"$addToSet": {"quickAccessList": targetId}})
+    finally:
+        db.close()
+
+    return Base.Answer({}, spent_time=timestamp() - t1)
+
+
+@communities.delete("/g/s/user-group/{userGroupType}/{targetId}")
+@communities.delete("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
+async def remove_from_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if userGroupType != UserGroupType.QuickAccess:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        row = await table.find_one({"id": uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        await table.update_one({"id": uid}, {"$pull": {"quickAccessList": targetId}})
+    finally:
+        db.close()
+
+    return Base.Answer({}, spent_time=timestamp() - t1)
 
 @communities.get("/g/s/live-layer")
 @communities.get("/x{ndcId}/s/live-layer")
