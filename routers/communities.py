@@ -13,6 +13,7 @@ from helpers.functions import calculate_page_tokens, is_app_link, parse_page_tok
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Communities, Errors, User
 from objects.types import UserGroupType
+from helpers.database.redis import get as get_redis
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -706,27 +707,84 @@ async def remove_from_user_group(request: Request, userGroupType: str, targetId:
 
 
 
+
+
+
+async def _get_online_uids(ndcId: int) -> list[str]:
+    redis = get_redis()
+    key = f"x{ndcId}:online"
+    members = await redis.smembers(key)
+    return [m.decode() if isinstance(m, bytes) else m for m in members]
+ 
+ 
+async def _get_profiles_for_live_layer(ndcId: int, uids: list[str]) -> list[dict]:
+    if not uids:
+        return []
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        profiles = []
+        async for row in table.find({"id": {"$in": uids}}):
+            profiles.append(User.OwnNonSensetiveProfile(row, ndcId=ndcId, membershipStatus=1))
+        return profiles
+    finally:
+        db.close()
+ 
+
+
+
+
+
+
+
+# Замени существующий live_layer_topic на этот:
 @communities.get("/g/s/live-layer")
 @communities.get("/x{ndcId}/s/live-layer")
 async def live_layer_topic(request: Request, ndcId: int = 0, topic: str | None = None):
-    if topic is not None:
-        return Base.Answer(Base.LiveLayerTopic(topic))
+    if topic is None:
+        return Errors.InvalidRequest()
 
-    return Errors.InvalidRequest()
-
+    effective_ndcId = ndcId
+    if not effective_ndcId and topic:
+        parts = topic.split(":")
+        if len(parts) >= 2:
+            ndc_part = parts[1]
+            if ndc_part.startswith("x"):
+                try:
+                    effective_ndcId = int(ndc_part[1:])
+                except ValueError:
+                    pass
+ 
+    uids = await _get_online_uids(effective_ndcId)
+    profiles = await _get_profiles_for_live_layer(effective_ndcId, uids)
+ 
+    return Base.Answer(Base.LiveLayerTopic(
+        topic_name=topic,
+        users_count=len(profiles),
+        users_list=profiles,
+    ))
+ 
 
 @communities.get("/g/s/live-layer/homepage")
 @communities.get("/x{ndcId}/s/live-layer/homepage")
-async def live_layer(request: Request, ndcId: int = 0, topic: str | None = None):
+async def live_layer(request: Request, ndcId: int = 0):
+    uids = await _get_online_uids(ndcId)
+    profiles = await _get_profiles_for_live_layer(ndcId, uids)
+
     return Base.Answer(
         {
             "liveLayerList": [
-                Base.LiveLayerTopic(f"ndtopic:x{ndcId}:{t}")
-                for t in ["online-members", "watching"]
+                Base.LiveLayerTopic(
+                    topic_name=f"ndtopic:x{ndcId}:online-members",
+                    users_count=len(profiles),
+                    users_list=profiles,
+                ),
+                Base.LiveLayerTopic(
+                    topic_name=f"ndtopic:x{ndcId}:watching",
+                ),
             ]
         }
     )
-
 
 
 @communities.post("/g/s/community/joined/reorder")
