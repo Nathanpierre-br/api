@@ -31,7 +31,7 @@ from objects import Base, Chat, Errors, User
 from objects.types import ChatType
 
 chats = APIRouter()
-#chats.route_class = CachableRoute
+chats.route_class = CachableRoute
 
 
 # chat search
@@ -1642,7 +1642,7 @@ async def chat_search(
     size: int = 25,
     pageToken: str | None = None,
 ):
-    return Errors.InvalidRequest()
+    print(q)
     t1 = timestamp()
     if not q:
         return Base.Answer(
