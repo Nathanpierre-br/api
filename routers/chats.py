@@ -137,11 +137,6 @@ async def chat_search(
     pageToken: str | None = None,
 ):
     t1 = timestamp()
-    if not q:
-        return Base.Answer(
-            {"threadList": [], "communityInfoMapping": {}, "threadCount": 0, "paging": {}},
-            spent_time=timestamp() - t1,
-        )
 
     if pageToken:
         start = parse_page_token(pageToken, start)
@@ -151,15 +146,15 @@ async def chat_search(
     db = await Database().init()
     try:
         table = db.get(f"x{ndcId}", "Chats")
-        query = {
-            "title": {"$regex": q, "$options": "i"},
-            "memberList": uid,
-        }
+        query = {"memberList": uid}
+        if q:
+            query["title"] = {"$regex": regex_escape(q), "$options": "i"}
+
         threadCount = await table.count_documents(query)
         cursor = table.find(query).skip(start).limit(size)
 
         threadList = [
-            await Chat.Info(item, db, ndcId, uid)
+            await Chat.Info(item["id"], db, trigger_uid=uid, ndcId=ndcId)
             async for item in cursor
         ]
     finally:
@@ -172,7 +167,6 @@ async def chat_search(
         "paging": calculate_page_tokens(start, size, threadList),
     }
     return Base.Answer(result, spent_time=timestamp() - t1)
-
 
 
 
