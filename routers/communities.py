@@ -528,6 +528,15 @@ async def get_community_profiles(
     finally:
         db.close()
 
+
+
+
+
+
+from datetime import datetime
+
+
+# ---------- GET:  ----------
 @communities.get("/g/s/user-group/{userGroupType}")
 @communities.get("/x{ndcId}/s/user-group/{userGroupType}")
 async def get_user_groups(
@@ -552,11 +561,14 @@ async def get_user_groups(
             return Errors.AccountNotExist(timestamp() - t1)
 
         favEntries = row.get("quickAccessList", [])
+        favEntries = [
+            e if isinstance(e, dict) else {"id": e, "addedAt": ""}
+            for e in favEntries
+        ]
 
         if stoptime:
             favEntries = [e for e in favEntries if e.get("addedAt", "") < stoptime]
 
-        favEntries = sorted(favEntries, key=lambda e: e.get("addedAt", ""), reverse=True)
         pageEntries = favEntries[start : start + size]
         favIds = [e["id"] for e in pageEntries]
 
@@ -575,6 +587,8 @@ async def get_user_groups(
 
     return Base.Answer({"userProfileList": userProfileList}, spent_time=timestamp() - t1)
 
+
+# ---------- POST: add user ----------
 @communities.post("/g/s/user-group/{userGroupType}/{targetId}")
 @communities.post("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
 async def add_to_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
@@ -595,8 +609,11 @@ async def add_to_user_group(request: Request, userGroupType: str, targetId: str,
             return Errors.AccountNotExist(timestamp() - t1)
 
         existing = row.get("quickAccessList", [])
-        if any(e["id"] == targetId for e in existing):
-            return Base.Answer({}, spent_time=timestamp() - t1)
+        existing_ids = {
+            (e["id"] if isinstance(e, dict) else e) for e in existing
+        }
+        if targetId in existing_ids:
+            return Base.Answer({}, spent_time=timestamp() - t1)  # уже в избранном
 
         entry = {
             "id": targetId,
@@ -609,6 +626,7 @@ async def add_to_user_group(request: Request, userGroupType: str, targetId: str,
     return Base.Answer({}, spent_time=timestamp() - t1)
 
 
+# ---------- DELETE: delete user ? need? ----------
 @communities.delete("/g/s/user-group/{userGroupType}/{targetId}")
 @communities.delete("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
 async def remove_from_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
@@ -624,11 +642,74 @@ async def remove_from_user_group(request: Request, userGroupType: str, targetId:
         if row is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
-        await table.update_one({"id": uid}, {"$pull": {"quickAccessList": {"id": targetId}}})
+        await table.update_one(
+            {"id": uid},
+            {"$pull": {"quickAccessList": targetId}},
+        )
+        await table.update_one(
+            {"id": uid},
+            {"$pull": {"quickAccessList": {"id": targetId}}},
+        )
     finally:
         db.close()
 
     return Base.Answer({}, spent_time=timestamp() - t1)
+
+
+# ---------- POST: reorder ----------
+@communities.post("/g/s/user-group/{userGroupType}/position")
+@communities.post("/x{ndcId}/s/user-group/{userGroupType}/position")
+async def reorder_user_group(request: Request, userGroupType: str, ndcId: int = 0):
+    t1 = timestamp()
+    if userGroupType != UserGroupType.QuickAccess:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    try:
+        data = await request.json()
+        uidList = data["uidList"]
+        if not isinstance(uidList, list):
+            return Errors.InvalidRequest(timestamp() - t1)
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        row = await table.find_one({"id": uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        favEntries = row.get("quickAccessList", [])
+        favEntries = [
+            e if isinstance(e, dict) else {"id": e, "addedAt": ""}
+            for e in favEntries
+        ]
+
+        entries_by_id = {e["id"]: e for e in favEntries}
+
+        seen = set()
+        new_front = []
+        for target_id in uidList:
+            if target_id in entries_by_id and target_id not in seen:
+                new_front.append(entries_by_id[target_id])
+                seen.add(target_id)
+
+        remaining = [e for e in favEntries if e["id"] not in seen]
+        new_order = new_front + remaining
+
+        await table.update_one({"id": uid}, {"$set": {"quickAccessList": new_order}})
+    finally:
+        db.close()
+
+    return Base.Answer({}, spent_time=timestamp() - t1)
+
+
+
+
+
+
+
 
 @communities.get("/g/s/live-layer")
 @communities.get("/x{ndcId}/s/live-layer")
