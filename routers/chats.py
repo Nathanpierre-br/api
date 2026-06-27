@@ -1628,3 +1628,53 @@ async def toggle_things(
     else:
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
+
+
+
+@chats.get("/x{ndcId}/s/chat/thread/search")
+@chats.get("/g/s/chat/thread/search")
+async def chat_search(
+    request: Request,
+    ndcId: int = 0,
+    q: str = "",
+    action: int = 0,
+    start: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
+):
+    t1 = timestamp()
+    if not q:
+        return Base.Answer(
+            {"threadList": [], "communityInfoMapping": {}, "threadCount": 0, "paging": {}},
+            spent_time=timestamp() - t1,
+        )
+
+    if pageToken:
+        start = parse_page_token(pageToken, start)
+    size = size if 0 < size < 101 else 25
+    uid = request.state.session["uid"]
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Chats")
+        query = {
+            "title": {"$regex": q, "$options": "i"},
+            "memberList": uid,
+        }
+        threadCount = await table.count_documents(query)
+        cursor = table.find(query).skip(start).limit(size)
+
+        threadList = [
+            await Chat.Info(item, db, uid)
+            async for item in cursor
+        ]
+    finally:
+        db.close()
+
+    result = {
+        "threadList": threadList,
+        "communityInfoMapping": {},
+        "threadCount": threadCount,
+        "paging": calculate_page_tokens(start, size, threadList),
+    }
+    return Base.Answer(result, spent_time=timestamp() - t1)
