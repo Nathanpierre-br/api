@@ -1642,6 +1642,7 @@ async def chat_search(
     size: int = 25,
     pageToken: str | None = None,
 ):
+    return Errors.InvalidRequest()
     t1 = timestamp()
     if not q:
         return Base.Answer(
