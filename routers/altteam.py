@@ -42,7 +42,7 @@ async def support_reset_password(request: Request, ndcId: int = 0):
         secret = ''.join(secrets.choice(ascii_letters + digits) for _ in range(12))
         data = await request.json()
         updateSecret = Blake(
-            data=secret,
+            data=f"0 {secret}",
             key=Config.PASSWORD_SALT,
             digest_size=64,
         ).hash
