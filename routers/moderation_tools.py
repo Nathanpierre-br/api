@@ -6,12 +6,11 @@ from helpers.database.mongo import Database
 from helpers.decorators.validauth import validauth_required
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors
+from objects.types import UserRole
 
 moderation_tools = APIRouter()
 moderation_tools.route_class = CachableRoute
 
-ALLOWED_ROLES = [100, 101, 102, 200, 201, 254, 555]
-BASICALLY_GODS = [200, 201, 254, 555]
 
 
 async def check_rights(
@@ -23,13 +22,14 @@ async def check_rights(
         return False
 
     role = user.get("role", 0)
-    if no_curators and role == 101:
+    
+    if no_curators and role == UserRole.Curator:
         return False
 
     if only_gods:
-        return role in BASICALLY_GODS
+        return UserRole.is_global_staff(role)
 
-    return role in ALLOWED_ROLES
+    return UserRole.is_privileged_role(user.get("role", 0))
 
 
 # MODERATION HISTORY

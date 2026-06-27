@@ -8,11 +8,11 @@ from helpers.database.mongo import Database
 from helpers.decorators.validauth import validauth_required
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors
+from objects.types import UserRole
 
 altacm = APIRouter()
 altacm.route_class = CachableRoute
 
-WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
 
 
 @altacm.post("/altacm/s/community/x{ndcId}/user/{userId}/promote")
@@ -36,7 +36,7 @@ async def promotions(request: Request, ndcId: int, userId: str):
     ndc_users_table = db.get(f"x{ndcId}", "Users")
 
     user = await sensitive_table.find_one({"id": trigger_uid})
-    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+    if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -69,7 +69,7 @@ async def create_community(request: Request):
     sensitive_table = db.get(table="Users")
 
     user = await sensitive_table.find_one({"id": trigger_uid})
-    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+    if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -175,7 +175,7 @@ async def destroy_community(request: Request, ndcId: int):
     sensitive_table = db.get(table="Users")
 
     user = await sensitive_table.find_one({"id": trigger_uid})
-    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+    if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -209,7 +209,7 @@ async def edit_community(request: Request, ndcId: int = 0):
     table = db.get(f"x{ndcId}", "Users")
 
     user = await table.find_one({"id": trigger_uid})
-    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+    if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
 

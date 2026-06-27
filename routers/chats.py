@@ -10,7 +10,7 @@ from boto3 import resource
 from fastapi import APIRouter, Request
 from pymongo import DESCENDING
 
-from helpers.adminWS import send_admin_ws
+from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.config import Config
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
@@ -28,7 +28,7 @@ from helpers.functions import (
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Chat, Errors, User
-from objects.types import ChatType
+from objects.types import ChatType, UserRole
 
 chats = APIRouter()
 chats.route_class = CachableRoute
@@ -36,9 +36,6 @@ chats.route_class = CachableRoute
 
 # chat search
 # /g/s/chat/thread/explore/search?q=Hello&size=25
-
-
-WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
 
 @chats.get("/g/s/chat/thread/explore/search")
 @chats.get("/x{ndcId}/s/chat/thread/explore/search")
@@ -375,7 +372,7 @@ async def delete_chat(chatId: str, request: Request, ndcId: int = 0):
     chat_info = await table.find_one({"id": chatId})
     sensitive_table = db.get(table="Users")
     user = await sensitive_table.find_one({"id": trigger_uid})
-    if chat_info["hostId"] == trigger_uid or (user and user.get("role", 0) in WHO_HAVE_POWER_OF_GOD):
+    if chat_info["hostId"] == trigger_uid or (user and UserRole.is_global_staff(user.get("role", 0))):
         await table.delete_one({"id": chatId})
         db.close()
         return Base.Answer()
@@ -886,7 +883,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         },
     }
     target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-    asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
+    asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
 
     db.close()
     return answer
@@ -1224,7 +1221,7 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(table="Users")
         user = await sensitive_table.find_one({"id": trigger_uid})
-        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
             connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -1275,7 +1272,7 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(table="Users")
         user = await sensitive_table.find_one({"id": trigger_uid})
-        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
             connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -1332,7 +1329,7 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(f"x{ndcId}", "Users")
         user = await sensitive_table.find_one({"id": trigger_uid})
-        if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD+[100,101,102]:
+        if not user or (not UserRole.is_global_staff(user.get("role", 0)) and not UserRole.is_local_staff(user.get("role", 0))):
             connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -1458,7 +1455,7 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         },
     }
     target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-    asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
+    asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
 
     connection.close()
     return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
@@ -1552,7 +1549,7 @@ async def leave_chat(
         }
 
         target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-        asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
+        asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
 
     connection.close()
     return Base.Answer({"membershipStatus": 0}, spent_time=timestamp() - t1)
@@ -1665,7 +1662,7 @@ async def toggle_things(
                 },
             }
             target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-            asyncio.get_event_loop().create_task(send_admin_ws(target, ws_send_obj))
+            asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
         elif parameter == "members-can-invite":
             await table.update_one(
                 {"id": chatId},

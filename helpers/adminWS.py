@@ -1,21 +1,18 @@
-from orjson import dumps
-from websockets.asyncio.client import connect
+import json
+from typing import List, Optional
+from helpers.database.redis import get as get_redis
 
-from .config import Config
+
+WS_CHANNEL_CMD = "ws:commands"
 
 
-async def send_admin_ws(victims: list | str, payload: dict | str):
-    if isinstance(victims, str) and victims != "ALL":
-        raise Exception("Invalid victims")
-
-    headers = {
-        "WS-ADMIN-KEY": Config.WS_ADMIN_KEY,
-        "WS-ADMIN-VERIFY": Config.WS_ADMIN_VERIFY,
-    }
-    url = Config.WS_LINK
-    request = dumps({"ADMIN-SAYS": {"VICTIMS": victims, "WEAPON": payload}}).decode()
-    async with connect(url, additional_headers=headers) as websocket:
-        await websocket.send(request)
-        response = await websocket.recv()
-        print(response)
-        return response
+async def send_ws_message(message: dict, uids: Optional[List[str]] = None):
+    """
+    uids=None -> for all users
+    uids=[...] -> for selected
+    """
+    redis = get_redis()
+    payload = {"message": message}
+    if uids is not None:
+        payload["uids"] = uids
+    await redis.publish(WS_CHANNEL_CMD, json.dumps(payload))

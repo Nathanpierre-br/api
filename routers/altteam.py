@@ -12,15 +12,13 @@ from fastapi import APIRouter, Request
 
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors
-
+from objects.types import UserRole
 
 from string import ascii_letters, digits
 import secrets
 
 altteam = APIRouter()
 altteam.route_class = CachableRoute
-
-WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
 
 
 
@@ -35,7 +33,7 @@ async def support_reset_password(request: Request, ndcId: int = 0):
     db = await Database().init()
     sensitive_table = db.get(table="Users")
     user = await sensitive_table.find_one({"id": trigger_uid})
-    if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+    if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
     try:

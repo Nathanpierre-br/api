@@ -15,11 +15,10 @@ from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Blog, Comments, Errors, User
-from objects.types import BlogType
+from objects.types import BlogType, UserRole
 
 blog_methods = APIRouter()
 blog_methods.route_class = CachableRoute
-WHO_HAVE_POWER_OF_GOD = [200, 201, 254, 555]
 
 @blog_methods.get("/x{ndcId}/s/feed/blog-recommended")
 async def get_recommended_blogs(request: Request, ndcId: int):
@@ -489,7 +488,7 @@ async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
 		return Errors.DataNotExist(timestamp() - t1)
 	users = db.get(f"x{ndcId}", "Users")
 	user = await users.find_one({"id": trigger_uid})
-	if blog["authorId"] != trigger_uid and (not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD):
+	if blog["authorId"] != trigger_uid and (not user or not UserRole.is_global_staff(user.get("role", 0))):
 		db.close()
 		return Errors.NotEnoughRights(timestamp() - t1)
 
@@ -651,7 +650,7 @@ async def post_blog(request: Request, ndcId: int = 0):
 	else:
 		users = db.get(f"x0", "Users")
 		user = await users.find_one({"id": trigger_uid})
-		if not user or user.get("role", 0) not in WHO_HAVE_POWER_OF_GOD:
+		if not user or not UserRole.is_global_staff(user.get("role", 0)):
 			db.close()
 			return Errors.NotEnoughRights(timestamp() - t1)
 
