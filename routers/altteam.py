@@ -12,7 +12,7 @@ from fastapi import APIRouter, Request
 
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors
-from objects.types import UserRole
+from objects.types import UserRole, UserStatus
 
 from string import ascii_letters, digits
 import secrets
@@ -75,3 +75,82 @@ async def support_reset_password(request: Request, ndcId: int = 0):
         {},
         spent_time=timestamp() - t1,
     )
+
+
+
+
+@altteam.post("/g/s/altteam/user-profile/{userId}/status")
+async def support_reset_password(request: Request, userId: int):
+    t1 = timestamp()
+    if not Config.ENABLE_EMAIL:
+        return Errors.PathUnderMaintenance(timestamp() - t1)
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    sensitive_table = db.get(table="Users")
+    user = await sensitive_table.find_one({"id": trigger_uid})
+    if not user or not UserRole.is_global_staff(user.get("role", 0)):
+        db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+    try:
+        data = await request.json()
+        status = data.get("status", 0)
+        if not UserStatus.is_valid_status(status):
+            raise Exception
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
+    
+    table = db.get(table="Users")
+    await table.update_one({"id": userId}, {"$set": {"status": status}})
+    db.close()
+    
+    return Base.Answer(
+        {},
+        spent_time=timestamp() - t1,
+    )
+
+
+
+@altteam.get("/g/s/altteam/user-profile/{userId}/communities")
+async def get_user_communities(request: Request, userId: str):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        target = await sensitive_table.find_one({"id": userId}, {"communityList": 1})
+        if not target:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        community_ids = target.get("communityList", [])
+
+        communities_table = db.get(table="Communities")
+        result = []
+        async for item in communities_table.find({"id": {"$in": community_ids}}):
+            ndc_id = item["id"]
+            ndc_users_table = db.get(f"x{ndc_id}", "Users")
+            ndc_profile = await ndc_users_table.find_one({"id": userId})
+            result.append({
+                "id": item.get("id"),
+                "aminoId": item.get("aminoId"),
+                "name": item.get("name"),
+                "icon": item.get("icon"),
+                "userProfile": {
+                    "nickname": ndc_profile.get("nickname") if ndc_profile else target.get("nickname"),
+                    "icon": ndc_profile.get("icon") if ndc_profile else target.get("icon"),
+                    "role": ndc_profile.get("role", 0) if ndc_profile else 0,
+                }
+            })
+
+        return Base.Answer(
+            {
+                "communityList": result,
+                "communityCount": len(result),
+            },
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        db.close()

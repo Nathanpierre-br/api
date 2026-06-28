@@ -121,6 +121,26 @@ async def get_recommended_chats(request: Request, ndcId: int = 0):
 
 
 
+@chats.get("/g/s/chat/thread/explore/categories")
+@chats.get("/x{ndcId}/s/chat/thread/explore/categories")#?need
+async def get_explore_chats(
+    request: Request,
+    ndcId: int = 0,
+    threadPreviewSize: int = 20,
+    language: int = "en",
+    start: int = 0,
+    size: int = 4,
+    pageToken: str | None = None,
+    ):
+    t1 = timestamp()
+
+    trigger_uid = request.state.session.get("uid")
+    #con = await Database().init()
+    answer = {"threadList": []}
+    
+    #con.close()
+    return Base.Answer(answer, spent_time=timestamp() - t1)
+
 
 @chats.get("/x{ndcId}/s/chat/thread/search")
 @chats.get("/g/s/chat/thread/search")

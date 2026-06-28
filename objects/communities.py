@@ -139,7 +139,7 @@ class Communities:
             "listedStatus": data.get("listedStatus", 2),
             "probationStatus": 0,
             "themePack": {
-                "themeColor": data.get("themeColor", "#000000"),
+                "themeColor": data.get("themeColor", "#1B1C43"),
                 "themePackUrl": data.get("themeUrl"),
                 "themePackHash": data.get(
                     "themeHash",

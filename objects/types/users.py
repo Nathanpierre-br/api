@@ -4,6 +4,18 @@
 class UserGroupType:
     QuickAccess: str = "quick-access"
 
+class UserStatus:
+    Normal: int = 0
+    Banned: int = 9
+
+    Valid: list[int] = [
+        Normal,
+        Banned
+    ]
+
+    @classmethod
+    def is_valid_status(cls, status: int) -> bool:
+        return status in cls.Valid
 
 class UserRole:
     # --- Base and Local Community Roles ---
