@@ -87,6 +87,7 @@ async def link_telegram(request: Request, body: dict):
     t1 = timestamp()
     trigger_uid = request.state.session.get("uid")
     telegram_id = body.get("telegramId")
+    amino_id = body.get("aminoId")
 
     if not trigger_uid or telegram_id is None:
         return Errors.InvalidRequest(timestamp() - t1)
@@ -97,13 +98,15 @@ async def link_telegram(request: Request, body: dict):
     db = await Database().init()
     try:
         sensitive_table = db.get(table="Users")
+        
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             return Errors.NotEnoughRights(timestamp() - t1)
 
+        target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
 
         await sensitive_table.update_one(
-            {"id": trigger_uid},
+            target_query,
             {"$set": {"telegramId": telegram_id}}
         )
         return Base.Answer(spent_time=timestamp() - t1)
@@ -112,9 +115,12 @@ async def link_telegram(request: Request, body: dict):
 
 
 @altteam.post("/g/s/altteam/telegram/unlink")
-async def unlink_telegram(request: Request):
+async def unlink_telegram(request: Request, body: dict = None):
     t1 = timestamp()
     trigger_uid = request.state.session.get("uid")
+    
+    body = body or {}
+    amino_id = body.get("aminoId")
 
     if not trigger_uid:
         return Errors.InvalidRequest(timestamp() - t1)
@@ -122,18 +128,20 @@ async def unlink_telegram(request: Request):
     db = await Database().init()
     try:
         sensitive_table = db.get(table="Users")
+        
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             return Errors.NotEnoughRights(timestamp() - t1)
+
+        target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
+
         await sensitive_table.update_one(
-            {"id": trigger_uid},
+            target_query,
             {"$unset": {"telegramId": ""}}
         )
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
         db.close()
-
-
 
 
 
