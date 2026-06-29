@@ -78,6 +78,7 @@ async def get_altamino_team(request: Request, userId: str):
             User.GetUserInfo(
                 merged, 0, trigger_uid),
         )
+        print(team_list)
         return Base.Answer({"userProfileList": team_list}, spent_time=timestamp() - t1)
     finally:
         db.close()
