@@ -11,7 +11,7 @@ from time import time as timestamp
 from fastapi import APIRouter, Request
 
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Errors
+from objects import Base, Errors, User
 from objects.types import UserRole, UserStatus
 
 from string import ascii_letters, digits
@@ -21,6 +21,66 @@ altteam = APIRouter()
 altteam.route_class = CachableRoute
 
 
+
+
+@altteam.get("/g/s/altteam")
+async def get_altamino_team(request: Request, userId: str):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        local_table = db.get(database="x0", table="Users")
+
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        global_cursor = sensitive_table.find(
+            {"role": {"$in": UserRole.GODS}},
+            {"_id": 0, "id": 1, "role": 1, "tagList": 1},
+        )
+        global_members = await global_cursor.to_list(length=None)
+
+        if not global_members:
+            return Base.Answer(spent_time=timestamp() - t1, userProfileList=[])
+
+        global_ids = [m["id"] for m in global_members]
+
+        local_cursor = local_table.find(
+            {"uid": {"$in": global_ids}},
+            {
+                "_id": 0,
+                "uid": 1,
+                "nickname": 1,
+                "icon": 1,
+                "content": 1,
+                "createdTime": 1,
+                "modifiedTime": 1,
+                "extensions": 1,
+            },
+        )
+        local_profiles = await local_cursor.to_list(length=None)
+        local_by_uid = {p["uid"]: p for p in local_profiles}
+
+        team_list = []
+        for g in global_members:
+            profile = local_by_uid.get(g["id"])
+            if not profile:
+                continue
+
+            merged = dict(profile)
+            merged["uid"] = g["id"]
+            merged["role"] = g.get("role", 0)
+            merged["tagList"] = g.get("tagList", [])
+            team_list.append(
+                
+            User.GetUserInfo(
+                merged, 0, trigger_uid),
+        )
+        return Base.Answer({"userProfileList": team_list}, spent_time=timestamp() - t1)
+    finally:
+        db.close()
 
 
 
@@ -80,7 +140,7 @@ async def support_reset_password(request: Request, ndcId: int = 0):
 
 
 @altteam.post("/g/s/altteam/user-profile/{userId}/status")
-async def support_reset_password(request: Request, userId: int):
+async def set_user_status(request: Request, userId: int):
     t1 = timestamp()
     if not Config.ENABLE_EMAIL:
         return Errors.PathUnderMaintenance(timestamp() - t1)

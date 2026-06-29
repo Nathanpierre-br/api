@@ -635,12 +635,6 @@ async def post_blog(request: Request, ndcId: int = 0):
 
 	db = await Database().init()
 
-
-	MARKER = "[X-SPEC]" #temporarily for posting updates in the Altamino team announcement
-	is_special = title.startswith(MARKER)
-	if is_special:
-		title = title.removeprefix(MARKER)
-		ndcId = 0
 	if ndcId > 0:
 		xndcid_users = db.get(f"x{ndcId}", "Users")
 		user_in_community = await xndcid_users.find_one({"id": trigger_uid})
