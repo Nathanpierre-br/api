@@ -50,7 +50,7 @@ async def get_altamino_team(request: Request):
             {"id": {"$in": global_ids}},
             {
                 "_id": 0,
-                "uid": 1,
+                "id": 1,
                 "nickname": 1,
                 "icon": 1,
                 "reputation": 1,
@@ -60,7 +60,7 @@ async def get_altamino_team(request: Request):
             },
         )
         local_profiles = await local_cursor.to_list(length=None)
-        local_by_uid = {p["uid"]: p for p in local_profiles}
+        local_by_uid = {p["id"]: p for p in local_profiles}
         team_list = []
         for g in global_members:
             profile = local_by_uid.get(g["id"])
@@ -68,7 +68,7 @@ async def get_altamino_team(request: Request):
                 continue
 
             merged = dict(profile)
-            merged["uid"] = g["id"]
+            merged["id"] = g["id"]
             merged["role"] = g.get("role", 0)
             merged["tagList"] = g.get("tagList", [])
             team_list.append(
