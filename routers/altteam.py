@@ -38,7 +38,7 @@ async def get_altamino_team(request: Request):
 
         global_cursor = sensitive_table.find(
             {"role": {"$in": UserRole.GODS}},
-            {"_id": 0, "id": 1, "role": 1, "tagList": 1},
+            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1},
         )
         global_members = await global_cursor.to_list(length=None)
         if not global_members:
@@ -71,12 +71,72 @@ async def get_altamino_team(request: Request):
             merged["id"] = g["id"]
             merged["role"] = g.get("role", 0)
             merged["tagList"] = g.get("tagList", [])
+            merged["aminoId"] = g.get("aminoId")
+            merged["telegramId"] = g.get("telegramId")
             team_list.append(
                 merged   
             )
         return Base.Answer({"userProfileList": team_list}, spent_time=timestamp() - t1)
     finally:
         db.close()
+
+
+
+@altteam.post("/g/s/altteam/telegram/link")
+async def link_telegram(request: Request, body: dict):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    telegram_id = body.get("telegramId")
+
+    if not trigger_uid or telegram_id is None:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    if not isinstance(telegram_id, int):
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+
+        await sensitive_table.update_one(
+            {"id": trigger_uid},
+            {"$set": {"telegramId": telegram_id}}
+        )
+        return Base.Answer(spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.post("/g/s/altteam/telegram/unlink")
+async def unlink_telegram(request: Request):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+
+    if not trigger_uid:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+        await sensitive_table.update_one(
+            {"id": trigger_uid},
+            {"$unset": {"telegramId": ""}}
+        )
+        return Base.Answer(spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+
+
+
 
 
 
