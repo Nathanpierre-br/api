@@ -41,7 +41,7 @@ async def get_altamino_team(request: Request):
             {"_id": 0, "id": 1, "role": 1, "tagList": 1},
         )
         global_members = await global_cursor.to_list(length=None)
-
+        print(global_members)
         if not global_members:
             return Base.Answer(spent_time=timestamp() - t1, userProfileList=[])
 
@@ -62,7 +62,7 @@ async def get_altamino_team(request: Request):
         )
         local_profiles = await local_cursor.to_list(length=None)
         local_by_uid = {p["uid"]: p for p in local_profiles}
-
+        print(local_profiles)
         team_list = []
         for g in global_members:
             profile = local_by_uid.get(g["id"])
