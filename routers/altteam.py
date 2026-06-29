@@ -72,10 +72,8 @@ async def get_altamino_team(request: Request):
             merged["role"] = g.get("role", 0)
             merged["tagList"] = g.get("tagList", [])
             team_list.append(
-                
-            User.GetUserInfo(
-                merged, 0),
-        )
+                merged   
+            )
         return Base.Answer({"userProfileList": team_list}, spent_time=timestamp() - t1)
     finally:
         db.close()
