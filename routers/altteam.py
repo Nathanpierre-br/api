@@ -24,7 +24,7 @@ altteam.route_class = CachableRoute
 
 
 @altteam.get("/g/s/altteam")
-async def get_altamino_team(request: Request, userId: str):
+async def get_altamino_team(request: Request):
     t1 = timestamp()
     trigger_uid = request.state.session.get("uid")
     db = await Database().init()
@@ -78,8 +78,6 @@ async def get_altamino_team(request: Request, userId: str):
             User.GetUserInfo(
                 merged, 0, trigger_uid),
         )
-        print(local_by_uid)
-        print(global_ids)
         return Base.Answer({"userProfileList": team_list}, spent_time=timestamp() - t1)
     finally:
         db.close()
