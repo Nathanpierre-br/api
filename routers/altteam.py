@@ -54,7 +54,7 @@ async def get_altamino_team(request: Request, userId: str):
                 "uid": 1,
                 "nickname": 1,
                 "icon": 1,
-                "content": 1,
+                "reputation": 1,
                 "createdTime": 1,
                 "modifiedTime": 1,
                 "extensions": 1,
