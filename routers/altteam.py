@@ -68,12 +68,12 @@ async def get_altamino_team(request: Request):
                 continue
 
             merged = dict(profile)
-            merged["id"] = g["id"]
+            merged["uid"] = g["id"]
             merged["role"] = g.get("role", 0)
-            merged["tagList"] = g.get("tagList", [])
+            merged["extensions"]["tagList"] = g.get("tagList", [])
             merged["aminoId"] = g.get("aminoId")
             merged["telegramId"] = g.get("telegramId")
-            merged["isMemberOfTeamAmino"] = g.get("isTeamMember", False)
+            merged["extensions"]["isMemberOfTeamAmino"] = g.get("isTeamMember", False)
             team_list.append(
                 merged   
             )
@@ -119,12 +119,12 @@ async def get_altamino_team_member(request: Request, userId: str):
             return Errors.InvalidRequest(timestamp() - t1)
 
         merged = dict(local_profile)
-        merged["id"] = global_member["id"]
+        merged["uid"] = global_member["id"]
         merged["role"] = global_member.get("role", 0)
-        merged["tagList"] = global_member.get("tagList", [])
+        merged["extensions"]["tagList"] = global_member.get("tagList", [])
         merged["aminoId"] = global_member.get("aminoId")
         merged["telegramId"] = global_member.get("telegramId")
-        merged["isMemberOfTeamAmino"] = global_member.get("isTeamMember", False)
+        merged["extensions"]["isMemberOfTeamAmino"] = global_member.get("isTeamMember", False)
 
         return Base.Answer({"userProfile": merged}, spent_time=timestamp() - t1)
     except:
@@ -364,8 +364,9 @@ async def get_user_communities(request: Request, userId: str):
             ndc_users_table = db.get(f"x{ndc_id}", "Users")
             ndc_profile = await ndc_users_table.find_one({"id": userId})
             result.append({
-                "id": item.get("id"),
-                "aminoId": item.get("aminoId"),
+                "ndcId": item.get("id"),
+                "endpoint": item.get("aminoId"),
+                "link": item.get("link"),
                 "name": item.get("name"),
                 "icon": item.get("icon"),
                 "userProfile": {
