@@ -74,6 +74,7 @@ async def get_altamino_team(request: Request):
             merged["aminoId"] = g.get("aminoId")
             merged["telegramId"] = g.get("telegramId")
             merged["extensions"]["isMemberOfTeamAmino"] = g.get("isTeamMember", False)
+            merged["isNicknameVerified"] = bool(g.get("isVerified", False))
             team_list.append(
                 merged   
             )
@@ -125,6 +126,7 @@ async def get_altamino_team_member(request: Request, userId: str):
         merged["aminoId"] = global_member.get("aminoId")
         merged["telegramId"] = global_member.get("telegramId")
         merged["extensions"]["isMemberOfTeamAmino"] = global_member.get("isTeamMember", False)
+        merged["isNicknameVerified"] = bool(global_member.get("isVerified", False))
 
         return Base.Answer({"userProfile": merged}, spent_time=timestamp() - t1)
     except:
