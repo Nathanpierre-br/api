@@ -242,3 +242,54 @@ async def edit_community(request: Request, ndcId: int = 0):
 
     db.close()
     return Base.Answer({}, spent_time=timestamp() - t1)
+
+
+
+
+
+@altacm.get("/altacm/s/user-profile/{userId}/moderated-communities")
+@validauth_required
+async def communities_with_role(request: Request, userId: str):
+    t1 = timestamp()
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    try:
+        users = db.get("Users")
+
+        trigger_user = await users.find_one({"id": trigger_uid})
+        if (
+            not trigger_user
+            or (
+                trigger_uid != userId
+                and not UserRole.is_global_staff(trigger_user.get("role", 0))
+            )
+        ):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        target_user = await users.find_one(
+            {"id": userId},
+            projection={"communityList": 1, "_id": 0},
+        )
+        if not target_user:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        community_ids = [i for i in target_user.get("communityList", []) if i]
+
+        matching_ndc_ids = []
+        for ndcId in community_ids:
+            member = await db.get(f"x{ndcId}", "Users").find_one(
+                {"id": userId},
+                projection={"role": 1, "_id": 0},
+            )
+
+            if member and member.get("role") in (UserRole.Leader, UserRole.Agent):
+                matching_ndc_ids.append(ndcId)
+
+        return Base.Answer(
+            {"communityIdList": matching_ndc_ids},
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        db.close()
