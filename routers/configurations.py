@@ -1,7 +1,7 @@
 from typing import Union
 from uuid import uuid4
 from time import time as timestamp
-from helpers.functions import calculate_page_tokens
+from helpers.functions import calculate_page_tokens, parse_page_token
 from fastapi import APIRouter, Request
 
 from helpers.database.mongo import Database
@@ -315,41 +315,35 @@ async def feed_community(
     request: Request,
     moduleId: Union[str, None] = None,
     start: int = 0,
-    size: int = 15,
+    size: int = 25,
+    pageToken: str | None = None,
 ):
     if moduleId is None:
         return Errors.InvalidRequest()
 
     t1 = timestamp()
+    if pageToken:
+        start = parse_page_token(pageToken, start)
+
     uid = request.state.session["uid"]
     db = await Database().init()
     try:
         table = db.get(table="Communities")
         query = {"hidden": {"$ne": True}}
+        total_count = await table.count_documents(query)
         items = [item async for item in table.find(query).skip(start).limit(size)]
         communityList = [await Communities.Info(item, db, uid) for item in items]
-        itemList = []
-        for c in communityList:
-            if c.get("ndcId") not in ("g", 0):
-                itemList.append(
-                    {
-                        "objectId": str(c["ndcId"]), 
-                        "objectType": 16,
-                        "refObject": c,
-                    }
-                )
 
         return Base.Answer(
             {
-                "paging": calculate_page_tokens(start, size, itemList),
-                "itemList": itemList,
-                "allItemCount": await table.count_documents(query),
+                "communityList": communityList,
+                "paging": calculate_page_tokens(start, size, communityList),
+                "allItemCount": total_count,
             },
             spent_time=timestamp() - t1,
         )
     finally:
         db.close()
-
 
 @configurations.get("/g/s/topic/0/feed/topic")
 async def feed_topic(
