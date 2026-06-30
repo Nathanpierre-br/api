@@ -125,6 +125,9 @@ async def toggle_hide(
     table = db.get(f"x{ndcId}", table_name)
 
     if table_name == "Users":
+        db.close()
+        return Errors.UnimplementedPath()
+        #idk, it's a shit (my shit yea)
         if operation == 18:
             await table.update_one(
                 {"id": object_id},

@@ -854,3 +854,19 @@ async def compose_eligible_check(request: Request, ndcId: int, uid: str):
 async def get_leaders_choice(request: Request, ndcId: int = 0):
     return Base.Answer()
 
+
+
+
+
+@communities.get("/x{ndcId}/s/community/user-titles")
+async def get_community_titles(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    db = await Database().init()
+    titles = []
+    try:
+        table = db.get(f"x{ndcId}", "Users")
+        user = await table.find_one({})
+        titles = user.get("titles", []) if user else []
+    finally:
+        db.close()
+    return Base.Answer({"userTitleList": titles}, spent_time=timestamp() - t1)
