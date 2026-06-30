@@ -861,5 +861,5 @@ async def compose_eligible_check(request: Request, ndcId: int, uid: str):
 @communities.get("/g/s/community/kindred")
 @communities.get("/x{ndcId}/s/community/kindred")
 @communities.get("/g/s-x{ndcId}/community/kindred")
-async def get_leaders_choice(ndcId: int, request: Request):
+async def get_leaders_choice(request: Request, ndcId: int = 0):
     return Base.Answer()
