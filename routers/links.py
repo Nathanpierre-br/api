@@ -7,7 +7,7 @@ from helpers.database.models import Global, ModelFabric
 from helpers.database.mongo import Database
 from helpers.generator import Generator
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Errors, Links
+from objects import Base, Errors, Links, Communities
 
 links = APIRouter()
 links.route_class = CachableRoute
@@ -75,7 +75,7 @@ async def make_link(request: Request, ndcId: int = 0):
     elif link["objectType"] == 15:
         return Base.Answer(Links.Community(link), spent_time=timestamp() - t1)
 
-@links.get("/g/s/community/link-identify")
+
 @links.get("/g/s/link-resolution")
 @links.get("/g/s/link-resolution")
 @links.get("/x{ndcId}/s/link-resolution")
@@ -154,3 +154,39 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
         return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
     elif link["objectType"] == 12:
         return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)
+    
+
+
+
+@links.get("/g/s/community/link-identify")
+async def community_link_identify(request: Request, q: str = ""):
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        q = q.strip()
+
+        if "/c/" in q:
+            aminoid_or_id = q[q.find("/c/") + 3:]
+            aminoid_or_id = aminoid_or_id.split("/")[0].split("?")[0].strip()
+        else:
+            aminoid_or_id = q
+
+        table = db.get(table="Communities")
+        community = await table.find_one({"aminoId": aminoid_or_id})
+        if community is None:
+            return Errors.CommunityNotExist(timestamp() - t1)
+
+        community_info = await Communities.Info(community, db, uid)
+
+        return Base.Answer(
+            {
+                "community": community_info,
+                "path": f"x{community['id']}/community/{community['id']}",
+                "isCurrentUserJoined": uid in community.get("memberList", []),
+                "isMembershipRequestedByCurrentUser": False,
+            },
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        db.close()

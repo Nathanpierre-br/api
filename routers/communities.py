@@ -552,11 +552,6 @@ async def get_community_profiles(
 
 
 
-
-
-from datetime import datetime
-
-
 @communities.get("/g/s/user-group/{userGroupType}")
 @communities.get("/x{ndcId}/s/user-group/{userGroupType}")
 async def get_user_groups(
@@ -683,7 +678,7 @@ async def add_to_user_group(request: Request, userGroupType: str, targetId: str,
             (e["id"] if isinstance(e, dict) else e) for e in existing
         }
         if targetId in existing_ids:
-            return Base.Answer({}, spent_time=timestamp() - t1)  # уже в избранном
+            return Base.Answer({}, spent_time=timestamp() - t1) 
 
         entry = {
             "id": targetId,
@@ -753,11 +748,6 @@ async def _get_profiles_for_live_layer(ndcId: int, uids: list[str]) -> list[dict
 
 
 
-
-
-
-
-# Замени существующий live_layer_topic на этот:
 @communities.get("/g/s/live-layer")
 @communities.get("/x{ndcId}/s/live-layer")
 async def live_layer_topic(request: Request, ndcId: int = 0, topic: str | None = None):
