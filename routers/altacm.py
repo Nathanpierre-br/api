@@ -246,17 +246,15 @@ async def edit_community(request: Request, ndcId: int = 0):
 
 
 
-
 @altacm.get("/altacm/s/user-profile/{userId}/moderated-communities")
 @validauth_required
 async def communities_with_role(request: Request, userId: str):
     t1 = timestamp()
-
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
     try:
-        users = db.get("Users")
+        users = db.get(table="Users")
 
         trigger_user = await users.find_one({"id": trigger_uid})
         if (
@@ -279,7 +277,9 @@ async def communities_with_role(request: Request, userId: str):
 
         matching_ndc_ids = []
         for ndcId in community_ids:
-            member = await db.get(f"x{ndcId}", "Users").find_one(
+            community_users = db.get(database=f"x{ndcId}", table="Users")
+            
+            member = await community_users.find_one(
                 {"id": userId},
                 projection={"role": 1, "_id": 0},
             )
