@@ -331,7 +331,7 @@ async def feed_topic(
         query = {
             "isSelected": True,
             "hidden": {"$ne": True},
-            "id": {"$nin": [0, "g"]},
+            "endpoint": {"$nin": ["g"]},
         }
 
         total_count = await table.count_documents(query)
