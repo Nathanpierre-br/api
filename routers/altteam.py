@@ -201,7 +201,7 @@ async def unlink_telegram(request: Request, body: dict = None):
 
 
 @altteam.post("/g/s/altteam/{userId}/edit")
-async def edit_user_profile(request: Request, userId: str, body: dict):
+async def edit_altteam_member(request: Request, userId: str, body: dict):
     t1 = timestamp()
     trigger_uid = request.state.session.get("uid")
 
@@ -224,6 +224,7 @@ async def edit_user_profile(request: Request, userId: str, body: dict):
         
         new_role = body.get("role")
         new_tags = body.get("tagList")
+        altteam_status = body.get("isMemberOfTeamAmino")
         
         if new_role is not None:
             if target_user.get("role", 0) == UserRole.AltAminoStaff or userId == trigger_uid:
@@ -239,7 +240,10 @@ async def edit_user_profile(request: Request, userId: str, body: dict):
 
         if update_fields:
             await sensitive_table.update_one({"id": userId}, {"$set": update_fields})
-
+        
+        if altteam_status is not None:
+            update_fields["isTeamMember"] = altteam_status
+             
         return Base.Answer(spent_time=timestamp() - t1)
     except:
         return Errors.InvalidRequest(timestamp() - t1)
