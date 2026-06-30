@@ -96,7 +96,7 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
 @moderation_tools.post("/g/s/{object_type}/{object_id}/admin")
 @moderation_tools.post("/g/s/chat/{object_type}/{object_id}/admin")
 @validauth_required
-async def toggle_hide(
+async def admin_action(
     request: Request, object_type: str, object_id: str, ndcId: int = 0
 ):
     t1 = timestamp()
@@ -125,24 +125,24 @@ async def toggle_hide(
     table = db.get(f"x{ndcId}", table_name)
 
     if table_name == "Users":
-        db.close()
-        return Errors.UnimplementedPath()
-        #idk, it's a shit (my shit yea)
         if operation == 18:
+            return Errors.UnimplementedPath() #it's banned user, idk why, but in app use this one
             await table.update_one(
                 {"id": object_id},
-                {"$set": {
-                    "status": 9,
-                    "extensions.__disabledLevel__": 3
-                }}
+                {"$set": {"status": 9, "extensions.__disabledLevel__": 3}}
             )
         elif operation == 19:
+            return Errors.UnimplementedPath() #it's 
             await table.update_one(
                 {"id": object_id},
-                {"$set": {
-                    "status": 0,
-                    "extensions.__disabledLevel__": 0
-                }}
+                {"$set": {"status": 0, "extensions.__disabledLevel__": 0}}
+            )
+        elif operation == 207:
+            if ndcId == 0: return Errors.InvalidRequest()
+            titles = value.get("titles", []) if isinstance(value, dict) else []
+            await table.update_one(
+                {"id": object_id},
+                {"$set": {"titles": titles}}
             )
         else:
             db.close()
@@ -157,17 +157,13 @@ async def toggle_hide(
             else:
                 db.close()
                 return Errors.UnimplementedPath()
+            await table.update_one({"id": object_id}, {"$set": {"status": status}})
         else:
             db.close()
             return Errors.UnimplementedPath()
 
-        await table.update_one({"id": object_id}, {"$set": {"status": status}})
-
     db.close()
     return Base.Answer(spent_time=timestamp() - t1)
-
-
-
 
 
 @moderation_tools.post("/x{ndcId}/s/notice")
