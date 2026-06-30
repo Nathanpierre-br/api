@@ -126,16 +126,20 @@ async def toggle_hide(
 
     if table_name == "Users":
         if operation == 18:
-            # hide — extensions.__disabledLevel__ = 3 (IMOD level)
             await table.update_one(
                 {"id": object_id},
-                {"$set": {"extensions.__disabledLevel__": 3}}
+                {"$set": {
+                    "status": 9,
+                    "extensions.__disabledLevel__": 3
+                }}
             )
         elif operation == 19:
-            # unhide
             await table.update_one(
                 {"id": object_id},
-                {"$set": {"extensions.__disabledLevel__": 0}}
+                {"$set": {
+                    "status": 0,
+                    "extensions.__disabledLevel__": 0
+                }}
             )
         else:
             db.close()
