@@ -38,7 +38,7 @@ async def get_altamino_team(request: Request):
 
         global_cursor = sensitive_table.find(
             {"role": {"$in": UserRole.GODS}},
-            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1},
+            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1, "isVerified": 1},
         )
         global_members = await global_cursor.to_list(length=None)
         if not global_members:

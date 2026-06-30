@@ -51,68 +51,70 @@ async def change_aminoId(request: Request):
 @profile_methods.get("/g/s/user-profile/search")
 @profile_methods.get("/x{ndcId}/s/user-profile/search")
 async def user_search(
-	request: Request,
-	q: str = "",
-	size: int = 25,
-	pageToken: str | None = None,
-	ndcId: int = 0,
+    request: Request,
+    q: str = "",
+    size: int = 25,
+    pageToken: str | None = None,
+    ndcId: int = 0,
 ):
-	t1 = timestamp()
+    t1 = timestamp()
+    if q.strip() == "":
+        return Base.Answer(
+            {"userProfileList": [], "paging": {}, "userProfileCount": 0},
+            spent_time=timestamp() - t1,
+        )
+    size = size if 0 < size < 101 else 25
+    start = parse_page_token(pageToken, 0)
 
-	if q.strip() == "":
-		return Base.Answer(
-			{"userProfileList": [], "paging": {}, "userProfileCount": 0},
-			spent_time=timestamp() - t1,
-		)
+    db = await Database().init()
+    g_users = db.get(table="Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
 
-	size = size if 0 < size < 101 else 25
+    escaped_q = regex_escape(q)
+    query = {
+        "$or": [
+            {"nickname": {"$regex": f"^{escaped_q}", "$options": "i"}},
+            {"aminoId": {"$regex": f"^{escaped_q}", "$options": "i"}},
+        ]
+    }
 
-	# parse page token
-	start = parse_page_token(pageToken, 0)
+    users = [
+        item
+        async for item in xndc_users.find(query)
+        .skip(start)
+        .limit(size)
+        .sort("timestamp", DESCENDING)
+    ]
 
-	db = await Database().init()
-	g_users, xndc_users = (
-		db.get(table="Users"),
-		db.get(f"x{ndcId}", "Users"),
-	)
-	
-	escaped_q = regex_escape(q)
-	query = {
-		"$or": [
-			{"nickname": {"$regex": escaped_q, "$options": "i"}},
-			{"aminoId": {"$regex": escaped_q, "$options": "i"}}
-		]
-	}
+    seen = set()
+    unique_users = []
+    for item in users:
+        if item["id"] not in seen:
+            seen.add(item["id"])
+            unique_users.append(item)
 
-	users = [
-		item
-		async for item in xndc_users.find(query)
-		.skip(start)
-		.limit(size)
-		.sort("timestamp", DESCENDING)
-	]
-	userProfileList = [
-		User.GetUserInfo(await g_users.find_one({"id": item["id"]}) | item, ndcId=ndcId)
-		for item in users
-	]
+    userProfileList = []
+    for item in unique_users:
+        g_row = await g_users.find_one({"id": item["id"]})
+        merged = (g_row or {}) | item
+        userProfileList.append(User.GetUserInfo(merged, ndcId=ndcId))
 
-	if len(users) > 0:
-		answer = Base.Answer(
-			{
-				"userProfileList": userProfileList,
-				"paging": calculate_page_tokens(start, size, userProfileList),
-				"userProfileCount": await xndc_users.count_documents(query),
-			},
-			spent_time=timestamp() - t1,
-		)
-		db.close()
-		return answer
-	else:
-		db.close()
-		return Base.Answer(
-			{"messageList": [], "paging": {}}, spent_time=timestamp() - t1
-		)
+    db.close()
 
+    if userProfileList:
+        return Base.Answer(
+            {
+                "userProfileList": userProfileList,
+                "paging": calculate_page_tokens(start, size, userProfileList),
+                "userProfileCount": await xndc_users.count_documents(query),
+            },
+            spent_time=timestamp() - t1,
+        )
+    else:
+        return Base.Answer(
+            {"userProfileList": [], "paging": {}, "userProfileCount": 0},
+            spent_time=timestamp() - t1,
+        )
 
 @profile_methods.get("/g/s/user-profile/reminder-stat")
 async def get_visits(request: Request):
