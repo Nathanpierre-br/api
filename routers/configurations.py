@@ -271,7 +271,7 @@ async def discover_modules(request: Request):
                     "status": 0,
                     "style": "GridTopicCard",
                     "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
-                    "moduleName": "Selected by AltAmino team",
+                    "moduleName": "Trending Topics",
                     "contentVariety": 0,
                     "customizable": False,
                     "moduleId": "3c4ea74e-b500-4c72-821f-0677a5078bde",
