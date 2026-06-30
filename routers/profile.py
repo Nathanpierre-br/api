@@ -592,26 +592,35 @@ async def get_user_info(uid, request: Request, ndcId=0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
-
     trigger_uid = request.state.session["uid"]
-
     db = await Database().init()
-
+    g_table = db.get(table="Users")
     table = db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
 
-    if ndcId == 0:
-        table = db.get(table="Users")
-        row2 = (await table.find_one({"id": uid}) or {}) | row2
+    global_row = await g_table.find_one({"id": uid})
+    if global_row:
+        if not row2.get("tagList"):
+            global_tag_list = global_row.get("tagList")
+            if global_tag_list:
+                row2["tagList"] = global_tag_list
+
+        if "isTeamMember" in global_row:
+            row2["isTeamMember"] = global_row["isTeamMember"]
+
+        if "isVerified" in global_row:
+            row2["isVerified"] = global_row["isVerified"]
+
+        if ndcId == 0:
+            row2 = global_row | row2
 
     db.close()
     return Base.Answer(
         {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)},
         spent_time=timestamp() - t1,
     )
-
 
 @profile_methods.get("/g/s/account")
 @profile_methods.get("/x{ndcId}/s/account")

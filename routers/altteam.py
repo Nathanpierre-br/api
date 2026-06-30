@@ -238,12 +238,12 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
             if isinstance(new_tags, list):
                 update_fields["tagList"] = new_tags
 
+        if altteam_status is not None:
+            update_fields["isTeamMember"] = altteam_status
+
         if update_fields:
             await sensitive_table.update_one({"id": userId}, {"$set": update_fields})
         
-        if altteam_status is not None:
-            update_fields["isTeamMember"] = altteam_status
-             
         return Base.Answer(spent_time=timestamp() - t1)
     except:
         return Errors.InvalidRequest(timestamp() - t1)
