@@ -309,8 +309,8 @@ async def discover_modules(request: Request):
             "showStoreBadge": False,
         }
     )
-@configurations.get("/g/s/topic/0/feed/topic")
-async def feed_topic(
+@configurations.get("/g/s/topic/0/feed/community")
+async def feed_community(
     request: Request,
     moduleId: Union[str, None] = None,
     start: int = 0,
