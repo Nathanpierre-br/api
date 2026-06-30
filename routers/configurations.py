@@ -216,6 +216,28 @@ async def auid_check(deviceId: str, request: Request):
     return Base.Answer({"auid": uid})
 
 
+"""
+{
+"createdTime": "2022-06-07T18:45:41Z",
+"contentPoolId": "en",
+"moduleType": "TrendingTopic",
+"status": 0,
+"style": "GridTopicCard",
+"uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
+"moduleName": "Trending Topics",
+"contentVariety": 0,
+"customizable": False,
+"moduleId": "3c4ea74e-b500-4c72-821f-0677a5078bde",
+"extensions": None,
+"userRemovable": False,
+"isVirtual": False,
+"contentObjectType": 128,
+"dataUrl": "/topic/0/feed/topic?moduleId=3c4ea74e-b500-4c72-821f-0677a5078bde",
+"displayName": "Trending",
+"topicLocked": False,
+"visibility": 1,
+},
+"""
 
 
 @configurations.get("/g/s/home/discover/content-modules")
@@ -267,20 +289,20 @@ async def discover_modules(request: Request):
                 {
                     "createdTime": "2022-06-07T18:45:41Z",
                     "contentPoolId": "en",
-                    "moduleType": "TrendingTopic",
+                    "moduleType": "RecommendedCommunities",
                     "status": 0,
-                    "style": "GridTopicCard",
+                    "style": "GeneralCommunityCard",
                     "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
-                    "moduleName": "Trending Topics",
+                    "moduleName": "Team's Picks",
                     "contentVariety": 0,
                     "customizable": False,
-                    "moduleId": "3c4ea74e-b500-4c72-821f-0677a5078bde",
+                    "moduleId": "5c4ea74e-b500-4c72-821f-0677a5078be0",
                     "extensions": None,
                     "userRemovable": False,
                     "isVirtual": False,
-                    "contentObjectType": 128,
-                    "dataUrl": "/topic/0/feed/topic?moduleId=3c4ea74e-b500-4c72-821f-0677a5078bde",
-                    "displayName": "Trending",
+                    "contentObjectType": 16,
+                    "dataUrl": "/topic/0/feed/topic?moduleId=5c4ea74e-b500-4c72-821f-0677a5078be0",
+                    "displayName": "Team's Picks",
                     "topicLocked": False,
                     "visibility": 1,
                 },
