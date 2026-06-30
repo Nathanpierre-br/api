@@ -103,7 +103,7 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
             return Errors.DataNotExist(timestamp() - t1)
         return Base.Answer(
             Links.Community({
-                "objectType": 15,
+                "objectType": 16,
                 "ndcId": cum_data.get("id"),
                 "code": query,
                 "objectId": str(cum_data.get("id")),

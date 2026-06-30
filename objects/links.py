@@ -81,7 +81,7 @@ class Links:
                     "shareURLShortCode": Config.SITE_BASE_URL + "/c/" + data["code"],
                     "targetCode": 1,
                     "ndcId": ndcId,
-                    "fullPath": f"{ndcId}/{data.get('aminoId', data['code'])}",
+                    "fullPath": f"ndc://{loc}/community/{data['objectId']}",
                     "shortCode": data["code"],
                     "shareURLFullPath": Config.SITE_BASE_URL + "/web/x0/community/" + data["objectId"],
                     "objectType": data["objectType"],
