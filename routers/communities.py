@@ -120,7 +120,7 @@ async def search_community(
         query = {
             "name": {"$regex": regex_escape(q.strip()), "$options": "i"},
             "lang": language,
-            "hidden": False,
+            "hidden": {"$ne": True},
         }
         total_count = await table.count_documents(query)
         items = [item async for item in table.find(query).skip(start).limit(size)]
@@ -135,7 +135,6 @@ async def search_community(
         )
     finally:
         db.close()
-
 
 # all communities available
 @communities.get("/g/s/topic/0/feed/community")

@@ -75,7 +75,8 @@ async def make_link(request: Request, ndcId: int = 0):
     elif link["objectType"] == 15:
         return Base.Answer(Links.Community(link), spent_time=timestamp() - t1)
 
-
+@links.get("/g/s/community/link-identify")
+@links.get("/g/s/link-resolution")
 @links.get("/g/s/link-resolution")
 @links.get("/x{ndcId}/s/link-resolution")
 @links.get("/g/s/link-translation")
