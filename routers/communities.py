@@ -34,7 +34,7 @@ async def humanreadable(request: Request, ndcIds: str = ""):
 # communities you currently in
 @communities.get("/g/s/community/joined")
 async def joined_communities(
-    request: Request, start: int = 0, size: int = 25, pageToken: str | None = None
+    request: Request, start: int = 0, size: int = 25, pageToken: str | None = None, q: str = ""
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -62,14 +62,31 @@ async def joined_communities(
         row2 = await table.find_one({"id": uid})
         if row2 is None:
             return Errors.AccountNotExist(timestamp() - t1)
+
         table = db.get(table="Communities")
-        cl_needed = row1.get("communityList", [])[start : start + size]
+        all_joined_ids = row1.get("communityList", [])
+
+        q = q.strip()
+        if q:
+            # фильтруем id по совпадению имени, сохраняя исходный порядок
+            matched_cursor = table.find(
+                {
+                    "id": {"$in": all_joined_ids},
+                    "name": {"$regex": regex_escape(q), "$options": "i"},
+                },
+                {"id": 1},
+            )
+            matched_ids = {doc["id"] async for doc in matched_cursor}
+            filtered_ids = [ndcId for ndcId in all_joined_ids if ndcId in matched_ids]
+        else:
+            filtered_ids = all_joined_ids
+
+        cl_needed = filtered_ids[start : start + size]
 
         items_by_id = {}
         async for item in table.find({"id": {"$in": cl_needed}}):
             info = await Communities.Info(item, db, uid) | {"membershipStatus": 1}
             items_by_id[item["id"]] = info
-
 
         communityList = [
             items_by_id[ndcId] for ndcId in cl_needed if ndcId in items_by_id

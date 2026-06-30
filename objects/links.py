@@ -74,18 +74,16 @@ class Links:
         ndcId = data.get("ndcId", data.get("objectId", 0))
         loc = "g" if ndcId == 0 else f"x{ndcId}"
         obj = {
-            "path": f"{loc}/ndc/{data['objectId']}",  # ?
+            "path": f"{loc}/ndc/{data['objectId']}",
             "extensions": {
                 "linkInfo": {
                     "objectId": data["objectId"],
                     "shareURLShortCode": Config.SITE_BASE_URL + "/c/" + data["code"],
                     "targetCode": 1,
                     "ndcId": ndcId,
-                    "fullPath": "sonicexe-666666-4",  # wtf
+                    "fullPath": f"{ndcId}/{data.get('aminoId', data['code'])}",
                     "shortCode": data["code"],
-                    "shareURLFullPath": Config.SITE_BASE_URL
-                    + "/web/x0/ndc/"  # ?
-                    + data["objectId"],
+                    "shareURLFullPath": Config.SITE_BASE_URL + "/web/x0/ndc/" + data["objectId"],
                     "objectType": data["objectType"],
                 }
             },
