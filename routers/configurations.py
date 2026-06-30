@@ -1,12 +1,13 @@
 from typing import Union
 from uuid import uuid4
-
+from time import time as timestamp
+from helpers.functions import calculate_page_tokens
 from fastapi import APIRouter, Request
 
 from helpers.database.mongo import Database
 from helpers.decorators.validauth import validauth_required
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Errors
+from objects import Base, Errors, Communities
 
 configurations = APIRouter()
 configurations.route_class = CachableRoute
@@ -215,18 +216,17 @@ async def auid_check(deviceId: str, request: Request):
     return Base.Answer({"auid": uid})
 
 
-# BANNER
 
 
 @configurations.get("/g/s/home/discover/content-modules")
-async def modules(request: Request):
+async def discover_modules(request: Request):
     return Base.Answer(
         {
             "contentModuleList": [
                 {
                     "createdTime": "2022-06-07T18:45:41Z",
                     "contentPoolId": "en",
-                    "moduleType": "CustomizedBannerAdsTop",
+                    "moduleType": "CustomizedBannerAds",
                     "status": 0,
                     "style": "BannerSizeTop",
                     "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
@@ -243,12 +243,153 @@ async def modules(request: Request):
                     "displayName": "Banners",
                     "topicLocked": False,
                     "visibility": 1,
-                }
+                },
+                {
+                    "createdTime": "2022-06-07T18:45:41Z",
+                    "contentPoolId": "en",
+                    "moduleType": "RecommendedCommunities",
+                    "status": 0,
+                    "style": "GeneralCommunityCard",
+                    "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
+                    "moduleName": "Recommended Communities",
+                    "contentVariety": 0,
+                    "customizable": False,
+                    "moduleId": "2c4ea74e-b500-4c72-821f-0677a5078bdd",
+                    "extensions": None,
+                    "userRemovable": False,
+                    "isVirtual": False,
+                    "contentObjectType": 16,
+                    "dataUrl": "/g/s/topic/0/feed/community?moduleId=2c4ea74e-b500-4c72-821f-0677a5078bdd",
+                    "displayName": "Recommended Communities",
+                    "topicLocked": False,
+                    "visibility": 1,
+                },
+                {
+                    "createdTime": "2022-06-07T18:45:41Z",
+                    "contentPoolId": "en",
+                    "moduleType": "TrendingTopic",
+                    "status": 0,
+                    "style": "GridTopicCard",
+                    "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
+                    "moduleName": "Trending Topics",
+                    "contentVariety": 0,
+                    "customizable": False,
+                    "moduleId": "3c4ea74e-b500-4c72-821f-0677a5078bde",
+                    "extensions": None,
+                    "userRemovable": False,
+                    "isVirtual": False,
+                    "contentObjectType": 128,
+                    "dataUrl": "/g/s/topic/0/feed/topic?moduleId=3c4ea74e-b500-4c72-821f-0677a5078bde",
+                    "displayName": "Trending",
+                    "topicLocked": False,
+                    "visibility": 1,
+                },
+                {
+                    "createdTime": "2022-06-07T18:45:41Z",
+                    "contentPoolId": "en",
+                    "moduleType": "PopularStories",
+                    "status": 0,
+                    "style": "GeneralStoryCard",
+                    "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
+                    "moduleName": "Popular Stories",
+                    "contentVariety": 0,
+                    "customizable": False,
+                    "moduleId": "4c4ea74e-b500-4c72-821f-0677a5078bdf",
+                    "extensions": None,
+                    "userRemovable": False,
+                    "isVirtual": False,
+                    "contentObjectType": 1,
+                    "contentObjectSubtype": 9,
+                    "dataUrl": "/g/s/topic/0/feed/story?moduleId=4c4ea74e-b500-4c72-821f-0677a5078bdf",
+                    "displayName": "Popular Stories",
+                    "topicLocked": False,
+                    "visibility": 1,
+                },
             ],
             "showStoreBadge": False,
         }
     )
 
+@configurations.get("/g/s/topic/0/feed/community")
+async def feed_community(
+    request: Request,
+    moduleId: Union[str, None] = None,
+    start: int = 0,
+    size: int = 15,
+):
+    if moduleId is None:
+        return Errors.InvalidRequest()
+
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(table="Communities")
+        query = {"hidden": {"$ne": True}}
+        items = [item async for item in table.find(query).skip(start).limit(size)]
+        communityList = [await Communities.Info(item, db, uid) for item in items]
+
+        itemList = [
+            {
+                "objectId": str(c["id"]),
+                "objectType": 16,
+                "refObject": c,
+            }
+            for c in communityList
+        ]
+
+        return Base.Answer(
+            {
+                "paging": calculate_page_tokens(start, size, itemList),
+                "itemList": itemList,
+                "allItemCount": await table.count_documents(query),
+            },
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        db.close()
+
+
+@configurations.get("/g/s/topic/0/feed/topic")
+async def feed_topic(
+    request: Request,
+    moduleId: Union[str, None] = None,
+    start: int = 0,
+    size: int = 15,
+):
+    if moduleId is None:
+        return Errors.InvalidRequest()
+
+    t1 = timestamp()
+    return Base.Answer(
+        {
+            "paging": {},
+            "itemList": [],
+            "allItemCount": 0,
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+@configurations.get("/g/s/topic/0/feed/story")
+async def feed_story(
+    request: Request,
+    moduleId: Union[str, None] = None,
+    start: int = 0,
+    size: int = 15,
+):
+    if moduleId is None:
+        return Errors.InvalidRequest()
+
+    t1 = timestamp()
+    return Base.Answer(
+        {
+            "paging": {},
+            "itemList": [],
+            "allItemCount": 0,
+        },
+        spent_time=timestamp() - t1,
+    )
 
 @configurations.get("/g/s/topic/0/feed/banner-ads")
 async def banner(

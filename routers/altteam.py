@@ -223,6 +223,7 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
         update_fields = {}
         
         new_role = body.get("role")
+        is_verified = body.get("isVerified")
         new_tags = body.get("tagList")
         altteam_status = body.get("isMemberOfTeamAmino")
         
@@ -240,6 +241,9 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
 
         if altteam_status is not None:
             update_fields["isTeamMember"] = altteam_status
+
+        if is_verified is not None:
+            update_fields["isVerified"] = is_verified
 
         if update_fields:
             await sensitive_table.update_one({"id": userId}, {"$set": update_fields})
