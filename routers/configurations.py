@@ -332,7 +332,6 @@ async def discover_modules(request: Request):
         }
     )
 
-
 @configurations.get("/g/s/topic/0/feed/community")
 async def feed_community(
     request: Request,
@@ -355,7 +354,12 @@ async def feed_community(
         query = {"hidden": {"$ne": True}, "aminoId": {"$nin": ["g"]}}
 
         total_count = await table.count_documents(query)
-        items = [item async for item in table.find(query).skip(start).limit(size)]
+
+        pipeline = [
+            {"$match": query},
+            {"$sample": {"size": size}},
+        ]
+        items = [item async for item in table.aggregate(pipeline)]
         communityList = [await Communities.Info(item, db, uid) for item in items]
 
         return Base.Answer(
@@ -368,6 +372,8 @@ async def feed_community(
         )
     finally:
         db.close()
+
+    
 #temp
 @configurations.get("/g/s/topic/0/feed/topic")
 async def feed_topic(
