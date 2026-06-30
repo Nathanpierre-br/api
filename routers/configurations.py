@@ -309,12 +309,14 @@ async def discover_modules(request: Request):
             "showStoreBadge": False,
         }
     )
+
+
 @configurations.get("/g/s/topic/0/feed/community")
 async def feed_community(
     request: Request,
     moduleId: Union[str, None] = None,
     start: int = 0,
-    size: int = 15,
+    size: int = 25,
     pageToken: str | None = None,
 ):
     if moduleId is None:
@@ -328,11 +330,7 @@ async def feed_community(
     db = await Database().init()
     try:
         table = db.get(table="Communities")
-        query = {
-            "isSelected": True,
-            "hidden": {"$ne": True},
-            "aminoId": {"$nin": ["g"]}, #fuck u
-        }
+        query = {"hidden": {"$ne": True}, "aminoId": {"$nin": ["g"]}}
 
         total_count = await table.count_documents(query)
         items = [item async for item in table.find(query).skip(start).limit(size)]
