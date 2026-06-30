@@ -54,7 +54,7 @@ class UserRole:
     ]
     
     # Regular roles that can be assigned within individual communities
-    ALLOWED_ROLES: list[int] = list(User,) + LOCALSTAFF + GODS
+    ALLOWED_ROLES: list[int] = [User] + LOCALSTAFF + GODS
 
 
 
