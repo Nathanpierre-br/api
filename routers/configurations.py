@@ -328,15 +328,16 @@ async def feed_community(
         query = {"hidden": {"$ne": True}}
         items = [item async for item in table.find(query).skip(start).limit(size)]
         communityList = [await Communities.Info(item, db, uid) for item in items]
-
-        itemList = [
-            {
-                "objectId": str(c["id"]),
-                "objectType": 16,
-                "refObject": c,
-            }
-            for c in communityList
-        ]
+        itemList = []
+        for c in communityList:
+            if c.get("ndcId") not in ("g", 0):
+                itemList.append(
+                    {
+                        "objectId": str(c["ndcId"]), 
+                        "objectType": 16,
+                        "refObject": c,
+                    }
+                )
 
         return Base.Answer(
             {
