@@ -5,12 +5,17 @@ class UserGroupType:
     QuickAccess: str = "quick-access"
 
 class UserStatus:
-    Normal: int = 0
-    Banned: int = 9
-
+    ACCOUNT_STATUS_OK       = 0
+    ACCOUNT_STATUS_CLOSED   = 3
+    ACCOUNT_STATUS_PENDING  = 5
+    ACCOUNT_STATUS_DISABLED = 9 
+    ACCOUNT_STATUS_DELETED  = 10
     Valid: list[int] = [
-        Normal,
-        Banned
+        ACCOUNT_STATUS_OK,
+        ACCOUNT_STATUS_CLOSED,
+        ACCOUNT_STATUS_PENDING,
+        ACCOUNT_STATUS_DISABLED,
+        ACCOUNT_STATUS_DELETED
     ]
 
     @classmethod

@@ -98,7 +98,7 @@ async def get_altamino_team_member(request: Request, userId: str):
 
         global_member = await sensitive_table.find_one(
             {"id": userId, "role": {"$in": UserRole.GODS}},
-            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1},
+            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1, "isVerified": 1},
         )
         if not global_member:
             return Errors.InvalidRequest(timestamp() - t1) 

@@ -15,6 +15,15 @@ class Errors:
         )
 
     @staticmethod
+    def Exs9(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=1000000,
+            html_status_code=400,
+            api_message="The data already exists.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
     def SUS(spent_time: Union[int, float] = 0):
         return Base.Answer(
             api_status_code=420024,
