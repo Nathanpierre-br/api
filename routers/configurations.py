@@ -271,7 +271,7 @@ async def discover_modules(request: Request):
                     "status": 0,
                     "style": "GridTopicCard",
                     "uid": "08c1cd67-b007-48b1-b5c4-bf4ace1f0db1",
-                    "moduleName": "Trending Topics",
+                    "moduleName": "Selected by AltAmino team",
                     "contentVariety": 0,
                     "customizable": False,
                     "moduleId": "3c4ea74e-b500-4c72-821f-0677a5078bde",
@@ -332,7 +332,7 @@ async def feed_community(
         query = {"hidden": {"$ne": True}}
         total_count = await table.count_documents(query)
         items = [item async for item in table.find(query).skip(start).limit(size)]
-        communityList = [await Communities.Info(item, db, uid) for item in items]
+        communityList = [await Communities.Info(item, db, uid) if item['ndcId'] not in ('g', 0) else {} for item in items]
 
         return Base.Answer(
             {
@@ -345,26 +345,42 @@ async def feed_community(
     finally:
         db.close()
 
+#temp
 @configurations.get("/g/s/topic/0/feed/topic")
 async def feed_topic(
     request: Request,
     moduleId: Union[str, None] = None,
     start: int = 0,
     size: int = 15,
+    pageToken: str | None = None,
 ):
     if moduleId is None:
         return Errors.InvalidRequest()
 
     t1 = timestamp()
-    return Base.Answer(
-        {
-            "paging": {},
-            "itemList": [],
-            "allItemCount": 0,
-        },
-        spent_time=timestamp() - t1,
-    )
+    if pageToken:
+        start = parse_page_token(pageToken, start)
 
+    uid = request.state.session["uid"]
+    db = await Database().init()
+    try:
+        table = db.get(table="Communities")
+        query = {"isSelected": True, "hidden": {"$ne": True}}
+
+        total_count = await table.count_documents(query)
+        items = [item async for item in table.find(query).skip(start).limit(size)]
+        communityList = [await Communities.Info(item, db, uid) for item in items]
+
+        return Base.Answer(
+            {
+                "communityList": communityList,
+                "paging": calculate_page_tokens(start, size, communityList),
+                "allItemCount": total_count,
+            },
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        db.close()
 
 @configurations.get("/g/s/topic/0/feed/story")
 async def feed_story(

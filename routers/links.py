@@ -175,7 +175,7 @@ async def community_link_identify(request: Request, q: str = ""):
         table = db.get(table="Communities")
         community = await table.find_one({"aminoId": aminoid_or_id})
         if community is None:
-            return Errors.CommunityNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1)
 
         community_info = await Communities.Info(community, db, uid)
 
