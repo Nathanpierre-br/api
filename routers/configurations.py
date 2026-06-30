@@ -144,7 +144,7 @@ async def appearance_configs(request: Request):
                 "backgroundMediaList": [
                     [
                         100,
-                        "https://raw.githubusercontent.com/altamino/always-static/refs/heads/main/always-static/global-background-2.png",
+                        "https://media.altamino.top/always-static/global-background-2.png",
                         None,
                     ]
                 ],

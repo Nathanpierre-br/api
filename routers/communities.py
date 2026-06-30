@@ -14,6 +14,7 @@ from helpers.routers.cachable import CachableRoute
 from objects import Base, Communities, Errors, User
 from objects.types import UserGroupType
 from helpers.database.redis import get as get_redis
+from fastapi.responses import RedirectResponse
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -853,3 +854,20 @@ async def compose_eligible_check(request: Request, ndcId: int, uid: str):
 @communities.get("/g/s-x{ndcId}/community/kindred")
 async def get_leaders_choice(request: Request, ndcId: int = 0):
     return Base.Answer()
+
+
+
+
+#debug
+
+@communities.get("/debug/icon-probe/{filename}")
+async def icon_probe(filename: str, request: Request):
+    print("=== ICON REQUEST ===")
+    print("Method:", request.method)
+    print("Headers:", dict(request.headers))
+    print("Query params:", dict(request.query_params))
+    print("=====================")
+
+    return RedirectResponse(
+        "https://media.altamino.top/user-uploads/images/nciewyeXbvcJFPWh5Glf9AkGXXUVWbbxx6DSmfgQWVMKrZDPC8yQSF8Ihuqv8vxC.jpeg"
+    )
