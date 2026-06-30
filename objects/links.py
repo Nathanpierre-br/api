@@ -16,7 +16,7 @@ class Links:
                     "shareURLShortCode": Config.SITE_BASE_URL + "/u/" + data["code"],
                     "targetCode": 1,
                     "ndcId": data.get("ndcId", 0),
-                    "fullPath": "6666666/sonicexe",
+                    "fullPath": f"ndc://{loc}/user-profile/{data['objectId']}",
                     "shortCode": data.get("code"),
                     "shareURLFullPath": Config.SITE_BASE_URL + "/u/" + data["code"],
                     "objectType": data["objectType"],
@@ -37,7 +37,7 @@ class Links:
                     "shareURLShortCode": Config.SITE_BASE_URL + "/p/" + data["code"],
                     "targetCode": 1,
                     "ndcId": ndcId,
-                    "fullPath": "6666666/sonicexe",
+                    "fullPath": f"ndc://{loc}/blog/{data['objectId']}",
                     "shortCode": data["code"],
                     "shareURLFullPath": Config.SITE_BASE_URL + "/p/" + data["code"],
                     "objectType": data["objectType"],
@@ -58,7 +58,7 @@ class Links:
                     "shareURLShortCode": Config.SITE_BASE_URL + "/p/" + data["code"],
                     "targetCode": 1,
                     "ndcId": ndcId,
-                    "fullPath": "sonicexe-666666",
+                    "fullPath": f"ndc://{loc}/chat-thread/{data['objectId']}",
                     "shortCode": data["code"],
                     "shareURLFullPath": Config.SITE_BASE_URL
                     + "/web/x0/chat-thread/"
@@ -74,14 +74,14 @@ class Links:
         ndcId = data.get("ndcId", data.get("objectId", 0))
         loc = "g" if ndcId == 0 else f"x{ndcId}"
         obj = {
-            "path": f"{loc}/community/{data['objectId']}",
+            "path": f"{ndcId}/community/{data['objectId']}",
             "extensions": {
                 "linkInfo": {
                     "objectId": data["objectId"],
                     "shareURLShortCode": Config.SITE_BASE_URL + "/c/" + data["code"],
                     "targetCode": 1,
                     "ndcId": ndcId,
-                    "fullPath": f"ndc://{loc}/community/{data['objectId']}",
+                    "fullPath": f"ndc://{loc}/community/{ndcId}",
                     "shortCode": data["code"],
                     "shareURLFullPath": Config.SITE_BASE_URL + "/web/x0/community/" + data["objectId"],
                     "objectType": data["objectType"],
