@@ -631,7 +631,7 @@ async def get_user_info(uid, request: Request, ndcId=0):
 		
 	db.close()
 	return Base.Answer(
-		{"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, ndcId=ndcId)},
+		{"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, extensions=row2.get("extensions"), ndcId=ndcId)},
 		spent_time=timestamp() - t1,
 	)
 

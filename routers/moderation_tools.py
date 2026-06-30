@@ -217,7 +217,7 @@ async def send_notice(request: Request, ndcId: int = 0):
 @moderation_tools.get("/g/s/notice/message-template/{template_type}")
 async def get_notice_templates(request: Request, template_type: str, ndcId: int = 0):
     t1 = timestamp()
-
+    #can be anything i think, it's just template
     STRIKE_TEMPLATES = [
         {"id": "strike-1", "title": "Spam", "content": "Your content was removed for spam. Please follow community guidelines.", "messageType": 4},
         {"id": "strike-2", "title": "Inappropriate content", "content": "Your content was removed for violating our community rules regarding inappropriate content.", "messageType": 4},
