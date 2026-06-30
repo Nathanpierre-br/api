@@ -309,13 +309,12 @@ async def discover_modules(request: Request):
             "showStoreBadge": False,
         }
     )
-
-@configurations.get("/g/s/topic/0/feed/community")
-async def feed_community(
+@configurations.get("/g/s/topic/0/feed/topic")
+async def feed_topic(
     request: Request,
     moduleId: Union[str, None] = None,
     start: int = 0,
-    size: int = 25,
+    size: int = 15,
     pageToken: str | None = None,
 ):
     if moduleId is None:
@@ -329,10 +328,15 @@ async def feed_community(
     db = await Database().init()
     try:
         table = db.get(table="Communities")
-        query = {"hidden": {"$ne": True}}
+        query = {
+            "isSelected": True,
+            "hidden": {"$ne": True},
+            "id": {"$nin": [0, "g"]},
+        }
+
         total_count = await table.count_documents(query)
         items = [item async for item in table.find(query).skip(start).limit(size)]
-        communityList = [await Communities.Info(item, db, uid) if item['ndcId'] not in ('g', 0) else {} for item in items]
+        communityList = [await Communities.Info(item, db, uid) for item in items]
 
         return Base.Answer(
             {
@@ -344,7 +348,6 @@ async def feed_community(
         )
     finally:
         db.close()
-
 #temp
 @configurations.get("/g/s/topic/0/feed/topic")
 async def feed_topic(
