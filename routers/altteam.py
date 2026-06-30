@@ -38,7 +38,7 @@ async def get_altamino_team(request: Request):
 
         global_cursor = sensitive_table.find(
             {"role": {"$in": UserRole.GODS}},
-            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1},
+            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1},
         )
         global_members = await global_cursor.to_list(length=None)
         if not global_members:
@@ -73,10 +73,62 @@ async def get_altamino_team(request: Request):
             merged["tagList"] = g.get("tagList", [])
             merged["aminoId"] = g.get("aminoId")
             merged["telegramId"] = g.get("telegramId")
+            merged["isMemberOfTeamAmino"] = g.get("isTeamMember", False)
             team_list.append(
                 merged   
             )
         return Base.Answer({"userProfileList": team_list}, spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.get("/g/s/altteam/{userId}")
+async def get_altamino_team_member(request: Request, userId: str):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        local_table = db.get(database="x0", table="Users")
+
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        global_member = await sensitive_table.find_one(
+            {"id": userId, "role": {"$in": UserRole.GODS}},
+            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1},
+        )
+        if not global_member:
+            return Errors.InvalidRequest(timestamp() - t1) 
+
+        local_profile = await local_table.find_one(
+            {"id": userId},
+            {
+                "_id": 0,
+                "id": 1,
+                "nickname": 1,
+                "icon": 1,
+                "reputation": 1,
+                "createdTime": 1,
+                "modifiedTime": 1,
+                "extensions": 1,
+            },
+        )
+        if not local_profile:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        merged = dict(local_profile)
+        merged["id"] = global_member["id"]
+        merged["role"] = global_member.get("role", 0)
+        merged["tagList"] = global_member.get("tagList", [])
+        merged["aminoId"] = global_member.get("aminoId")
+        merged["telegramId"] = global_member.get("telegramId")
+        merged["isMemberOfTeamAmino"] = global_member.get("isTeamMember", False)
+
+        return Base.Answer({"userProfile": merged}, spent_time=timestamp() - t1)
+    except:
+        return Errors.InvalidRequest(timestamp() - t1)
     finally:
         db.close()
 
@@ -100,7 +152,7 @@ async def link_telegram(request: Request, body: dict):
         sensitive_table = db.get(table="Users")
         
         user = await sensitive_table.find_one({"id": trigger_uid})
-        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+        if not user or user.get("role", 0) != UserRole.System:
             return Errors.NotEnoughRights(timestamp() - t1)
 
         target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
@@ -130,7 +182,7 @@ async def unlink_telegram(request: Request, body: dict = None):
         sensitive_table = db.get(table="Users")
         
         user = await sensitive_table.find_one({"id": trigger_uid})
-        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+        if not user or user.get("role", 0) != UserRole.System:
             return Errors.NotEnoughRights(timestamp() - t1)
 
         target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
@@ -143,6 +195,56 @@ async def unlink_telegram(request: Request, body: dict = None):
     finally:
         db.close()
 
+
+
+
+
+
+@altteam.post("/g/s/altteam/{userId}/edit")
+async def edit_user_profile(request: Request, userId: str, body: dict):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+
+    if not trigger_uid:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        
+        trigger_user = await sensitive_table.find_one({"id": trigger_uid})
+        if not trigger_user or trigger_user.get("role", 0) != UserRole.AltAminoStaff:
+            return Errors.NotEnoughRights(timestamp() - t1)
+        
+        target_user = await sensitive_table.find_one({"id": userId})
+        if not target_user:
+            return Errors.InvalidRequest(timestamp() - t1)
+        
+        update_fields = {}
+        
+        new_role = body.get("role")
+        new_tags = body.get("tagList")
+        
+        if new_role is not None:
+            if target_user.get("role", 0) == UserRole.AltAminoStaff or userId == trigger_uid:
+                return Errors.NotEnoughRights(timestamp() - t1)
+            if not UserRole.is_valid_role(new_role):
+                return Errors.InvalidRequest(timestamp() - t1)
+            
+            update_fields["role"] = new_role
+            
+        if new_tags is not None:
+            if isinstance(new_tags, list):
+                update_fields["tagList"] = new_tags
+
+        if update_fields:
+            await sensitive_table.update_one({"id": userId}, {"$set": update_fields})
+
+        return Base.Answer(spent_time=timestamp() - t1)
+    except:
+        return Errors.InvalidRequest(timestamp() - t1)
+    finally:
+        db.close()
 
 
 
@@ -204,7 +306,7 @@ async def support_reset_password(request: Request, ndcId: int = 0):
 
 
 @altteam.post("/g/s/altteam/user-profile/{userId}/status")
-async def set_user_status(request: Request, userId: int):
+async def set_user_status(request: Request, userId: str):
     t1 = timestamp()
     if not Config.ENABLE_EMAIL:
         return Errors.PathUnderMaintenance(timestamp() - t1)
