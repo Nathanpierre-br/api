@@ -74,7 +74,7 @@ class Links:
         ndcId = data.get("ndcId", data.get("objectId", 0))
         loc = "g" if ndcId == 0 else f"x{ndcId}"
         obj = {
-            "path": f"{loc}/ndc/{data['objectId']}",
+            "path": f"{loc}/community/{data['objectId']}",
             "extensions": {
                 "linkInfo": {
                     "objectId": data["objectId"],
@@ -83,7 +83,7 @@ class Links:
                     "ndcId": ndcId,
                     "fullPath": f"{ndcId}/{data.get('aminoId', data['code'])}",
                     "shortCode": data["code"],
-                    "shareURLFullPath": Config.SITE_BASE_URL + "/web/x0/ndc/" + data["objectId"],
+                    "shareURLFullPath": Config.SITE_BASE_URL + "/web/x0/community/" + data["objectId"],
                     "objectType": data["objectType"],
                 }
             },
