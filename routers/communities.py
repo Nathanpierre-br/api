@@ -110,8 +110,6 @@ async def search_community(
 ):
     t1 = timestamp()
     size = size if 0 < size < 101 else 25
-
-    # parse page token
     if pageToken:
         start = parse_page_token(pageToken, start)
 
@@ -119,19 +117,19 @@ async def search_community(
     db = await Database().init()
     try:
         table = db.get(table="Communities")
-
         query = {
-            "name": {"$regex": regex_escape(q), "$options": "i"},
+            "name": {"$regex": regex_escape(q.strip()), "$options": "i"},
             "lang": language,
             "hidden": False,
         }
+        total_count = await table.count_documents(query)
         items = [item async for item in table.find(query).skip(start).limit(size)]
         communityList = [await Communities.Info(item, db, uid) for item in items]
         return Base.Answer(
             {
                 "communityList": communityList,
                 "paging": calculate_page_tokens(start, size, communityList),
-                "allItemCount": len(items),
+                "allItemCount": total_count,
             },
             spent_time=timestamp() - t1,
         )
@@ -185,19 +183,25 @@ async def search_community_by_amino_id(
 ):
     t1 = timestamp()
     size = size if 0 < size < 101 else 25
-
-    # parse page token
     if pageToken:
         start = parse_page_token(pageToken, start)
 
+    q = q.strip()
+
     if is_app_link(q) and "/c/" in q:
-        q = q[q.find("/c/") + 3 :]
+        q = q[q.find("/c/") + 3:]
+        q = q.split("/")[0].split("?")[0].strip()
+
+    if not q:
+        return Base.Answer(
+            {"resultList": [], "paging": calculate_page_tokens(start, size, [])},
+            spent_time=timestamp() - t1,
+        )
 
     uid = request.state.session["uid"]
     db = await Database().init()
     try:
         table = db.get(table="Communities")
-
         query = {"aminoId": {"$regex": regex_escape(q), "$options": "i"}}
         items = [item async for item in table.find(query).skip(start).limit(size)]
         communityList = [
