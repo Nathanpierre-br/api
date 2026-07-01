@@ -422,4 +422,4 @@ async def get_user_communities(request: Request, userId: str):
             spent_time=timestamp() - t1,
         )
     finally:
-        await db.close()  # Рекомендуется использовать await, если методы асинхронные
+        db.close()
