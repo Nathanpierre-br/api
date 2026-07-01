@@ -249,6 +249,7 @@ class Chat:
                 "lastMembersSummaryUpdateTime": 1703655999,
                 "fansOnly": False,
                 "vvChatJoinType": 1,
+                "channelType": data.get("channelType", 0),
                 "announcement": data["announcement"],
                 "pinAnnouncement": data["pinAnnouncement"],
             },
