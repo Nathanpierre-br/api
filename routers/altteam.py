@@ -11,11 +11,19 @@ from time import time as timestamp
 from fastapi import APIRouter, Request
 
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Errors, User
+from objects import Base, Errors
 from objects.types import UserRole, UserStatus
 
 from string import ascii_letters, digits
 import secrets
+
+
+
+from helpers.database.models import Global, ModelFabric
+from helpers.generator import Generator
+from objects import Links
+
+
 
 altteam = APIRouter()
 altteam.route_class = CachableRoute
@@ -357,28 +365,52 @@ async def get_user_communities(request: Request, userId: str):
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             return Errors.NotEnoughRights(timestamp() - t1)
 
-        target = await sensitive_table.find_one({"id": userId}, {"communityList": 1})
+        target = await sensitive_table.find_one({"id": userId}, {"communityList": 1, "nickname": 1, "icon": 1})
         if not target:
             return Errors.AccountNotExist(timestamp() - t1)
 
         community_ids = target.get("communityList", [])
 
         communities_table = db.get(table="Communities")
+        links_table = db.get(table="Links")
         result = []
+        
         async for item in communities_table.find({"id": {"$in": community_ids}}):
             ndc_id = item["id"]
             ndc_users_table = db.get(f"x{ndc_id}", "Users")
             ndc_profile = await ndc_users_table.find_one({"id": userId})
+            
+            link = await links_table.find_one(
+                {"objectId": userId, "objectType": 0, "ndcId": int(ndc_id)}
+            )
+            
+            if link is None and ndc_profile:
+                link = ModelFabric.Construct(
+                    Global.Links,
+                    code=Generator.RealString(8),
+                    targetCode=1,
+                    objectId=userId,
+                    objectType=0,
+                    ndcId=int(ndc_id),
+                )
+                await links_table.insert_one(link)
+
+
+            if link:
+                link_data = Links.User(link)
+            else:
+                link_data = None
+
             result.append({
                 "ndcId": item.get("id"),
                 "endpoint": item.get("aminoId"),
-                "link": item.get("link"),
                 "name": item.get("name"),
                 "icon": item.get("icon"),
                 "userProfile": {
                     "nickname": ndc_profile.get("nickname") if ndc_profile else target.get("nickname"),
                     "icon": ndc_profile.get("icon") if ndc_profile else target.get("icon"),
                     "role": ndc_profile.get("role", 0) if ndc_profile else 0,
+                    "linkData": link_data
                 }
             })
 
@@ -390,4 +422,4 @@ async def get_user_communities(request: Request, userId: str):
             spent_time=timestamp() - t1,
         )
     finally:
-        db.close()
+        await db.close()  # Рекомендуется использовать await, если методы асинхронные

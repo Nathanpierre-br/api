@@ -49,74 +49,70 @@ async def change_aminoId(request: Request):
 @profile_methods.get("/g/s/user-profile/search")
 @profile_methods.get("/x{ndcId}/s/user-profile/search")
 async def user_search(
-    request: Request,
-    q: str = "",
-    size: int = 25,
-    pageToken: str | None = None,
-    ndcId: int = 0,
+	request: Request,
+	q: str = "",
+	size: int = 25,
+	pageToken: str | None = None,
+	ndcId: int = 0,
 ):
-    t1 = timestamp()
-    
-    q_stripped = q.strip()
-    if q_stripped == "":
-        return Base.Answer(
-            {"userProfileList": [], "paging": {}, "userProfileCount": 0},
-            spent_time=timestamp() - t1,
-        )
+	t1 = timestamp()
+	
+	q_stripped = q.strip()
+	if q_stripped == "":
+		return Base.Answer(
+			{"userProfileList": [], "paging": {}, "userProfileCount": 0},
+			spent_time=timestamp() - t1,
+		)
 
-    size = size if 0 < size < 101 else 25
-    start = parse_page_token(pageToken, 0)
+	size = size if 0 < size < 101 else 25
+	start = parse_page_token(pageToken, 0)
 
-    try:
-        db = await Database().init()
-        g_users = db.get(table="Users")
-        xndc_users = db.get(f"x{ndcId}", "Users")
+	try:
+		db = await Database().init()
+		g_users = db.get(table="Users")
+		xndc_users = db.get(f"x{ndcId}", "Users")
 
-        if q_stripped.startswith("@"):
-            amino_query = regex_escape(q_stripped[1:].strip())
-            query = {"aminoId": {"$regex": f"^{amino_query}$", "$options": "i"}}
-        else:
-            nickname_query = regex_escape(q_stripped)
-            query = {"nickname": {"$regex": nickname_query, "$options": "i"}}
+		nickname_query = regex_escape(q_stripped)
+		query = {"nickname": {"$regex": nickname_query, "$options": "i"}}
 
 
-        users = [
-            item
-            async for item in xndc_users.find(query)
-            .skip(start)
-            .limit(size)
-            .sort("timestamp", DESCENDING)
-        ]
+		users = [
+			item
+			async for item in xndc_users.find(query)
+			.skip(start)
+			.limit(size)
+			.sort("timestamp", DESCENDING)
+		]
 
-        seen = set()
-        unique_users = []
-        for item in users:
-            if item["id"] not in seen:
-                seen.add(item["id"])
-                unique_users.append(item)
+		seen = set()
+		unique_users = []
+		for item in users:
+			if item["id"] not in seen:
+				seen.add(item["id"])
+				unique_users.append(item)
 
-        userProfileList = []
-        for item in unique_users:
-            g_row = await g_users.find_one({"id": item["id"]})
-            merged = (g_row or {}) | item
-            userProfileList.append(User.GetUserInfo(merged, ndcId=ndcId))
+		userProfileList = []
+		for item in unique_users:
+			g_row = await g_users.find_one({"id": item["id"]})
+			merged = (g_row or {}) | item
+			userProfileList.append(User.GetUserInfo(merged, ndcId=ndcId))
 
-        if userProfileList:
-            return Base.Answer(
-                {
-                    "userProfileList": userProfileList,
-                    "paging": calculate_page_tokens(start, size, userProfileList),
-                    "userProfileCount": await xndc_users.count_documents(query),
-                },
-                spent_time=timestamp() - t1,
-            )
-        else:
-            return Base.Answer(
-                {"userProfileList": [], "paging": {}, "userProfileCount": 0},
-                spent_time=timestamp() - t1,
-            )
-    finally:
-        db.close()
+		if userProfileList:
+			return Base.Answer(
+				{
+					"userProfileList": userProfileList,
+					"paging": calculate_page_tokens(start, size, userProfileList),
+					"userProfileCount": await xndc_users.count_documents(query),
+				},
+				spent_time=timestamp() - t1,
+			)
+		else:
+			return Base.Answer(
+				{"userProfileList": [], "paging": {}, "userProfileCount": 0},
+				spent_time=timestamp() - t1,
+			)
+	finally:
+		db.close()
 
 
 
