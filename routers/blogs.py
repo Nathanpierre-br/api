@@ -868,8 +868,8 @@ async def get_blog_comment_voters(
 	return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
 
 
-@blog_methods.post("/x{ndcId}/s/blog/{blogId}/tip")
-@blog_methods.post("/g/s/blog/{blogId}/tip")
+@blog_methods.post("/x{ndcId}/s/blog/{blogId}/tipping")
+@blog_methods.post("/g/s/blog/{blogId}/tipping")
 async def tip_blog(request: Request, blogId: str, ndcId: int = 0):
 	t1 = timestamp()
 	if not request.state.session["validsession"]:

@@ -1381,8 +1381,8 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
     return answer
 
 
-@chats.post("/x{ndcId}/s/chat/thread/{chatId}/tip")
-@chats.post("/g/s/chat/thread/{chatId}/tip")
+@chats.post("/x{ndcId}/s/chat/thread/{chatId}/tipping")
+@chats.post("/g/s/chat/thread/{chatId}/tipping")
 async def tip_chat(request: Request, chatId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
