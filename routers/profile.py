@@ -6,8 +6,10 @@ from uuid import uuid4
 from fastapi import APIRouter, Request
 from pymongo import DESCENDING
 
+import random
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
+from helpers.daily_settlement import settle_user_active_coins
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
@@ -673,10 +675,13 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
 
 	db = await Database().init()
 	table = db.get(table="Users")
+	await settle_user_active_coins(db, trigger_uid)
 	row = await table.find_one({"id": trigger_uid})
 	if row is None:
+		db.close()
 		return Errors.AccountNotExist(timestamp() - t1)
 	db.close()
+	current_coins = round(float(row.get("coins", 0.0)), 2)
 	return Base.Answer(
 		{
 			"wallet": {
@@ -691,12 +696,56 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
 					"nextWatchVideoInterval": 0,
 					"watchedVideoCount": 0,
 				},
-				"totalCoins": int(row["coins"]),
-				"totalCoinsFloat": row["coins"],
+				"totalCoins": int(current_coins),
+				"totalCoinsFloat": current_coins,
 				"adsEnabled": False,
 				"totalBusinessCoins": 0,
 				"totalBusinessCoinsFloat": 0,
 			}
+		},
+		spent_time=timestamp() - t1,
+	)
+
+
+@profile_methods.post("/g/s/wallet/daily-reward")
+@profile_methods.post("/x{ndcId}/s/check-in")
+async def claim_daily_reward(request: Request, ndcId: int = 0):
+	t1 = timestamp()
+	if not request.state.session["validsession"]:
+		return Errors.InvalidSession(timestamp() - t1)
+
+	trigger_uid = request.state.session["uid"]
+	today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+
+	db = await Database().init()
+	table = db.get(table="Users")
+	row = await table.find_one({"id": trigger_uid})
+	if row is None:
+		db.close()
+		return Errors.AccountNotExist(timestamp() - t1)
+
+	if row.get("lastDailyClaimDate") == today_str:
+		db.close()
+		return Errors.AlreadyClaimed(timestamp() - t1)
+
+	# Random reward: 1, 2, 3, or 10 (10 is rare: 5%)
+	rewards = [1.0, 2.0, 3.0, 10.0]
+	weights = [0.50, 0.30, 0.15, 0.05]
+	reward = round(random.choices(rewards, weights=weights, k=1)[0], 2)
+
+	await table.update_one(
+		{"id": trigger_uid},
+		{"$inc": {"coins": reward}, "$set": {"lastDailyClaimDate": today_str}},
+	)
+	updated_row = await table.find_one({"id": trigger_uid})
+	db.close()
+
+	updated_coins = round(float(updated_row.get("coins", 0.0)), 2)
+	return Base.Answer(
+		{
+			"claimedCoins": reward,
+			"totalCoins": int(updated_coins),
+			"totalCoinsFloat": updated_coins,
 		},
 		spent_time=timestamp() - t1,
 	)

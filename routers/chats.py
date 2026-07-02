@@ -14,6 +14,7 @@ from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.config import Config
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
+from helpers.tipping_limiter import check_and_increment_tipping_limit
 from helpers.decorators.bbnonsfw import bbnonsfw_manual_check
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import (
@@ -1353,8 +1354,24 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
             connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
 
+    reset_tip_info = {
+        "tipOptionList": [
+            {"value": 2, "icon": "https://media.altamino.top/monetization/coins.png"},
+            {"value": 10, "icon": "https://media.altamino.top/monetization/stack_of_coins.png"},
+            {"value": 50, "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png"},
+        ],
+        "tipMaxCoin": 500,
+        "tippersCount": 0,
+        "tippable": True,
+        "tipMinCoin": 1,
+        "tipCustomOption": {"value": None, "icon": "https://media.altamino.top/monetization/bag_of_coins.png"},
+        "tippedCoins": 0,
+        "tippersList": [],
+    }
+
     await chat.update_one(
-        {"id": chatId}, {"$set": {"hostId": host_candidates[0]}}
+        {"id": chatId},
+        {"$set": {"hostId": host_candidates[0], "tipInfo": reset_tip_info}},
     )
     answer = Base.Answer(
         spent_time=timestamp() - t1,
@@ -1362,6 +1379,95 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
 
     connection.close()
     return answer
+
+
+@chats.post("/x{ndcId}/s/chat/thread/{chatId}/tip")
+@chats.post("/g/s/chat/thread/{chatId}/tip")
+async def tip_chat(request: Request, chatId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    trigger_uid = request.state.session["uid"]
+
+    try:
+        data = await request.json()
+        coins = float(data.get("coins", 0))
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    if coins < 1 or coins > 500:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    is_blocked, _ = await check_and_increment_tipping_limit(trigger_uid)
+    if is_blocked:
+        return Errors.TooManyRequest(timestamp() - t1)
+
+    connection = await Database().init()
+    users_table = connection.get(table="Users")
+    sender = await users_table.find_one({"id": trigger_uid})
+    if sender is None:
+        connection.close()
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    if sender.get("coins", 0.0) < coins:
+        connection.close()
+        return Errors.NotEnoughCoins(timestamp() - t1)
+
+    chat_table = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one({"id": chatId})
+    if chat_info is None:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+    host_id = chat_info.get("hostId")
+
+    # Deduct from sender and credit chat host
+    await users_table.update_one({"id": trigger_uid}, {"$inc": {"coins": -coins}})
+    if host_id:
+        await users_table.update_one({"id": host_id}, {"$inc": {"coins": coins}})
+
+    # Update chat tipInfo leaderboard
+    tip_info = chat_info.get("tipInfo", {})
+    tippers_list = tip_info.get("tippersList", [])
+
+    tipper_entry = next((t for t in tippers_list if t.get("uid") == trigger_uid), None)
+    if tipper_entry:
+        tipper_entry["totalTippedCoins"] = round(tipper_entry.get("totalTippedCoins", 0.0) + coins, 2)
+    else:
+        ndc_users = connection.get(f"x{ndcId}", "Users")
+        ndc_sender = await ndc_users.find_one({"id": trigger_uid}) or sender
+        tipper_entry = {
+            "uid": trigger_uid,
+            "nickname": ndc_sender.get("nickname", ""),
+            "icon": ndc_sender.get("icon"),
+            "reputation": ndc_sender.get("reputation", 0),
+            "totalTippedCoins": round(coins, 2),
+        }
+        tippers_list.append(tipper_entry)
+
+    tippers_list.sort(key=lambda x: x.get("totalTippedCoins", 0.0), reverse=True)
+    new_tipped_coins = round(tip_info.get("tippedCoins", 0.0) + coins, 2)
+
+    updated_tip_info = {
+        "tipOptionList": [
+            {"value": 2, "icon": "https://media.altamino.top/monetization/coins.png"},
+            {"value": 10, "icon": "https://media.altamino.top/monetization/stack_of_coins.png"},
+            {"value": 50, "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png"},
+        ],
+        "tipMaxCoin": 500,
+        "tippersCount": len(tippers_list),
+        "tippable": True,
+        "tipMinCoin": 1,
+        "tipCustomOption": {"value": None, "icon": "https://media.altamino.top/monetization/bag_of_coins.png"},
+        "tippedCoins": new_tipped_coins,
+        "tippersList": tippers_list,
+    }
+
+    await chat_table.update_one({"id": chatId}, {"$set": {"tipInfo": updated_tip_info}})
+    connection.close()
+
+    return Base.Answer({"tipInfo": updated_tip_info}, spent_time=timestamp() - t1)
 
 
 
