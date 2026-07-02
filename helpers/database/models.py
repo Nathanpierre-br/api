@@ -128,6 +128,7 @@ class Community:
         announcement = String(load_default=None)
         pinAnnouncement = Bool(load_default=False)
         status = Integer(load_default=0)
+        channelType = Integer(load_default=0)  # 0=normal, 1=voice, 2=video
         extensions = Dict(load_default={}, allow_none=True)
         tags = List(String(), load_default=[])
         canMembersInvite = Bool(load_default=True)
