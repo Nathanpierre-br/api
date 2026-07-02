@@ -53,4 +53,13 @@ class Blog:
                 else 0
             ),
             "viewCount": 0,
+            "tipInfo": data.get("tipInfo", {
+                "tipMaxCoin": 500,
+                "tippersCount": 0,
+                "tippable": True,
+                "tipMinCoin": 1,
+                "tipCustomOption": {"value": None, "icon": "https://media.altamino.top/monetization/bag_of_coins.png"},
+                "tippedCoins": 0,
+                "tippersList": [],
+            }),
         }

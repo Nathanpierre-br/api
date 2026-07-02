@@ -209,6 +209,24 @@ class Errors:
         )
 
     @staticmethod
+    def NotEnoughCoins(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=2001,
+            html_status_code=400,
+            api_message="You don't have enough coins for this transaction.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
+    def AlreadyClaimed(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=2002,
+            html_status_code=400,
+            api_message="You have already claimed your daily reward today.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
     def BigMessage(spent_time: Union[int, float] = 0):
         return Base.Answer(
             api_status_code=1664,

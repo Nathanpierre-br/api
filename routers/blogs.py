@@ -11,6 +11,7 @@ from pymongo import DESCENDING
 
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
+from helpers.tipping_limiter import check_and_increment_tipping_limit
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
@@ -669,6 +670,7 @@ async def post_blog(request: Request, ndcId: int = 0):
 		title=title,
 		content=content,
 		blogType=blog_type,
+		mediaList=data.get("mediaList"),
 		extensions=useful_extensions,
 	)
 
@@ -864,3 +866,87 @@ async def get_blog_comment_voters(
 
 	db.close()
 	return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
+
+
+@blog_methods.post("/x{ndcId}/s/blog/{blogId}/tip")
+@blog_methods.post("/g/s/blog/{blogId}/tip")
+async def tip_blog(request: Request, blogId: str, ndcId: int = 0):
+	t1 = timestamp()
+	if not request.state.session["validsession"]:
+		return Errors.InvalidSession(timestamp() - t1)
+
+	trigger_uid = request.state.session["uid"]
+
+	try:
+		data = await request.json()
+		coins = float(data.get("coins", 0))
+	except Exception:
+		return Errors.InvalidRequest(timestamp() - t1)
+
+	if coins < 1 or coins > 500:
+		return Errors.InvalidRequest(timestamp() - t1)
+
+	is_blocked, _ = await check_and_increment_tipping_limit(trigger_uid)
+	if is_blocked:
+		return Errors.TooManyRequest(timestamp() - t1)
+
+	db = await Database().init()
+	users_table = db.get(table="Users")
+	sender = await users_table.find_one({"id": trigger_uid})
+	if sender is None:
+		db.close()
+		return Errors.AccountNotExist(timestamp() - t1)
+
+	if sender.get("coins", 0.0) < coins:
+		db.close()
+		return Errors.NotEnoughCoins(timestamp() - t1)
+
+	blogs_table = db.get(f"x{ndcId}", "Blogs")
+	blog = await blogs_table.find_one({"id": blogId})
+	if blog is None:
+		db.close()
+		return Errors.DataNotExist(spent_time=timestamp() - t1)
+
+	author_uid = blog.get("uid")
+
+	# Deduct from sender and credit author
+	await users_table.update_one({"id": trigger_uid}, {"$inc": {"coins": -coins}})
+	if author_uid:
+		await users_table.update_one({"id": author_uid}, {"$inc": {"coins": coins}})
+
+	# Update blog tipInfo leaderboard
+	tip_info = blog.get("tipInfo", {})
+	tippers_list = tip_info.get("tippersList", [])
+
+	# Update or insert tipper in list
+	tipper_entry = next((t for t in tippers_list if t.get("uid") == trigger_uid), None)
+	if tipper_entry:
+		tipper_entry["totalTippedCoins"] = round(tipper_entry.get("totalTippedCoins", 0.0) + coins, 2)
+	else:
+		ndc_users = db.get(f"x{ndcId}", "Users")
+		ndc_sender = await ndc_users.find_one({"id": trigger_uid}) or sender
+		tipper_entry = {
+			"uid": trigger_uid,
+			"nickname": ndc_sender.get("nickname", ""),
+			"icon": ndc_sender.get("icon"),
+			"reputation": ndc_sender.get("reputation", 0),
+			"totalTippedCoins": round(coins, 2),
+		}
+		tippers_list.append(tipper_entry)
+
+	tippers_list.sort(key=lambda x: x.get("totalTippedCoins", 0.0), reverse=True)
+	new_tipped_coins = round(tip_info.get("tippedCoins", 0.0) + coins, 2)
+
+	updated_tip_info = {
+		"tipMaxCoin": 500,
+		"tippersCount": len(tippers_list),
+		"tippable": True,
+		"tipMinCoin": 1,
+		"tippedCoins": new_tipped_coins,
+		"tippersList": tippers_list,
+	}
+
+	await blogs_table.update_one({"id": blogId}, {"$set": {"tipInfo": updated_tip_info}})
+	db.close()
+
+	return Base.Answer({"tipInfo": updated_tip_info}, spent_time=timestamp() - t1)

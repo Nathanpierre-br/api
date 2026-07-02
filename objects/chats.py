@@ -196,7 +196,7 @@ class Chat:
             "strategyInfo": "{}",
             "isPinned": False,
             "title": data.get("title"),
-            "tipInfo": {
+            "tipInfo": data.get("tipInfo", {
                 "tipOptionList": [
                     {
                         "value": 2,
@@ -213,14 +213,15 @@ class Chat:
                 ],
                 "tipMaxCoin": 500,
                 "tippersCount": 0,
-                "tippable": False,
+                "tippable": True,
                 "tipMinCoin": 1,
                 "tipCustomOption": {
                     "value": None,
                     "icon": "https://media.altamino.top/monetization/bag_of_coins.png",
                 },
                 "tippedCoins": 0,
-            },
+                "tippersList": [],
+            }),
             "membershipStatus": membershipStatus,
             "content": data.get("description"),
             "needHidden": False,
