@@ -277,10 +277,10 @@ async def edit_community(request: Request, ndcId: int = 0):
 				preparedQueries["lang"] = lang_val if lang_val in ["en", "ru", "es", "ar"] else "en"
 			
 			try:
-				if "joinType" in data:
-					preparedQueries["joinType"] = int(data["joinType"]) if data["joinType"] in [0, 1, 2] else 0
-				if "hidden" in data:
-					preparedQueries["hidden"] = bool(data["hidden"])
+				if "joinType" in conf:
+					preparedQueries["joinType"] = int(conf["joinType"]) if conf["joinType"] in [0, 1, 2] else 0
+				if "hidden" in conf:
+					preparedQueries["hidden"] = bool(conf["hidden"])
 			except:
 				return Errors.InvalidRequest(timestamp() - t1)
 
