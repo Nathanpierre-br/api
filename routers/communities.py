@@ -417,8 +417,8 @@ async def leave_community(request: Request, ndcId: int):
 async def get_community_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
 
-    uid = request.state.session["uid"]
-
+    try:uid = request.state.session["uid"]
+    except:uid=None
     db = await Database().init()
     try:
         ndc_info = await Communities.Info(ndcId, db, uid)

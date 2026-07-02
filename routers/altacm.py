@@ -47,141 +47,141 @@ async def promotions(request: Request, ndcId: int, userId: str):
 @altacm.post("/altacm/s/community/create")
 @validauth_required
 async def create_community(request: Request):
-    t1 = timestamp()
+	t1 = timestamp()
 
-    trigger_uid = request.state.session["uid"]
-    data = await request.json()
+	trigger_uid = request.state.session["uid"]
+	data = await request.json()
 
-    fields = ["name", "aminoId", "lang"]
-    missing_fields = [field for field in fields if field not in data]
-    if missing_fields:
-        return Errors.InvalidRequest(timestamp() - t1)
+	fields = ["name", "aminoId", "lang"]
+	missing_fields = [field for field in fields if field not in data]
+	if missing_fields:
+		return Errors.InvalidRequest(timestamp() - t1)
 
-    db = await Database().init()
-    try:
-        sensitive_table = db.get(table="Users")
+	db = await Database().init()
+	try:
+		sensitive_table = db.get(table="Users")
 
-        user = await sensitive_table.find_one({"id": trigger_uid})
-        if not user or not UserRole.is_global_staff(user.get("role", 0)):
-            # For now, we will prohibit the creation of communities by users themselves.
-            db.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+		user = await sensitive_table.find_one({"id": trigger_uid})
+		if not user or not UserRole.is_global_staff(user.get("role", 0)):
+			# For now, we will prohibit the creation of communities by users themselves.
+			db.close()
+			return Errors.NotEnoughRights(timestamp() - t1)
 
-        ndclist_table = db.get(table="Communities")
-        
-        existing_community = await ndclist_table.find_one({"aminoId": data["aminoId"]})
-        if existing_community:
-            db.close()
-            return Errors.Exs9(timestamp() - t1) 
+		ndclist_table = db.get(table="Communities")
+		
+		existing_community = await ndclist_table.find_one({"aminoId": data["aminoId"]})
+		if existing_community:
+			db.close()
+			return Errors.Exs9(timestamp() - t1) 
 
-        is_staff = UserRole.is_global_staff(user.get("role", 0))
-        agentAminoId = None
+		is_staff = UserRole.is_global_staff(user.get("role", 0))
+		agentAminoId = None
 
-        if "agentGlobalLink" in data and data["agentGlobalLink"]:
-            if not is_staff:
-                db.close()
-                return Errors.NotEnoughRights(timestamp() - t1)
-                
-            if f"{Config.SITE_DOMAIN}/u/" not in data["agentGlobalLink"]:
-                db.close()
-                return Errors.InvalidRequest(timestamp() - t1)
-                
-            agentAminoId = data["agentGlobalLink"].split("/")[-1]
-        else:
-            agentAminoId = user.get("aminoId")
-            if not agentAminoId:
-                db.close()
-                return Errors.InternalServerError(timestamp() - t1)
+		if "agentGlobalLink" in data and data["agentGlobalLink"]:
+			if not is_staff:
+				db.close()
+				return Errors.NotEnoughRights(timestamp() - t1)
+				
+			if f"{Config.SITE_DOMAIN}/u/" not in data["agentGlobalLink"]:
+				db.close()
+				return Errors.InvalidRequest(timestamp() - t1)
+				
+			agentAminoId = data["agentGlobalLink"].split("/")[-1]
+		else:
+			agentAminoId = user.get("aminoId")
+			if not agentAminoId:
+				db.close()
+				return Errors.InternalServerError(timestamp() - t1)
 
-        latest_community = await ndclist_table.find_one(sort=[("id", -1)])
-        if latest_community and latest_community.get("id"):
-            ndcId = latest_community["id"] + 1
-        else:
-            ndcId = 1
+		latest_community = await ndclist_table.find_one(sort=[("id", -1)])
+		if latest_community and latest_community.get("id"):
+			ndcId = latest_community["id"] + 1
+		else:
+			ndcId = 1
 
-        shape = await ndclist_table.find_one({"id": 0})
-        if not shape:
-            db.close()
-            return Errors.InternalServerError(timestamp() - t1)
+		shape = await ndclist_table.find_one({"id": 0})
+		if not shape:
+			db.close()
+			return Errors.InternalServerError(timestamp() - t1)
 
-        shape["id"] = ndcId
-        shape["name"] = data["name"]
-        shape["aminoId"] = data["aminoId"]
-        shape["lang"] = data["lang"] if data["lang"] in ["en", "ru", "es", "ar"] else "en"
-        for key in ["_id", "theme"]:
-            shape.pop(key, None)
+		shape["id"] = ndcId
+		shape["name"] = data["name"]
+		shape["aminoId"] = data["aminoId"]
+		shape["lang"] = data["lang"] if data["lang"] in ["en", "ru", "es", "ar"] else "en"
+		for key in ["_id", "theme"]:
+			shape.pop(key, None)
 
-        aminoIds = ["teamaltamino", "astral", agentAminoId]
-        global_table = db.get("x0", "Users")
-        new_users_table = db.get(f"x{ndcId}", "Users")
-        who_joined = []
-        
-        for aminoId in aminoIds:
-            aid2id_request = await sensitive_table.find_one(
-                {"aminoId": aminoId}, projection={"id": 1, "_id": 0}
-            )
+		aminoIds = ["teamaltamino", "astral", agentAminoId]
+		global_table = db.get("x0", "Users")
+		new_users_table = db.get(f"x{ndcId}", "Users")
+		who_joined = []
+		
+		for aminoId in aminoIds:
+			aid2id_request = await sensitive_table.find_one(
+				{"aminoId": aminoId}, projection={"id": 1, "_id": 0}
+			)
 
-            if not aid2id_request and aminoId != "astral":
-                db.close()
-                return Errors.InternalServerError(timestamp() - t1)
+			if not aid2id_request and aminoId != "astral":
+				db.close()
+				return Errors.InternalServerError(timestamp() - t1)
 
-            if not aid2id_request and aminoId == "astral":
-                continue
+			if not aid2id_request and aminoId == "astral":
+				continue
 
-            uid = aid2id_request["id"]
-            
-            if uid in who_joined:
-                continue
+			uid = aid2id_request["id"]
+			
+			if uid in who_joined:
+				continue
 
-            profile = await global_table.find_one({"id": uid})
-            if not profile:
-                db.close()
-                return Errors.InternalServerError(timestamp() - t1)
+			profile = await global_table.find_one({"id": uid})
+			if not profile:
+				db.close()
+				return Errors.InternalServerError(timestamp() - t1)
 
-            modtime = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-            profile.pop("_id", None)
-            profile["wall"] = {}
-            profile["whoFollows"] = []
-            profile["following"] = []
-            profile["titles"] = []
-            profile["savedBlogs"] = []
-            profile["consecutiveDaysOfCheckIns"] = 0
-            profile["reputation"] = 0
-            profile["minutesPerDay"] = 0
-            profile["minutesPerWeek"] = 0
-            profile["createdTime"] = modtime
-            profile["modifiedTime"] = modtime
-            
-            if aminoId == agentAminoId:
-                shape["agent"] = uid
-                profile["role"] = 102
+			modtime = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+			profile.pop("_id", None)
+			profile["wall"] = {}
+			profile["whoFollows"] = []
+			profile["following"] = []
+			profile["titles"] = []
+			profile["savedBlogs"] = []
+			profile["consecutiveDaysOfCheckIns"] = 0
+			profile["reputation"] = 0
+			profile["minutesPerDay"] = 0
+			profile["minutesPerWeek"] = 0
+			profile["createdTime"] = modtime
+			profile["modifiedTime"] = modtime
+			
+			if aminoId == agentAminoId:
+				shape["agent"] = uid
+				profile["role"] = 102
 
-            await new_users_table.insert_one(profile)
-            who_joined.append(uid)
+			await new_users_table.insert_one(profile)
+			who_joined.append(uid)
 
-        shape["memberList"] = who_joined
-        shape["membersCount"] = len(who_joined)
-        await ndclist_table.insert_one(shape)
+		shape["memberList"] = who_joined
+		shape["membersCount"] = len(who_joined)
+		await ndclist_table.insert_one(shape)
 
-        await sensitive_table.update_many(
-            {"id": {"$in": who_joined}},
-            {"$addToSet": {"communityList": ndcId}},
-        )
+		await sensitive_table.update_many(
+			{"id": {"$in": who_joined}},
+			{"$addToSet": {"communityList": ndcId}},
+		)
 
-        return Base.Answer({
-            "community": {
-                "ndcId": shape["id"],
-                "name": shape["name"],
-                "aminoId": shape["aminoId"],
-                "lang": shape["lang"],
-                "membersCount": shape["membersCount"],
-                "icon": shape.get("icon")
-                }
-            },
-            spent_time=timestamp() - t1
-        )
-    finally:
-        db.close()
+		return Base.Answer({
+			"community": {
+				"ndcId": shape["id"],
+				"name": shape["name"],
+				"aminoId": shape["aminoId"],
+				"lang": shape["lang"],
+				"membersCount": shape["membersCount"],
+				"icon": shape.get("icon")
+				}
+			},
+			spent_time=timestamp() - t1
+		)
+	finally:
+		db.close()
 
 @altacm.delete("/altacm/s/community/x{ndcId}/destroy")
 @validauth_required
@@ -222,6 +222,7 @@ async def destroy_community(request: Request, ndcId: int):
 	return Base.Answer(spent_time=timestamp() - t1)
 
 
+
 @altacm.post("/altacm/s/community/x{ndcId}/edit")
 @validauth_required
 async def edit_community(request: Request, ndcId: int = 0):
@@ -232,42 +233,83 @@ async def edit_community(request: Request, ndcId: int = 0):
 	conf = data.get("configuration", {})
 
 	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Users")
+	try:
+		global_users_table = db.get(table="Users")
+		global_user = await global_users_table.find_one({"id": trigger_uid})
+		
+		is_global = global_user and UserRole.is_global_staff(global_user.get("role", 0))
+		is_allowed = is_global
 
-	user = await table.find_one({"id": trigger_uid})
-	if not user or not UserRole.is_global_staff(user.get("role", 0)):
+		if not is_allowed:
+			local_users_table = db.get(f"x{ndcId}", "Users")
+			local_user = await local_users_table.find_one({"id": trigger_uid})
+			
+			if local_user and local_user.get("role", 0) in (UserRole.Leader, UserRole.Agent):
+				is_allowed = True
+
+		if not is_allowed:
+			return Errors.NotEnoughRights(timestamp() - t1)
+
+		preparedQueries = {
+			"configuration": {},
+			"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+		}
+
+		for key in [
+			"name",
+			"aminoId",
+			"tagline",
+			"description",
+			"guidelines",
+			"icon",
+			"themeUrl",
+			"themeColor",
+			"themeRevision",
+			"coverUrl",
+		]:
+			if key in data:
+				preparedQueries[key] = data[key]
+
+
+		if is_global:
+			if "lang" in data:
+				lang_val = data["lang"]
+				preparedQueries["lang"] = lang_val if lang_val in ["en", "ru", "es", "ar"] else "en"
+			
+			try:
+				if "joinType" in data:
+					preparedQueries["joinType"] = int(data["joinType"]) if data["joinType"] in [0, 1, 2] else 0
+				if "hidden" in data:
+					preparedQueries["hidden"] = bool(data["hidden"])
+			except:
+				return Errors.InvalidRequest(timestamp() - t1)
+
+
+		for key in ["welcomeMessage", "welcomeMessageEnabled"]:
+			if key in conf:
+				preparedQueries["configuration"][key] = conf[key]
+
+		if not preparedQueries["configuration"]:
+			preparedQueries.pop("configuration")
+
+		communities_table = db.get(table="Communities")
+		
+		if "aminoId" in preparedQueries:
+			existing_community = await communities_table.find_one({
+				"aminoId": preparedQueries["aminoId"],
+				"id": {"$ne": ndcId}
+			})
+			if existing_community:
+				return Errors.Exs9(timestamp() - t1) 
+		
+		await communities_table.update_one({"id": ndcId}, {"$set": preparedQueries})
+
+		return Base.Answer({}, spent_time=timestamp() - t1)
+		
+	finally:
 		db.close()
-		return Errors.NotEnoughRights(timestamp() - t1)
 
-	preparedQueries = {
-		"configuration": {},
-		"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-	}
 
-	for key in [
-		"name",
-		"aminoId",
-		"tagline",
-		"description",
-		"guidelines",
-		"icon",
-		"themeUrl",
-		"themeColor",
-		"themeRevision",
-		"coverUrl",
-	]:
-		if key in data:
-			preparedQueries[key] = data[key]
-
-	for key in ["welcomeMessage", "welcomeMessageEnabled"]:
-		if key in conf:
-			preparedQueries["configuration"][key] = data[key]
-
-	table = db.get(table="Communities")
-	await table.update_one({"id": ndcId}, {"$set": preparedQueries})
-
-	db.close()
-	return Base.Answer({}, spent_time=timestamp() - t1)
 
 
 
