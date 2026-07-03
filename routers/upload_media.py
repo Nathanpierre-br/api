@@ -59,10 +59,10 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
         if target == "theme":
             # ain't trust anyone! better check if it's leader/agent/astral
             db = await Database().init()
-            g = db.get("Users")
+            g = db.get(table="Users")
             global_user_info = await g.find_one({"id": uid})
             if not RoleTypes.is_global_staff(global_user_info.get("role", 0)):
-                table = db.get(f"x{ndcId}", "Users")
+                table = db.get(f"x{ndcId}", table="Users")
                 user_info = await table.find_one({"id": uid})
                 if RoleTypes.is_local_admin(user_info.get("role", 0)):
                     return Errors.NotEnoughRights()

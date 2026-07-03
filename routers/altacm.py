@@ -19,34 +19,55 @@ altacm.route_class = CachableRoute
 @altacm.delete("/altacm/s/community/x{ndcId}/user/{userId}/promote")
 @validauth_required
 async def promotions(request: Request, ndcId: int, userId: str):
-	t1 = timestamp()
+    t1 = timestamp()
 
-	trigger_uid = request.state.session["uid"]
-	destruction_mode = request.method == "DELETE"
-	if not destruction_mode:
-		data = await request.json()
-		role = data.get("role")
-		if role is None or role < 100 or role > 102:
-			return Errors.InvalidRequest()
-	else:
-		role = 0
- 
+    trigger_uid = request.state.session["uid"]
+    destruction_mode = request.method == "DELETE"
+    
+    if not destruction_mode:
+        data = await request.json()
+        role = data.get("role")
+        if role is None or role < 100 or role > 102:
+            return Errors.InvalidRequest()
+    else:
+        role = 0
 
-	db = await Database().init()
-	sensitive_table = db.get(table="Users")
-	ndc_users_table = db.get(f"x{ndcId}", "Users")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        communities_table = db.get(table="Communities")
+        ndc_users_table = db.get(f"x{ndcId}", table="Users")
 
-	user = await sensitive_table.find_one({"id": trigger_uid})
-	gu = await sensitive_table.find_one({"id": userId})
-	f = UserRole.is_local_admin if role != UserRole.Agent else lambda r: r == UserRole.Agent
-	if not gu or not f(role):
-		if not user or not UserRole.is_global_staff(user.get("role", 0)):
-			db.close()
-			return Errors.NotEnoughRights(timestamp() - t1)
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        gu = await sensitive_table.find_one({"id": userId})
+        
 
-	await ndc_users_table.update_one({"id": userId}, {"$set": {"role": role}})
+        f = UserRole.is_local_admin if role != UserRole.Agent else lambda r: r == UserRole.Agent
+        if not gu or not f(role):
+            if not user or not UserRole.is_global_staff(user.get("role", 0)):
+                return Errors.NotEnoughRights(timestamp() - t1)
 
-	return Base.Answer(spent_time=timestamp() - t1)
+        if role == UserRole.Agent:
+            old_agent = await ndc_users_table.find_one({"role": UserRole.Agent})
+            if old_agent and old_agent["id"] != userId:
+                await ndc_users_table.update_one(
+                    {"id": old_agent["id"]}, 
+                    {"$set": {"role": UserRole.Leader}}
+                )
+            
+            await communities_table.update_one(
+                {"id": ndcId},
+                {"$set": {"agent": userId}} 
+            )
+
+        await ndc_users_table.update_one({"id": userId}, {"$set": {"role": role}})
+
+        return Base.Answer(spent_time=timestamp() - t1)
+
+    finally:
+        db.close()
+
+
 
 @altacm.post("/altacm/s/community/create")
 @validauth_required
