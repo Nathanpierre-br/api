@@ -266,6 +266,7 @@ async def edit_community(request: Request, ndcId: int = 0):
 			"description",
 			"guideline",
 			"guidelineMediaList",
+			"mediaList", #description media list
 			"icon",
 			"themeUrl",
 			"themeColor",
