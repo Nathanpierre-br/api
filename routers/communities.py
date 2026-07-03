@@ -489,7 +489,7 @@ async def get_community_guidelines(request: Request, ndcId: int = 0):
             {
                 "communityGuideline": {
                     "content": info.get("guideline", ""),
-                    "mediaList": [],
+                    "mediaList": info.get("mediaList", []),
                 }
             },
             spent_time=timestamp() - t1,

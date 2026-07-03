@@ -16,6 +16,7 @@ from helpers.functions import detect_file_ext
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors
+from objects.types.users import UserRole as RoleTypes
 
 upload_media = APIRouter()
 upload_media.route_class = CachableRoute
@@ -58,10 +59,13 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
         if target == "theme":
             # ain't trust anyone! better check if it's leader/agent/astral
             db = await Database().init()
-            table = db.get(f"x{ndcId}", "Users")
-            user_info = await table.find_one({"id": uid})
-            if user_info.get("role") not in [100, 102, 200, 201, 250, 251, 555]:
-                return Errors.NotEnoughRights()
+            g = db.get("Users")
+            global_user_info = await g.find_one({"id": uid})
+            if not RoleTypes.is_global_staff(global_user_info.get("role", 0)):
+                table = db.get(f"x{ndcId}", "Users")
+                user_info = await table.find_one({"id": uid})
+                if RoleTypes.is_local_admin(user_info.get("role", 0)):
+                    return Errors.NotEnoughRights()
 
             # if its valid zip we can get theme config and revision here
             # so that way we both checking theme and its config

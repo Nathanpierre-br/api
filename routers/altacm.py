@@ -30,15 +30,19 @@ async def promotions(request: Request, ndcId: int, userId: str):
 			return Errors.InvalidRequest()
 	else:
 		role = 0
+ 
 
 	db = await Database().init()
 	sensitive_table = db.get(table="Users")
 	ndc_users_table = db.get(f"x{ndcId}", "Users")
 
 	user = await sensitive_table.find_one({"id": trigger_uid})
-	if not user or not UserRole.is_global_staff(user.get("role", 0)):
-		db.close()
-		return Errors.NotEnoughRights(timestamp() - t1)
+	gu = await sensitive_table.find_one({"id": userId})
+	f = UserRole.is_local_admin if role != UserRole.Agent else lambda r: r == UserRole.Agent
+	if not gu or not f(role):
+		if not user or not UserRole.is_global_staff(user.get("role", 0)):
+			db.close()
+			return Errors.NotEnoughRights(timestamp() - t1)
 
 	await ndc_users_table.update_one({"id": userId}, {"$set": {"role": role}})
 

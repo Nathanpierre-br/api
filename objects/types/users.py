@@ -48,7 +48,9 @@ class UserRole:
         AltAminoAdmin, 
         AltAminoStaff,
         Feed,
-        System
+        System,
+        250,
+        251
     ]
 
     # Local administration (Community management)
