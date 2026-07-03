@@ -310,6 +310,38 @@ async def edit_community(request: Request, ndcId: int = 0):
 		db.close()
 
 
+@altacm.post("/altacm/s/community/x{ndcId}/theme-pack")
+@validauth_required
+async def get_community_themePack(request: Request, ndcId: int = 0):
+	t1 = timestamp()
+
+	trigger_uid = request.state.session["uid"]
+
+	db = await Database().init()
+	try:
+		global_users_table = db.get(table="Users")
+		global_user = await global_users_table.find_one({"id": trigger_uid})
+		
+		is_global = global_user and UserRole.is_global_staff(global_user.get("role", 0))
+		is_allowed = is_global
+
+		if not is_allowed:
+			local_users_table = db.get(f"x{ndcId}", "Users")
+			local_user = await local_users_table.find_one({"id": trigger_uid})
+			
+			if local_user and local_user.get("role", 0) in (UserRole.Leader, UserRole.Agent):
+				is_allowed = True
+
+		if not is_allowed:
+			return Errors.NotEnoughRights(timestamp() - t1)
+
+		communities_table = db.get(table="Communities")
+		theme = await communities_table.find_one({"id": ndcId}, projection={"themeUrl": 1, 'themeRevision': 1, "themeColor": 1, "_id": 0})
+		return Base.Answer({"themeUrl": theme.get("themeUrl"), "themeRevision": theme.get("themeRevision"), "themeColor": theme.get("themeColor")}, spent_time=timestamp() - t1)
+		
+	finally:
+		db.close()
+
 
 
 
