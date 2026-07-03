@@ -138,6 +138,7 @@ class Communities:
             "isStandaloneAppDeprecated": False,
             "listedStatus": data.get("listedStatus", 2),
             "probationStatus": 0,
+            "hidden": data.get("hidden", False),
             "themePack": {
                 "themeColor": data.get("themeColor", "#1B1C43"),
                 "themePackUrl": data.get("themeUrl"),
@@ -151,7 +152,7 @@ class Communities:
                 ),
                 "themePackRevision": data.get("themeRevision"),
             },
-            "mediaList": [],  # for description
+            "mediaList":  data.get("mediaList", []),
             "isStandaloneAppMonetizationEnabled": False,
             "activeInfo": {},
             "configuration": {

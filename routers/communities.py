@@ -488,7 +488,7 @@ async def get_community_guidelines(request: Request, ndcId: int = 0):
         return Base.Answer(
             {
                 "communityGuideline": {
-                    "content": info.get("guidelines", ""),
+                    "content": info.get("guideline", ""),
                     "mediaList": info.get("guidelineMediaList", []),
                 }
             },
