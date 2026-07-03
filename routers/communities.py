@@ -488,8 +488,8 @@ async def get_community_guidelines(request: Request, ndcId: int = 0):
         return Base.Answer(
             {
                 "communityGuideline": {
-                    "content": info.get("guideline", ""),
-                    "mediaList": info.get("mediaList", []),
+                    "content": info.get("guidelines", ""),
+                    "mediaList": info.get("guidelineMediaList", []),
                 }
             },
             spent_time=timestamp() - t1,
