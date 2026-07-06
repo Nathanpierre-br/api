@@ -228,9 +228,14 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
     db = await Database().init()
     table = db.get(f"x{ndcId}", table="Users")
     row = await table.find_one({"id": userId})
-    db.close()
     if row is None:
+        db.close()
         return Errors.AccountNotExist(timestamp() - t1)
+    db.close()
+
+    full_history = row.get("checkInHistory", {}) or {}
+    today_str = _date_str(_local_date(180))
+
 
     return Base.Answer(
         {
@@ -238,6 +243,15 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
                 "secondsSpent": int(row.get("secondsSpent", 0)),
                 "numberOfFollowersCount": int(row.get("followersCount", 0)),
                 "numberOfPostsCreated": int(row.get("postsCount", 0)),
+				"checkInHistory": {
+					"joinedTime": None,
+
+					"consecutiveCheckInDays": row.get("consecutiveCheckInDays", 0),
+					"hasCheckInToday": row.get("lastCheckInDate") == today_str,
+					"hasAnyCheckIn": bool(full_history),
+					"history": full_history,
+				},
+				"brokenStreaks": row.get("brokenStreaks", 0),
             }
         },
         spent_time=timestamp() - t1,
