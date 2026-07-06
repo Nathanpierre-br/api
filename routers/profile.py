@@ -56,53 +56,6 @@ async def change_aminoId(request: Request):
     return Base.Answer(spent_time=timestamp() - t1)
 
 
-
-
-
-@profile_methods.get("/g/s/user-profile/{uid}")
-@profile_methods.get("/x{ndcId}/s/user-profile/{uid}")
-async def get_user_info(uid: str, request: Request, ndcId: int):
-    print(f"getting user info for {uid} in community {ndcId}")
-    t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-    trigger_uid = request.state.session["uid"]
-    db = await Database().init()
-    g_table = db.get(table="Users")
-    table = db.get(database=f"x{ndcId}", table="Users")
-    row2 = await table.find_one({"id": uid})
-    if row2 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
-
-    global_row = await g_table.find_one({"id": uid})
-    if global_row:
-        if not row2.get("tagList"):
-            global_tag_list = global_row.get("tagList")
-            if global_tag_list:
-                row2["tagList"] = global_tag_list
-
-        if "isTeamMember" in global_row:
-            row2["isTeamMember"] = global_row["isTeamMember"]
-
-        if "isVerified" in global_row:
-            row2["isVerified"] = global_row["isVerified"]
-        if global_row.get("status", 0) in [9, 10]:
-            row2["status"] = global_row["status"]
-        if global_row.get("extensions", {}).get("__disabledLevel__"):
-            row2["extensions"]["__disabledLevel__"] = global_row["extensions"]["__disabledLevel__"]
-
-        if ndcId == 0:
-            row2 = global_row | row2
-        
-    db.close()
-    return Base.Answer(
-        {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, extensions=row2.get("extensions"), ndcId=ndcId)},
-        spent_time=timestamp() - t1,
-    )
-
-
-
-
 @profile_methods.get("/g/s/user-profile/search")
 @profile_methods.get("/x{ndcId}/s/user-profile/search")
 async def user_search(
@@ -294,7 +247,7 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
 @profile_methods.get("/g/s/user-profile/{uid}/joined")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}/joined")
 async def get_user_following(
-    uid: str, request: Request, ndcId: int, start: int = 0, size: int = 25
+    uid: str, request: Request, ndcId: int = 0, start: int = 0, size: int = 25
 ):
     t1 = timestamp()
 
@@ -317,7 +270,7 @@ async def get_user_following(
 @profile_methods.get("/g/s/user-profile/{uid}/member")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}/member")
 async def get_user_followers(
-    uid: str, request: Request, ndcId: int, start: int = 0, size: int = 25
+    uid: str, request: Request, ndcId: int = 0, start: int = 0, size: int = 25
 ):
     t1 = timestamp()
 
@@ -342,7 +295,7 @@ async def get_user_followers(
 async def get_user_wall(
     uid: str,
     request: Request,
-    ndcId: int,
+    ndcId: int = 0,
     start: int = 0,
     size: int = 25,
     sort: str = "newest",
@@ -394,7 +347,7 @@ async def get_user_wall(
 @profile_methods.get("/g/s/user-profile/{uid}/g-comment/{commentId}/response")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}")
 @profile_methods.get("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/response")
-async def get_user_wall_answers(uid: str, commentId: str, request: Request, ndcId: int):
+async def get_user_wall_answers(uid: str, commentId: str, request: Request, ndcId: int = 0):
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
@@ -441,7 +394,7 @@ async def get_user_wall_answers(uid: str, commentId: str, request: Request, ndcI
 @profile_methods.delete("/g/s/user-profile/{uid}/g-comment/{commentId}")
 @profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}")
 async def delete_post_from_wall(
-    request: Request, uid: str, commentId: str, ndcId: int
+    request: Request, uid: str, commentId: str, ndcId: int = 0
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -494,7 +447,7 @@ async def delete_post_from_wall(
 async def post_on_user_wall(
     uid: str,
     request: Request,
-    ndcId: int,
+    ndcId: int = 0,
     start: int = 0,
     size: int = 25,
     sort: str = "newest",
@@ -551,7 +504,7 @@ async def post_on_user_wall(
 @profile_methods.post("/g/s/user-profile/{uid}/comment/{commentId}/vote")
 @profile_methods.post("/g/s/user-profile/{uid}/g-comment/{commentId}/vote")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/vote")
-async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int):
+async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -602,7 +555,7 @@ async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int):
 @profile_methods.delete("/g/s/user-profile/{uid}/g-comment/{commentId}/vote")
 @profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/comment/{commentId}/vote")
 async def remove_comment_vote(
-    request: Request, uid: str, commentId: str, ndcId: int
+    request: Request, uid: str, commentId: str, ndcId: int = 0
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -642,7 +595,7 @@ async def get_comment_voted_users(
     request: Request,
     uid: str,
     commentId: str,
-    ndcId: int,
+    ndcId: int = 0,
     pageToken: str | None = None,
     start: int = 0,
     size: int = 25,
@@ -677,7 +630,7 @@ async def get_comment_voted_users(
 
 @profile_methods.post("/g/s/user-profile/{uid}/member")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/member")
-async def follow_user(uid: str, request: Request, ndcId: int):
+async def follow_user(uid: str, request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -700,7 +653,7 @@ async def follow_user(uid: str, request: Request, ndcId: int):
 
 @profile_methods.delete("/g/s/user-profile/{uid}/member/{inited_uid}")
 @profile_methods.delete("/x{ndcId}/s/user-profile/{uid}/member/{inited_uid}")
-async def unfollow_user(uid: str, request: Request, ndcId: int):
+async def unfollow_user(uid: str, request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
         return Errors.InvalidSession(timestamp() - t1)
@@ -716,6 +669,49 @@ async def unfollow_user(uid: str, request: Request, ndcId: int):
 
     db.close()
     return Base.Answer(spent_time=timestamp() - t1)
+
+
+
+@profile_methods.get("/g/s/user-profile/{uid}")
+@profile_methods.get("/x{ndcId}/s/user-profile/{uid}")
+async def get_user_info(uid: str, request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+    db = await Database().init()
+    g_table = db.get(table="Users")
+    table = db.get(database=f"x{ndcId}", table="Users")
+    row2 = await table.find_one({"id": uid})
+    if row2 is None:
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    global_row = await g_table.find_one({"id": uid})
+    if global_row:
+        if not row2.get("tagList"):
+            global_tag_list = global_row.get("tagList")
+            if global_tag_list:
+                row2["tagList"] = global_tag_list
+
+        if "isTeamMember" in global_row:
+            row2["isTeamMember"] = global_row["isTeamMember"]
+
+        if "isVerified" in global_row:
+            row2["isVerified"] = global_row["isVerified"]
+        if global_row.get("status", 0) in [9, 10]:
+            row2["status"] = global_row["status"]
+        if global_row.get("extensions", {}).get("__disabledLevel__"):
+            row2["extensions"]["__disabledLevel__"] = global_row["extensions"]["__disabledLevel__"]
+
+        if ndcId == 0:
+            row2 = global_row | row2
+        
+    db.close()
+    return Base.Answer(
+        {"userProfile": User.GetUserInfo(row2, triggerUserId=trigger_uid, extensions=row2.get("extensions"), ndcId=ndcId)},
+        spent_time=timestamp() - t1,
+    )
+
 
 
 @profile_methods.post("/g/s/user-profile/{uid}")
