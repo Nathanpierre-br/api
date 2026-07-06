@@ -1,5 +1,41 @@
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from helpers.database.redis import get as get_redis
+from fastapi import Request
+
+
+CHECKIN_COIN_REWARDS = [1.0, 2.0, 3.0, 10.0]
+CHECKIN_COIN_WEIGHTS = [0.50, 0.30, 0.15, 0.05]
+
+LOTTERY_REWARDS = [2.0, 5.0, 10.0, 20.0, 100.0]
+LOTTERY_WEIGHTS = [0.40, 0.30, 0.20, 0.09, 0.01]
+
+REP_CAP = 20
+
+
+def local_date(tz_minutes: int) -> datetime:
+    return datetime.now(UTC) + timedelta(minutes=tz_minutes)
+
+
+def date_str(dt: datetime) -> str:
+    return dt.strftime("%Y-%m-%d")
+
+
+def earned_rep(streak: int) -> int:
+    return min(1 + streak, REP_CAP)
+
+
+async def get_tz(request: Request) -> int:
+    try:
+        body = await request.json()
+        return int(body.get("timezone", 0))
+    except Exception:
+        return 0
+
+
+
+
+
+
 
 
 async def settle_user_active_coins(db, uid: str) -> float:

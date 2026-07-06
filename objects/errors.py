@@ -220,9 +220,27 @@ class Errors:
     @staticmethod
     def AlreadyClaimed(spent_time: Union[int, float] = 0):
         return Base.Answer(
-            api_status_code=2002,
-            html_status_code=400,
-            api_message="You have already claimed your daily reward today.",
+            api_status_code=2601,
+            html_status_code=403,
+            api_message="Sorry, you can't check in any more.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
+    def LotteryPlayed(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=4400,
+            html_status_code=403,
+            api_message="You have played the maximum number of lucky draws.",
+            spent_time=spent_time,
+        )
+
+    @staticmethod
+    def LotteryNotAvailable(spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=4400,
+            html_status_code=403,
+            api_message="Sorry, the lucky draw is not available. Please check in first.",
             spent_time=spent_time,
         )
 

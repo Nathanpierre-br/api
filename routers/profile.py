@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from re import escape as regex_escape
 from time import time as timestamp
 from uuid import uuid4
@@ -9,7 +9,18 @@ from pymongo import DESCENDING
 import random
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
-from helpers.daily_settlement import settle_user_active_coins
+from helpers.daily_settlement import (
+	settle_user_active_coins,
+	earned_rep as _earned_rep,
+	local_date as _local_date,
+	date_str as _date_str,
+	get_tz as _get_tz,
+	CHECKIN_COIN_REWARDS,
+	CHECKIN_COIN_WEIGHTS,
+	LOTTERY_REWARDS,
+	LOTTERY_WEIGHTS,
+	
+)
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
@@ -707,48 +718,186 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
 	)
 
 
+
 @profile_methods.post("/g/s/wallet/daily-reward")
 @profile_methods.post("/x{ndcId}/s/check-in")
 async def claim_daily_reward(request: Request, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession(timestamp() - t1)
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
 
-	trigger_uid = request.state.session["uid"]
-	today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+    tz = await _get_tz(request)
+    now_local = _local_date(tz)
+    today_str = _date_str(now_local)
+    yesterday_str = _date_str(now_local - timedelta(days=1))
 
-	db = await Database().init()
-	table = db.get(table="Users")
-	row = await table.find_one({"id": trigger_uid})
-	if row is None:
-		db.close()
-		return Errors.AccountNotExist(timestamp() - t1)
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", table="Users")
+    row = await table.find_one({"id": trigger_uid})
+    if row is None:
+        db.close()
+        return Errors.AccountNotExist(timestamp() - t1)
 
-	if row.get("lastDailyClaimDate") == today_str:
-		db.close()
-		return Errors.AlreadyClaimed(timestamp() - t1)
+    if row.get("lastCheckInDate") == today_str:
+        db.close()
+        return Errors.AlreadyClaimed(timestamp() - t1)
 
-	# Random reward: 1, 2, 3, or 10 (10 is rare: 5%)
-	rewards = [1.0, 2.0, 3.0, 10.0]
-	weights = [0.50, 0.30, 0.15, 0.05]
-	reward = round(random.choices(rewards, weights=weights, k=1)[0], 2)
+    prev_streak = int(row.get("consecutiveCheckInDays", 0))
+    if row.get("lastCheckInDate") == yesterday_str:
+        streak = prev_streak + 1
+        broke = 0
+    else:
+        streak = 1
+        broke = 1 if row.get("lastCheckInDate") else 0
 
-	await table.update_one(
-		{"id": trigger_uid},
-		{"$inc": {"coins": reward}, "$set": {"lastDailyClaimDate": today_str}},
-	)
-	updated_row = await table.find_one({"id": trigger_uid})
-	db.close()
+    coins = round(random.choices(CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS, k=1)[0], 2)
+    rep = _earned_rep(streak)
 
-	updated_coins = round(float(updated_row.get("coins", 0.0)), 2)
-	return Base.Answer(
-		{
-			"claimedCoins": reward,
-			"totalCoins": int(updated_coins),
-			"totalCoinsFloat": updated_coins,
-		},
-		spent_time=timestamp() - t1,
-	)
+    result = await table.update_one(
+        {"id": trigger_uid, "lastCheckInDate": {"$ne": today_str}},
+        {
+            "$inc": {"coins": coins, "reputation": rep, "brokenStreaks": broke},
+            "$set": {
+                "lastCheckInDate": today_str,
+                "consecutiveCheckInDays": streak,
+                f"checkInHistory.{today_str}": 1,
+            },
+        },
+    )
+    if result.modified_count == 0:
+        db.close()
+        return Errors.AlreadyClaimed(timestamp() - t1)
+
+    updated_row = await table.find_one({"id": trigger_uid})
+    db.close()
+
+    updated_coins = round(float(updated_row.get("coins", 0.0)), 2)
+    return Base.Answer(
+        {
+            "claimedCoins": coins,
+            "totalCoins": int(updated_coins),
+            "totalCoinsFloat": updated_coins,
+            "consecutiveCheckInDays": streak,
+            "canPlayLottery": updated_row.get("lastLotteryDate") != today_str,
+            "earnedReputationPoint": rep,
+            "additionalReputationPoint": 0,
+            "checkInHistory": {
+                "joinedTime": None,
+                "startTime": None,
+                "stopTime": None,
+                "consecutiveCheckInDays": streak,
+                "hasCheckInToday": True,
+                "hasAnyCheckIn": True,
+                "history": None,
+            },
+            "userProfile": User.GetUserInfo(updated_row, ndcId=ndcId),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+@profile_methods.post("/g/s/check-in/lottery")
+@profile_methods.post("/x{ndcId}/s/check-in/lottery")
+async def claim_daily_lottery(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+
+    tz = await _get_tz(request)
+    today_str = _date_str(_local_date(tz))
+
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", table="Users")
+    row = await table.find_one({"id": trigger_uid})
+    if row is None:
+        db.close()
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    if row.get("lastCheckInDate") != today_str:
+        db.close()
+        return Errors.LotteryNotAvailable(timestamp() - t1)
+
+    if row.get("lastLotteryDate") == today_str:
+        db.close()
+        return Errors.LotteryPlayed(timestamp() - t1)
+
+    award = round(random.choices(LOTTERY_REWARDS, LOTTERY_WEIGHTS, k=1)[0], 2)
+
+    result = await table.update_one(
+        {"id": trigger_uid, "lastLotteryDate": {"$ne": today_str}},
+        {"$inc": {"coins": award}, "$set": {"lastLotteryDate": today_str}},
+    )
+    if result.modified_count == 0:
+        db.close()
+        return Errors.LotteryPlayed(timestamp() - t1)
+
+    updated_row = await table.find_one({"id": trigger_uid})
+    db.close()
+
+    return Base.Answer(
+        {
+            "lotteryLog": {
+                "awardValue": int(award),
+                "awardType": 1,
+                "parentId": None,
+                "parentType": 0,
+                "objectId": str(uuid4()),
+                "objectType": 0,
+                "createdTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "refObject": None,
+            },
+            "userProfile": User.GetUserInfo(updated_row, ndcId=ndcId),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+@profile_methods.post("/x{ndcId}/s/check-in/history")
+async def check_in_history(request: Request, startTime: int, stopTime: int, timezone: int = 0, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", table="Users")
+    row = await table.find_one({"id": trigger_uid})
+    if row is None:
+        db.close()
+        return Errors.AccountNotExist(timestamp() - t1)
+    db.close()
+
+    start_dt = datetime.fromtimestamp(startTime / 1000, UTC) + timedelta(minutes=timezone)
+    stop_dt = datetime.fromtimestamp(stopTime / 1000, UTC) + timedelta(minutes=timezone)
+    start_str, stop_str = _date_str(start_dt), _date_str(stop_dt)
+
+    full_history = row.get("checkInHistory", {}) or {}
+    history = {d: v for d, v in full_history.items() if start_str <= d <= stop_str}
+
+    today_str = _date_str(_local_date(timezone))
+
+    return Base.Answer(
+        {
+            "checkInHistory": {
+                "joinedTime": None,
+                "startTime": startTime,
+                "stopTime": stopTime,
+                "consecutiveCheckInDays": row.get("consecutiveCheckInDays", 0),
+                "hasCheckInToday": row.get("lastCheckInDate") == today_str,
+                "hasAnyCheckIn": bool(full_history),
+                "history": history,
+            },
+            "brokenStreaks": row.get("brokenStreaks", 0),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+
+
+
 
 
 @profile_methods.get("/g/s/wallet/setting/ads")
