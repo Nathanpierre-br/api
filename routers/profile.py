@@ -854,7 +854,7 @@ async def claim_daily_lottery(request: Request, ndcId: int = 0):
     )
 
 
-@profile_methods.post("/x{ndcId}/s/check-in/history")
+@profile_methods.get("/x{ndcId}/s/check-in/history")
 async def check_in_history(request: Request, startTime: int, stopTime: int, timezone: int = 0, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -895,6 +895,58 @@ async def check_in_history(request: Request, startTime: int, stopTime: int, time
     )
 
 
+@profile_methods.get("/x{ndcId}/s/community/general-check")
+@profile_methods.post("/x{ndcId}/s/community/general-check")
+async def community_general_check(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+
+    com_table = db.get(table="Communities")
+    community = await com_table.find_one({"id": ndcId})
+    if community is None:
+        db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+
+    table = db.get(f"x{ndcId}", table="Users")
+    row = await table.find_one({"id": trigger_uid})
+    db.close()
+    if row is None:
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    if row.get("banned"):
+        return Errors.UserBanned(timestamp() - t1)
+
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
+
+@profile_methods.get("/x{ndcId}/s/user-profile/{userId}/achievements")
+async def get_user_achievements(request: Request, userId: str, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", table="Users")
+    row = await table.find_one({"id": userId})
+    db.close()
+    if row is None:
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    return Base.Answer(
+        {
+            "achievements": {
+                "secondsSpent": int(row.get("secondsSpent", 0)),
+                "numberOfFollowersCount": int(row.get("followersCount", 0)),
+                "numberOfPostsCreated": int(row.get("postsCount", 0)),
+            }
+        },
+        spent_time=timestamp() - t1,
+    )
 
 
 
