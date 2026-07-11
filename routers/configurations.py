@@ -214,7 +214,7 @@ async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
     trigger_uid = request.state.session["uid"]
 
     #tz = await get_tz(request)
-    today_str = datetime.now()#date_str(local_date(tz))
+    today_str = datetime.now().strftime("%Y-%m-%d")#date_str(local_date(tz))
 
     chunks: list[int] = []
     if ndcIds:
