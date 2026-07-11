@@ -275,10 +275,12 @@ async def join_community(request: Request, ndcId: int):
             new_profile["whoFollows"] = []
             new_profile["following"] = []
             new_profile["wall"] = {}
+            new_profile["reputation"] = 0
+            
             new_profile["role"] = (
                 0
                 if new_profile["role"] not in [200, 201, 254, 555]
-                else new_profile["role"]
+                else 0#new_profile["role"] if role in [200, 201, 254] profile will be like "amino team" with altamino avatar ect in android 
             )
             for field in ["_id", "createdTime", "modifiedTime"]:
                 new_profile.pop(field, None)
