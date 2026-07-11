@@ -937,7 +937,6 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
         if result.modified_count == 0:
             return Errors.AlreadyClaimed(timestamp() - t1)
 
-        # Монеты — глобальный баланс.
         await global_table.update_one(
             {"id": trigger_uid},
             {"$inc": {"coins": coins}},

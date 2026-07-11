@@ -241,6 +241,22 @@ async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
     finally:
         db.close()
 
+
+    return Base.Answer(
+        {
+            "reminderCheckResult": {
+                "noticesCount2": 0,
+                "hasCheckInToday": False,
+                "consecutiveCheckInDays": 0,
+                "checkInHistory": None,
+                "notificationsCount": 0,
+                "noticesCount": 0,
+            },
+            "treatedNdcIds": [int(chunk) for chunk in chunks],
+            "reminderCheckResultInCommunities": {chunk: [] for chunk in chunks},
+        }
+    )
+
     return Base.Answer(
         {
             "reminderCheckResult": main_result,
