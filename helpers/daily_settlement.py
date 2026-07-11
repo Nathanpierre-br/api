@@ -25,13 +25,17 @@ def earned_rep(streak: int) -> int:
 
 
 async def get_tz(request: Request) -> int:
+    tz = request.query_params.get("timezone")
+    if tz is not None:
+        try:
+            return int(tz)
+        except ValueError:
+            return 0
     try:
         body = await request.json()
         return int(body.get("timezone", 0))
     except Exception:
         return 0
-
-
 
 
 

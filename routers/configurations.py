@@ -9,6 +9,13 @@ from helpers.decorators.validauth import validauth_required
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors, Communities
 
+from helpers.daily_settlement import (
+    date_str,
+    get_tz,
+    local_date,
+)
+
+
 configurations = APIRouter()
 configurations.route_class = CachableRoute
 
@@ -161,28 +168,61 @@ async def reminder_stats(request: Request, ndcId: int = 0):
     return Base.Answer()
 
 
+def _build_reminder_result(row: dict | None, today_str: str) -> dict:
+    row = row or {}
+    checked_in = row.get("lastCheckInDate") == today_str
+    return {
+        "hasCheckInToday": checked_in,
+        "consecutiveCheckInDays": int(row.get("consecutiveCheckInDays", 0)),
+        "checkInHistory": None,
+        "notificationsCount": 0,
+        "noticesCount": 0,
+        "noticesCount2": 0,
+    }
+
+
 @configurations.get("/g/s/reminder/check")
 @configurations.get("/x{ndcId}/s/reminder/check")
 @validauth_required
 async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
+    t1 = timestamp()
+    trigger_uid = request.state.session["uid"]
+
+    tz = await get_tz(request)
+    today_str = date_str(local_date(tz))
+
+    chunks: list[int] = []
     if ndcIds:
-        chunks = ndcIds.split(",") or []
-    else:
-        chunks = []
+        for c in ndcIds.split(","):
+            c = c.strip()
+            if c:
+                try:
+                    chunks.append(int(c))
+                except ValueError:
+                    pass
+
+    db = await Database().init()
+    try:
+        if ndcId:
+            row = await db.get(f"x{ndcId}", table="Users").find_one({"id": trigger_uid})
+        else:
+            row = await db.get(table="Users").find_one({"id": trigger_uid})
+        main_result = _build_reminder_result(row, today_str)
+
+        per_community = {}
+        for cid in chunks:
+            c_row = await db.get(f"x{cid}", table="Users").find_one({"id": trigger_uid})
+            per_community[str(cid)] = _build_reminder_result(c_row, today_str)
+    finally:
+        db.close()
 
     return Base.Answer(
         {
-            "reminderCheckResult": {
-                "noticesCount2": 0,
-                "hasCheckInToday": False,
-                "consecutiveCheckInDays": 0,
-                "checkInHistory": None,
-                "notificationsCount": 0,
-                "noticesCount": 0,
-            },
-            "treatedNdcIds": [int(chunk) for chunk in chunks],
-            "reminderCheckResultInCommunities": {chunk: [] for chunk in chunks},
-        }
+            "reminderCheckResult": main_result,
+            "treatedNdcIds": chunks,
+            "reminderCheckResultInCommunities": per_community,
+        },
+        spent_time=timestamp() - t1,
     )
 
 
