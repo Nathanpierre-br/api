@@ -1,4 +1,5 @@
 import random
+from json import dumps
 from datetime import UTC, datetime, timedelta
 from re import escape as regex_escape
 from time import time as timestamp
@@ -170,9 +171,11 @@ async def check_in_history(request: Request, startTime: int, stopTime: int, ndcI
     start_str, stop_str = _date_str(start_dt), _date_str(stop_dt)
 
     full_history = row.get("checkInHistory", {}) or {}
-    history = full_history#{d: v for d, v in full_history.items() if start_str <= d <= stop_str}
+    #history = full_history #{d: v for d, v in full_history.items() if start_str <= d <= stop_str}
 
     today_str = _date_str(_local_date(timezone))
+
+    filtered = {d: v for d, v in full_history.items() if start_str <= d <= stop_str}
 
     return Base.Answer(
         {
@@ -183,7 +186,7 @@ async def check_in_history(request: Request, startTime: int, stopTime: int, ndcI
                 "consecutiveCheckInDays": row.get("consecutiveCheckInDays", 0),
                 "hasCheckInToday": row.get("lastCheckInDate") == today_str,
                 "hasAnyCheckIn": bool(full_history),
-                "history": history,
+                "history": dumps(filtered),
             },
             "brokenStreaks": row.get("brokenStreaks", 0),
         },
@@ -228,12 +231,13 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
     db = await Database().init()
     table = db.get(f"x{ndcId}", table="Users")
     row = await table.find_one({"id": userId})
-    db.close()
     if row is None:
+        db.close()
         return Errors.AccountNotExist(timestamp() - t1)
 
     blogs_table = db.get(f"x{ndcId}", table="Blogs")
     blogs_count = await blogs_table.count_documents({"authorId": userId, "status": 0})
+    db.close()
     return Base.Answer(
         {
             "achievements": {
