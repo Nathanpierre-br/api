@@ -9,6 +9,9 @@ from helpers.decorators.validauth import validauth_required
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors, Communities
 
+from datetime import datetime, timedelta, UTC
+from json import dumps
+
 from helpers.daily_settlement import (
     date_str,
     get_tz,
@@ -168,17 +171,39 @@ async def reminder_stats(request: Request, ndcId: int = 0):
     return Base.Answer()
 
 
+def _build_checkin_history(row: dict, today_str: str, days: int = 7) -> dict:
+    full_history = row.get("checkInHistory", {}) or {}
+
+    today = datetime.strptime(today_str, "%Y-%m-%d")
+    start = today - timedelta(days=days - 1)
+    start_str = date_str(start)
+    window = {d: v for d, v in full_history.items() if start_str <= d <= today_str}
+
+    return {
+        "joinedTime": None,
+        "startTime": int(start.replace(tzinfo=UTC).timestamp() * 1000),
+        "stopTime": int(today.replace(tzinfo=UTC).timestamp() * 1000),
+        "consecutiveCheckInDays": int(row.get("consecutiveCheckInDays", 0)),
+        "hasCheckInToday": row.get("lastCheckInDate") == today_str,
+        "hasAnyCheckIn": bool(full_history),
+        "history": dumps(window),
+    }
+
+
 def _build_reminder_result(row: dict | None, today_str: str) -> dict:
     row = row or {}
     checked_in = row.get("lastCheckInDate") == today_str
     return {
         "hasCheckInToday": checked_in,
         "consecutiveCheckInDays": int(row.get("consecutiveCheckInDays", 0)),
-        "checkInHistory": None,
+        "checkInHistory": _build_checkin_history(row, today_str),
         "notificationsCount": 0,
         "noticesCount": 0,
         "noticesCount2": 0,
     }
+
+
+
 
 
 @configurations.get("/g/s/reminder/check")
@@ -188,8 +213,8 @@ async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
     t1 = timestamp()
     trigger_uid = request.state.session["uid"]
 
-    tz = await get_tz(request)
-    today_str = date_str(local_date(tz))
+    #tz = await get_tz(request)
+    today_str = datetime.now()#date_str(local_date(tz))
 
     chunks: list[int] = []
     if ndcIds:

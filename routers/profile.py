@@ -202,8 +202,8 @@ async def community_general_check(request: Request, ndcId: int):
         return Errors.InvalidSession(timestamp() - t1)
     trigger_uid = request.state.session["uid"]
 
-    tz = await _get_tz(request)
-    today_str = _date_str(_local_date(tz))
+    #tz = await _get_tz(request)
+    today_str = datetime.now().strftime("%Y-%m-%d") #_date_str(_local_date(tz))
 
     db = await Database().init()
     try:
