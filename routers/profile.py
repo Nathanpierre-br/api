@@ -1,4 +1,5 @@
 import random
+from json import dumps
 from datetime import UTC, datetime, timedelta
 from re import escape as regex_escape
 from time import time as timestamp
@@ -170,9 +171,11 @@ async def check_in_history(request: Request, startTime: int, stopTime: int, ndcI
     start_str, stop_str = _date_str(start_dt), _date_str(stop_dt)
 
     full_history = row.get("checkInHistory", {}) or {}
-    history = full_history#{d: v for d, v in full_history.items() if start_str <= d <= stop_str}
+    #history = full_history #{d: v for d, v in full_history.items() if start_str <= d <= stop_str}
 
     today_str = _date_str(_local_date(timezone))
+
+    filtered = {d: v for d, v in full_history.items() if start_str <= d <= stop_str}
 
     return Base.Answer(
         {
@@ -183,7 +186,7 @@ async def check_in_history(request: Request, startTime: int, stopTime: int, ndcI
                 "consecutiveCheckInDays": row.get("consecutiveCheckInDays", 0),
                 "hasCheckInToday": row.get("lastCheckInDate") == today_str,
                 "hasAnyCheckIn": bool(full_history),
-                "history": history,
+                "history": dumps(filtered),
             },
             "brokenStreaks": row.get("brokenStreaks", 0),
         },
@@ -199,25 +202,43 @@ async def community_general_check(request: Request, ndcId: int):
         return Errors.InvalidSession(timestamp() - t1)
     trigger_uid = request.state.session["uid"]
 
+    #tz = await _get_tz(request)
+    today_str = datetime.now().strftime("%Y-%m-%d") #_date_str(_local_date(tz))
+
     db = await Database().init()
+    try:
+        com_table = db.get(table="Communities")
+        community = await com_table.find_one({"id": ndcId})
+        if community is None:
+            return Errors.DataNotExist(timestamp() - t1)
 
-    com_table = db.get(table="Communities")
-    community = await com_table.find_one({"id": ndcId})
-    if community is None:
+        table = db.get(f"x{ndcId}", table="Users")
+        row = await table.find_one({"id": trigger_uid})
+    finally:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
 
-    table = db.get(f"x{ndcId}", table="Users")
-    row = await table.find_one({"id": trigger_uid})
-    db.close()
     if row is None:
         return Errors.AccountNotExist(timestamp() - t1)
 
     if row.get("banned"):
         return Errors.UserBanned(timestamp() - t1)
 
-    return Base.Answer(spent_time=timestamp() - t1)
+    checked_in_today = row.get("lastCheckInDate") == today_str
 
+    return Base.Answer(
+        {
+            "hasCheckInToday": checked_in_today,
+            "consecutiveCheckInDays": int(row.get("consecutiveCheckInDays", 0)),
+            "canPlayLottery": checked_in_today and row.get("lastLotteryDate") != today_str,
+            "userProfile": User.GetUserInfo(row, ndcId=ndcId),
+            "notificationsCount": 0,
+            "noticesCount": 0,
+            "hasPendingReviewRequest": False,
+            "promotion": None,
+            "communityMembershipRequestStatus": 0,
+        },
+        spent_time=timestamp() - t1,
+    )
 
 @profile_methods.get("/x{ndcId}/s/user-profile/{userId}/achievements")
 async def get_user_achievements(request: Request, userId: str, ndcId: int):
@@ -228,16 +249,19 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
     db = await Database().init()
     table = db.get(f"x{ndcId}", table="Users")
     row = await table.find_one({"id": userId})
-    db.close()
     if row is None:
+        db.close()
         return Errors.AccountNotExist(timestamp() - t1)
 
+    blogs_table = db.get(f"x{ndcId}", table="Blogs")
+    blogs_count = await blogs_table.count_documents({"authorId": userId, "status": 0})
+    db.close()
     return Base.Answer(
         {
             "achievements": {
                 "secondsSpent": int(row.get("secondsSpent", 0)),
-                "numberOfFollowersCount": int(row.get("followersCount", 0)),
-                "numberOfPostsCreated": int(row.get("postsCount", 0)),
+                "numberOfFollowersCount": len(row.get("whoFollows", [])),
+                "numberOfPostsCreated": blogs_count,
             }
         },
         spent_time=timestamp() - t1,
@@ -862,7 +886,6 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
         spent_time=timestamp() - t1,
     )
 
-
 @profile_methods.post("/g/s/wallet/daily-reward")
 @profile_methods.post("/x{ndcId}/s/check-in")
 async def claim_daily_reward(request: Request, ndcId: int = 0):
@@ -877,46 +900,54 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
     yesterday_str = _date_str(now_local - timedelta(days=1))
 
     db = await Database().init()
-    table = db.get(f"x{ndcId}", table="Users")
-    row = await table.find_one({"id": trigger_uid})
-    if row is None:
-        db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+    try:
+        table = db.get(f"x{ndcId}", table="Users")
+        global_table = db.get(table="Users")
 
-    if row.get("lastCheckInDate") == today_str:
-        db.close()
-        return Errors.AlreadyClaimed(timestamp() - t1)
+        row = await table.find_one({"id": trigger_uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
 
-    prev_streak = int(row.get("consecutiveCheckInDays", 0))
-    if row.get("lastCheckInDate") == yesterday_str:
-        streak = prev_streak + 1
-        broke = 0
-    else:
-        streak = 1
-        broke = 1 if row.get("lastCheckInDate") else 0
+        if row.get("lastCheckInDate") == today_str:
+            return Errors.AlreadyClaimed(timestamp() - t1)
 
-    coins = round(random.choices(CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS, k=1)[0], 2)
-    rep = _earned_rep(streak)
+        prev_streak = int(row.get("consecutiveCheckInDays", 0))
+        if row.get("lastCheckInDate") == yesterday_str:
+            streak = prev_streak + 1
+            broke = 0
+        else:
+            streak = 1
+            broke = 1 if row.get("lastCheckInDate") else 0
 
-    result = await table.update_one(
-        {"id": trigger_uid, "lastCheckInDate": {"$ne": today_str}},
-        {
-            "$inc": {"coins": coins, "reputation": rep, "brokenStreaks": broke},
-            "$set": {
-                "lastCheckInDate": today_str,
-                "consecutiveCheckInDays": streak,
-                f"checkInHistory.{today_str}": 1,
+        coins = round(random.choices(CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS, k=1)[0], 2)
+        rep = _earned_rep(streak)
+
+
+        result = await table.update_one(
+            {"id": trigger_uid, "lastCheckInDate": {"$ne": today_str}},
+            {
+                "$inc": {"reputation": rep, "brokenStreaks": broke},
+                "$set": {
+                    "lastCheckInDate": today_str,
+                    "consecutiveCheckInDays": streak,
+                    f"checkInHistory.{today_str}": 1,
+                },
             },
-        },
-    )
-    if result.modified_count == 0:
+        )
+        if result.modified_count == 0:
+            return Errors.AlreadyClaimed(timestamp() - t1)
+
+        await global_table.update_one(
+            {"id": trigger_uid},
+            {"$inc": {"coins": coins}},
+        )
+
+        updated_row = await table.find_one({"id": trigger_uid})
+        global_row = await global_table.find_one({"id": trigger_uid})
+    finally:
         db.close()
-        return Errors.AlreadyClaimed(timestamp() - t1)
 
-    updated_row = await table.find_one({"id": trigger_uid})
-    db.close()
-
-    updated_coins = round(float(updated_row.get("coins", 0.0)), 2)
+    updated_coins = round(float((global_row or {}).get("coins", 0.0)), 2)
     return Base.Answer(
         {
             "claimedCoins": coins,
@@ -940,7 +971,6 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
         spent_time=timestamp() - t1,
     )
 
-
 @profile_methods.post("/g/s/check-in/lottery")
 @profile_methods.post("/x{ndcId}/s/check-in/lottery")
 async def claim_daily_lottery(request: Request, ndcId: int = 0):
@@ -953,32 +983,37 @@ async def claim_daily_lottery(request: Request, ndcId: int = 0):
     today_str = _date_str(_local_date(tz))
 
     db = await Database().init()
-    table = db.get(f"x{ndcId}", table="Users")
-    row = await table.find_one({"id": trigger_uid})
-    if row is None:
+    try:
+        table = db.get(f"x{ndcId}", table="Users")
+        global_table = db.get(table="Users")
+
+        row = await table.find_one({"id": trigger_uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        if row.get("lastCheckInDate") != today_str:
+            return Errors.LotteryNotAvailable(timestamp() - t1)
+
+        if row.get("lastLotteryDate") == today_str:
+            return Errors.LotteryPlayed(timestamp() - t1)
+
+        award = round(random.choices(LOTTERY_REWARDS, LOTTERY_WEIGHTS, k=1)[0], 2)
+
+        result = await table.update_one(
+            {"id": trigger_uid, "lastLotteryDate": {"$ne": today_str}},
+            {"$set": {"lastLotteryDate": today_str}},
+        )
+        if result.modified_count == 0:
+            return Errors.LotteryPlayed(timestamp() - t1)
+
+        await global_table.update_one(
+            {"id": trigger_uid},
+            {"$inc": {"coins": award}},
+        )
+
+        updated_row = await table.find_one({"id": trigger_uid})
+    finally:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
-
-    if row.get("lastCheckInDate") != today_str:
-        db.close()
-        return Errors.LotteryNotAvailable(timestamp() - t1)
-
-    if row.get("lastLotteryDate") == today_str:
-        db.close()
-        return Errors.LotteryPlayed(timestamp() - t1)
-
-    award = round(random.choices(LOTTERY_REWARDS, LOTTERY_WEIGHTS, k=1)[0], 2)
-
-    result = await table.update_one(
-        {"id": trigger_uid, "lastLotteryDate": {"$ne": today_str}},
-        {"$inc": {"coins": award}, "$set": {"lastLotteryDate": today_str}},
-    )
-    if result.modified_count == 0:
-        db.close()
-        return Errors.LotteryPlayed(timestamp() - t1)
-
-    updated_row = await table.find_one({"id": trigger_uid})
-    db.close()
 
     return Base.Answer(
         {
