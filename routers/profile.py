@@ -232,12 +232,14 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
     if row is None:
         return Errors.AccountNotExist(timestamp() - t1)
 
+    blogs_table = db.get(f"x{ndcId}", table="Blogs")
+    blogs_count = await blogs_table.count_documents({"authorId": userId, "status": 0})
     return Base.Answer(
         {
             "achievements": {
                 "secondsSpent": int(row.get("secondsSpent", 0)),
-                "numberOfFollowersCount": int(row.get("followersCount", 0)),
-                "numberOfPostsCreated": int(row.get("postsCount", 0)),
+                "numberOfFollowersCount": len(row.get("whoFollows", [])),
+                "numberOfPostsCreated": blogs_count,
             }
         },
         spent_time=timestamp() - t1,
