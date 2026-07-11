@@ -6,8 +6,8 @@ from fastapi import Request
 CHECKIN_COIN_REWARDS = [1.0, 2.0, 3.0, 10.0]
 CHECKIN_COIN_WEIGHTS = [0.50, 0.30, 0.15, 0.05]
 
-LOTTERY_REWARDS = [2.0, 5.0, 10.0]
-LOTTERY_WEIGHTS = [0.40, 0.30, 0.20]
+LOTTERY_REWARDS = [2.0, 5.0, 10.0, 20.0, 100.0]
+LOTTERY_WEIGHTS = [0.40, 0.30, 0.20, 0.09, 0.01]
 
 REP_CAP = 20
 
@@ -25,17 +25,13 @@ def earned_rep(streak: int) -> int:
 
 
 async def get_tz(request: Request) -> int:
-    tz = request.query_params.get("timezone")
-    if tz is not None:
-        try:
-            return int(tz)
-        except ValueError:
-            return 0
     try:
         body = await request.json()
         return int(body.get("timezone", 0))
     except Exception:
         return 0
+
+
 
 
 
