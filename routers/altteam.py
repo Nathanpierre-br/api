@@ -32,7 +32,7 @@ altteam.route_class = CachableRoute
 @altteam.get("/g/s/altteam/version")
 async def get_altamino_team(request: Request):
     t1 = timestamp()
-    latest_version = "1.0.2"
+    latest_version = "1.0.3"
     current_version = request.query_params.get("version")
     altTeamPage = "https://altamino.top/altapp"
     return Base.Answer(
