@@ -130,7 +130,7 @@ async def eventlog_config(request: Request):
 
 @configurations.get("/g/s/community-collection/supported-languages")
 async def supported_languages_config(request: Request):
-    return Base.Answer({"supportedLanguages": ["en", "ru", "es", "ar"]})
+    return Base.Answer({"supportedLanguages": ["en", "ru", "es", "ar", "pt"]})
 
 
 @configurations.get("/g/s/membership")
@@ -320,6 +320,14 @@ async def auid_check(deviceId: str, request: Request):
 },
 """
 
+
+
+
+
+#TODO
+@configurations.put("/g/s/home/discover/content-modules")
+async def edit_discover_modules(request: Request):
+    return Base.Answer()
 
 @configurations.get("/g/s/home/discover/content-modules")
 async def discover_modules(request: Request):

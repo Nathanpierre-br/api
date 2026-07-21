@@ -64,7 +64,7 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
             if not RoleTypes.is_global_staff(global_user_info.get("role", 0)):
                 table = db.get(f"x{ndcId}", table="Users")
                 user_info = await table.find_one({"id": uid})
-                if RoleTypes.is_local_admin(user_info.get("role", 0)):
+                if not RoleTypes.is_local_admin(user_info.get("role", 0)):
                     return Errors.NotEnoughRights()
 
             # if its valid zip we can get theme config and revision here

@@ -14,7 +14,6 @@ altacm = APIRouter()
 altacm.route_class = CachableRoute
 
 
-
 @altacm.post("/altacm/s/community/x{ndcId}/user/{userId}/promote")
 @altacm.delete("/altacm/s/community/x{ndcId}/user/{userId}/promote")
 @validauth_required
@@ -23,14 +22,14 @@ async def promotions(request: Request, ndcId: int, userId: str):
 
     trigger_uid = request.state.session["uid"]
     destruction_mode = request.method == "DELETE"
-    
+
     if not destruction_mode:
         data = await request.json()
         role = data.get("role")
-        if role is None or role < 100 or role > 102:
-            return Errors.InvalidRequest()
+        if not isinstance(role, int) or not UserRole.is_local_staff(role):
+            return Errors.InvalidRequest(timestamp() - t1)
     else:
-        role = 0
+        role = UserRole.User
 
     db = await Database().init()
     try:
@@ -39,25 +38,32 @@ async def promotions(request: Request, ndcId: int, userId: str):
         ndc_users_table = db.get(f"x{ndcId}", table="Users")
 
         user = await sensitive_table.find_one({"id": trigger_uid})
-        gu = await sensitive_table.find_one({"id": userId})
-        
+        local_user = await ndc_users_table.find_one({"id": trigger_uid})
+        gu = await ndc_users_table.find_one({"id": userId})
 
-        f = UserRole.is_local_admin if role != UserRole.Agent else lambda r: r == UserRole.Agent
-        if not gu or not f(role):
-            if not user or not UserRole.is_global_staff(user.get("role", 0)):
-                return Errors.NotEnoughRights(timestamp() - t1)
+        if not gu:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        is_god = bool(user) and UserRole.is_global_staff(user.get("role", 0))
+        is_admin = bool(local_user) and UserRole.is_local_admin(local_user.get("role", 0))
+
+        if not (is_god or is_admin):
+            return Errors.NotEnoughRights(timestamp() - t1)
 
         if role == UserRole.Agent:
+            trigger_is_agent = bool(local_user) and local_user.get("role", 0) == UserRole.Agent
+            if not (is_god or trigger_is_agent):
+                return Errors.NotEnoughRights(timestamp() - t1)
+
             old_agent = await ndc_users_table.find_one({"role": UserRole.Agent})
             if old_agent and old_agent["id"] != userId:
                 await ndc_users_table.update_one(
-                    {"id": old_agent["id"]}, 
+                    {"id": old_agent["id"]},
                     {"$set": {"role": UserRole.Leader}}
                 )
-            
             await communities_table.update_one(
                 {"id": ndcId},
-                {"$set": {"agent": userId}} 
+                {"$set": {"agent": userId}}
             )
 
         await ndc_users_table.update_one({"id": userId}, {"$set": {"role": role}})
@@ -132,6 +138,7 @@ async def create_community(request: Request):
 		shape["id"] = ndcId
 		shape["name"] = data["name"]
 		shape["aminoId"] = data["aminoId"]
+		shape["hidden"] = False
 		shape["lang"] = data["lang"] if data["lang"] in ["en", "ru", "es", "ar"] else "en"
 		for key in ["_id", "theme"]:
 			shape.pop(key, None)
@@ -224,12 +231,17 @@ async def destroy_community(request: Request, ndcId: int):
 	# do you even have rights to do this act?
 	db = Database()
 	sensitive_table = db.get(table="Users")
-
+	ndc_users_table = db.get(f"x{ndcId}", table="Users")
+	
 	user = await sensitive_table.find_one({"id": trigger_uid})
-	if not user or not UserRole.is_global_staff(user.get("role", 0)):
+	local_user = await ndc_users_table.find_one({"id": trigger_uid})
+	
+	is_god = bool(user) and UserRole.is_global_staff(user.get("role", 0))
+	is_agent = bool(local_user) and local_user.get("role", 0) == UserRole.Agent
+
+	if not (is_god or is_agent):
 		db.close()
 		return Errors.NotEnoughRights(timestamp() - t1)
-
 	# well.. fine. we will delete everything
 	# starting from communities table
 	ndclist_table = db.get(table="Communities")
