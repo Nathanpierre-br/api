@@ -675,7 +675,7 @@ async def follow_user(uid: str, request: Request, ndcId: int = 0):
         await table.update_one({"id": uid}, {"$push": {"whoFollows": suid}})
         await table.update_one({"id": suid}, {"$push": {"following": uid}})
 
-    inviter = User.GetUserInfo(target_user, triggerUserId=suid, ndcId=ndcId)
+    inviter = User.GetUserInfo(inited_user, triggerUserId=uid, ndcId=ndcId)
 
 
 

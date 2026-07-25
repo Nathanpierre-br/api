@@ -3,6 +3,7 @@ from time import time as timestamp
 from pymongo import DESCENDING
 from fastapi import APIRouter, Request
 from datetime import datetime
+import asyncio
 
 from helpers.aioyaml import aioyaml
 from helpers.database.models import dttmn
@@ -14,6 +15,9 @@ from helpers.routers.cachable import CachableRoute
 from objects import Base, Communities, Errors, User
 from objects.types import UserGroupType
 from helpers.database.redis import get as get_redis
+
+from helpers.adminWS import send_ws_message as send_admin_ws
+from helpers.adminWS import ApiBroadcastType
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -327,8 +331,19 @@ async def join_community(request: Request, ndcId: int):
             {"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}}
         )
 
+
+        asyncio.get_event_loop().create_task(send_admin_ws(
+            {
+                "ndcId": ndcId,
+                "user": User.GetUserInfo(user_info, ndcId)
+            },
+            None,
+            ApiBroadcastType.ChatMessagePush
+        ))
+
+
         return Base.Answer(
-            {"userProfile": User.OwnNonSensetiveProfile(user_info)},
+            {"userProfile": User.OwnNonSensetiveProfile(user_info, ndcId)},
             spent_time=timestamp() - t1,
         )
     except Exception as e:

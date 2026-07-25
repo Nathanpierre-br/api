@@ -968,6 +968,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             "ndcId": ndcId,
             "threadId": chatId,
             "messageType": data["type"],
+            "content": data.get("content"),
             "author": messageObj["author"],
         },
         target, #TODO notifications off
