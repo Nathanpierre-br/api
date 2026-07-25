@@ -1495,7 +1495,7 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
     chat_info = await chat.find_one({"id": chatId})
     staff = [chat_info["hostId"]] + chat_info.get("cohostsId", [])
     if uid not in staff or uid not in chat_info["memberList"]:
-        if not data["canMembersInvite"]:
+        if not data.get("canMembersInvite", True):
             connection.close()
             return Errors.NotEnoughRights(timestamp() - t1)
 
