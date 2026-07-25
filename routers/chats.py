@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from pymongo import DESCENDING
 
 from helpers.adminWS import send_ws_message as send_admin_ws
+from helpers.adminWS import ApiBroadcastType
 from helpers.config import Config
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
@@ -1506,11 +1507,52 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
             continue
         actuallyInvite.append(member)
 
+    users = connection.get(f"x{ndcId}", "Users")
+    g_users = connection.get(table="Users")
+    row2 = await users.find_one({"id": uid})
+
+    if row2 is None:
+        return Errors.AccountNotExist(timestamp() - t1)
+
+    global_row = g_users.find_one({"id": uid})
+
+    if global_row:
+        if not row2.get("tagList"):
+            global_tag_list = global_row.get("tagList")
+            if global_tag_list:
+                row2["tagList"] = global_tag_list
+
+        if "isTeamMember" in global_row:
+            row2["isTeamMember"] = global_row["isTeamMember"]
+
+        if "isVerified" in global_row:
+            row2["isVerified"] = global_row["isVerified"]
+        if global_row.get("status", 0) in [9, 10]:
+            row2["status"] = global_row["status"]
+        if global_row.get("extensions", {}).get("__disabledLevel__"):
+            row2["extensions"]["__disabledLevel__"] = global_row["extensions"]["__disabledLevel__"]
+
+        if ndcId == 0:
+            row2 = global_row | row2
+
+
+    inviter = User.GetUserInfo(row2, triggerUserId=uid, extensions=row2.get("extensions"), ndcId=ndcId)
+
     await chat.update_one(
         {"id": chatId}, {"$push": {"invitedList": {"$each": actuallyInvite}}}
     )
 
     connection.close()
+    asyncio.get_event_loop().create_task(send_admin_ws(
+        {
+            "ndcId": ndcId,
+            "threadId": chatId,
+            "inviter": inviter,
+            "threadType": chat_info["chatType"]
+        },
+        actuallyInvite,
+        ApiBroadcastType.InviteChatPush
+    ))
     return Base.Answer(spent_time=timestamp() - t1)
 
 
