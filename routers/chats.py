@@ -1514,7 +1514,7 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
     if row2 is None:
         return Errors.AccountNotExist(timestamp() - t1)
 
-    global_row = g_users.find_one({"id": uid})
+    global_row = await g_users.find_one({"id": uid})
 
     if global_row:
         if not row2.get("tagList"):
