@@ -963,6 +963,18 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     }
     target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
     asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
+    asyncio.get_event_loop().create_task(send_admin_ws(
+        {
+            "ndcId": ndcId,
+            "threadId": chatId,
+            "messageType": data["type"],
+            "author": messageObj["author"],
+        },
+        target, #TODO notifications off
+        ApiBroadcastType.ChatMessagePush
+    ))
+
+    
 
     db.close()
     return answer

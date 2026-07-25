@@ -7,6 +7,10 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from pymongo import DESCENDING
+import asyncio
+
+from helpers.adminWS import send_ws_message as send_admin_ws
+from helpers.adminWS import ApiBroadcastType
 
 from helpers.daily_settlement import (
     CHECKIN_COIN_REWARDS,
@@ -670,6 +674,20 @@ async def follow_user(uid: str, request: Request, ndcId: int = 0):
     if suid not in target_user["whoFollows"] or uid not in inited_user["following"]:
         await table.update_one({"id": uid}, {"$push": {"whoFollows": suid}})
         await table.update_one({"id": suid}, {"$push": {"following": uid}})
+
+    inviter = User.GetUserInfo(target_user, triggerUserId=suid, ndcId=ndcId)
+
+
+
+
+    asyncio.get_event_loop().create_task(send_admin_ws(
+        {
+            "ndcId": ndcId,
+            "user": inviter,
+        },
+        [uid],
+        ApiBroadcastType.NewFollowerPush
+    ))
 
     db.close()
     return Base.Answer(spent_time=timestamp() - t1)
