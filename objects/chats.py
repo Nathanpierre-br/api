@@ -186,6 +186,7 @@ class Chat:
             data = await chats.find_one({"id": chatId})
         else:
             data = chatId
+            chatId = data.get("id")
 
         if data is None:
             return (
