@@ -229,7 +229,7 @@ def build_chat_bubble_object(bubble: dict) -> dict:
         "modifiedTime": bubble.get("modifiedTime") or created,
         "deletable": bubble.get("deletable", True),
         "restrictionInfo": restriction,
-        "isActivated": bubble.get("isActivated", False),
+        "isActivated": True,
         "isNew": bubble.get("isNew", False),
         "ownershipInfo": bubble.get("ownershipInfo"),
         "extensions": bubble.get("extensions", {}),
