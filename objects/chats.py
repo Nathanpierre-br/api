@@ -108,11 +108,7 @@ class Chat:
 
         xndc_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
 
-        if chatBubbleId:
-            data["chatBubbleId"] = chatBubbleId
-            data["chatBubbleVersion"] = chatBubbleVersion or 1
-
-        return {
+        result = {
             "includedInSummary": True,
             "uid": data["authorId"],
             "author": User.GetUserInfo(xndc_data, ndcId=ndcId),
@@ -128,6 +124,12 @@ class Chat:
             "type": data["messageType"],
             "mediaValue": data.get("mediaValue"),
         }
+
+        if chatBubbleId:
+            data["result"] = chatBubbleId
+            data["result"] = chatBubbleVersion or 1
+
+        return result
 
     @staticmethod
     def ShortMessage(data: dict):
