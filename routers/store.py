@@ -173,7 +173,7 @@ async def store_purchase(request: Request, ndcId: int = 0):
                 return Errors.Custom(
                     PurchaseError.MEMBERSHIP_NOT_SATISFIED,
                     "Membership required",
-                    timestamp() - t1,
+                    spent_time=timestamp() - t1,
                 )
 
         if restrict_type == RestrictType.COIN and price > 0:
@@ -186,7 +186,7 @@ async def store_purchase(request: Request, ndcId: int = 0):
                 return Errors.Custom(
                     PurchaseError.NOT_ENOUGH_COINS,
                     "Not enough coins",
-                    timestamp() - t1,
+                    spent_time=timestamp() - t1,
                 )
 
         duration = item.get("availableDuration", 0)
