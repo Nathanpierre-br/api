@@ -254,29 +254,13 @@ async def vvchat_permission(request: Request, chatId: str, ndcId: int = 0):
 
 
 
-{
-  "bubbleId": "a2fbfe73-252e-4b23-8b07-58b7384da2c8",
-  "applyToAll": 0,
-  "threadId": "3f03e9d3-2767-48ab-be00-45667a103553",
-  "timestamp": 1785054585229
-}
-@chats.post("/g/s/chat/thread/{chatId}/apply-bubble")
-@chats.post("/x{ndcId}/s/chat/thread/{chatId}/apply-bubble")
-async def chat_apply_bubble(chatId: str, request: Request, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str):
 
-	try:
-		data = await request.json()
-	except Exception:
-		return Errors.InvalidRequest(timestamp() - t1)
-
-	trigger_uid = request.state.session["uid"]
 	bubble_id = data.get("bubbleId")
+	chatId = data.get("threadId")
 	apply_to_all = int(data.get("applyToAll", 0)) == 1
 
-	if not bubble_id:
+	if not bubble_id or not chatId:
 		return Errors.InvalidRequest(timestamp() - t1)
 
 	db = await Database().init()
@@ -332,6 +316,8 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
 	data = await request.json()
 	print(f"editing data for chat {chatId}:", data)
 	trigger_uid = request.state.session["uid"]
+	if chatId == "apply-bubble":
+		return chat_apply_bubble(t1, ndcId, data, trigger_uid)
 
 	db = await Database().init()
 	table = db.get(f"x{ndcId}", "Chats")
