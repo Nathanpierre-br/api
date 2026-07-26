@@ -274,13 +274,15 @@ async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str)
 			})
 			if not ownership:
 				return Errors.NotEnoughRights(timestamp() - t1)
+		else:
+			bubble_id = "85045ed8-b05b-40de-907e-ec886889d086" #defaultBubbleId
 
 		table = db.get(f"x{ndcId}", "Users")
 		user = await table.find_one({"id": trigger_uid})
 		if user is None:
 			return Errors.AccountNotExist(timestamp() - t1)
 
-		if apply_to_all or bubble_id is None:
+		if apply_to_all:
 			await table.update_one(
 				{"id": trigger_uid},
 				{"$set": {"bubbleId": bubble_id, "chatBubbles": {}}},
