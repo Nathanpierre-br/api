@@ -403,7 +403,6 @@ async def list_my_avatar_frames(request: Request, ndcId: int = 0):
     return Base.Answer({"avatarFrameList": result}, spent_time=timestamp() - t1)
 
 
-
 @store.get("/x{ndcId}/s/chat/chat-bubble")
 @store.get("/g/s/chat/chat-bubble")
 @validauth_required
@@ -411,9 +410,10 @@ async def list_my_bubbles(request: Request, ndcId: int = 0):
     t1 = timestamp()
     uid = request.state.session["uid"]
 
-    bubble_type = request.query_params.get("type", "all-my-bubbles")
     start = int(request.query_params.get("start", 0))
     size = int(request.query_params.get("size", 20))
+    chat_id = request.query_params.get("threadId")
+    bubble_type = request.query_params.get("type", "all-my-bubbles")
 
     db = await Database().init()
     try:
@@ -422,7 +422,6 @@ async def list_my_bubbles(request: Request, ndcId: int = 0):
             {"uid": uid, "objectType": StoreItemType.ChatBubble},
             {"_id": 0},
         ).to_list(length=None)
-
         own_map = {d["objectId"]: d for d in own_docs}
         owned_ids = list(own_map.keys())
 
@@ -435,20 +434,24 @@ async def list_my_bubbles(request: Request, ndcId: int = 0):
         for d in docs:
             d = _apply_ownership(d, "bubbleId", own_map)
             chat_bubble_list.append(build_chat_bubble_object(d))
+
+        user_table = db.get(f"x{ndcId}", "Users")
+        user = await user_table.find_one({"id": uid}) or {}
+        default_bubble_id = user.get("bubbleId")
+        per_chat_bubble_id = (user.get("chatBubbles") or {}).get(chat_id) if chat_id else None
+
+        current_selected = per_chat_bubble_id or default_bubble_id
     finally:
         db.close()
 
     return Base.Answer(
         {
             "chatBubbleList": chat_bubble_list,
-            "allChatsBubbleId": None,
-            "currentSelectedBubbleId": None,
+            "allChatsBubbleId": default_bubble_id,
+            "currentSelectedBubbleId": current_selected,
         },
         spent_time=timestamp() - t1,
     )
-
-
-
 
 
 
