@@ -144,6 +144,26 @@ class Chat:
             "mediaValue": data.get("mediaValue"),
         }
 
+
+    @staticmethod
+    async def resolve_chat_bubbles(db, ndc_id: int, chat_id: str, member_uids: list[str]) -> dict:
+        if not member_uids:
+            return {}
+
+        users_col = db.get(f"x{ndc_id}", "Users")
+        docs = await users_col.find(
+            {"id": {"$in": member_uids}},
+            {"_id": 0, "id": 1, f"chatBubbles.{chat_id}": 1, "bubbleId": 1},
+        ).to_list(length=None)
+
+        result = {}
+        for u in docs:
+            bid = (u.get("chatBubbles") or {}).get(chat_id)
+            gbid = (u.get("bubbleId"))
+            if bid or gbid:
+                result[u["id"]] = bid or gbid
+        return result
+
     @staticmethod
     async def Info(
         chatId: str | dict,
@@ -190,7 +210,7 @@ class Chat:
         return {
             "userAddedTopicList": [],
             "uid": data["hostId"],
-            "chatBubbles": {},
+            "chatBubbles": Chat.resolve_chat_bubbles(connection, ndcId, chatId, data["memberList"]),
             "membersQuota": 9999,
             "membersSummary": [
                 Chat.Member_ShortInfo(i, ndcId=ndcId)
