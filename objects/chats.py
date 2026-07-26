@@ -4,6 +4,7 @@ from typing import Union
 # import sys
 # sys.path.append('../')
 from helpers.database.mongo import Database
+from helpers.store import build_chat_bubble_object
 
 from .user import User
 
@@ -143,29 +144,39 @@ class Chat:
             "isHidden": False,
             "mediaValue": data.get("mediaValue"),
         }
-
     @staticmethod
-    async def resolve_chat_bubbles(db, ndc_id: int, chat_id, member_uids: list[str]) -> dict:
+    async def resolve_chat_bubbles(db, ndc_id: int, chat_id: str, member_uids: list[str]) -> dict:
         if not member_uids:
             return {}
-        try:
-            if not isinstance(chat_id, str):
-                print(f"[resolve_chat_bubbles] chat_id is not str: type={type(chat_id).__name__}, value={chat_id!r}")
-                return {}
 
+        try:
             users_col = db.get(f"x{ndc_id}", "Users")
             docs = await users_col.find(
                 {"id": {"$in": member_uids}},
                 {"_id": 0, "id": 1, f"chatBubbles.{chat_id}": 1, "bubbleId": 1},
             ).to_list(length=None)
 
-            result = {}
+            uid_to_bid = {}
             for u in docs:
-                bid = (u.get("chatBubbles") or {}).get(chat_id)
-                gbid = u.get("bubbleId")
-                if bid or gbid:
-                    result[u["id"]] = bid or gbid
-            return result
+                bid = (u.get("chatBubbles") or {}).get(chat_id) or u.get("bubbleId")
+                if bid:
+                    uid_to_bid[u["id"]] = bid
+
+            if not uid_to_bid:
+                return {}
+
+            bubbles_col = db.get(table="ChatBubbles")
+            bubble_docs = await bubbles_col.find(
+                {"bubbleId": {"$in": list(set(uid_to_bid.values()))}},
+                {"_id": 0},
+            ).to_list(length=None)
+            bubbles_by_id = {b["bubbleId"]: build_chat_bubble_object(b) for b in bubble_docs}
+
+            return {
+                uid: bubbles_by_id[bid]
+                for uid, bid in uid_to_bid.items()
+                if bid in bubbles_by_id
+            }
         except Exception as e:
             print(e)
             return {}
