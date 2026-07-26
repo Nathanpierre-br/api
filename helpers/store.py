@@ -77,6 +77,7 @@ def build_store_frame_item(
             "isNew": frame.get("isNew", True),
             "ownershipInfo": frame.get("ownershipInfo"),
             "extensions": frame.get("extensions", {}),
+            "availableNdcIds": frame.get("availableNdcIds", [])
         },
     }
 
@@ -132,6 +133,7 @@ def build_store_bubble_item(
             "isNew": bubble.get("isNew", True),
             "ownershipInfo": bubble.get("ownershipInfo"),
             "extensions": bubble.get("extensions", {}),
+            "availableNdcIds": bubble.get("availableNdcIds", [])
         },
     }
 
@@ -184,6 +186,7 @@ def build_avatar_frame_response(
             "isNew": frame.get("isNew", True),
             "ownershipInfo": frame.get("ownershipInfo"),
             "extensions": frame.get("extensions", {}),
+            "availableNdcIds": frame.get("availableNdcIds", [])
         }
     }
 
@@ -230,4 +233,5 @@ def build_chat_bubble_object(bubble: dict) -> dict:
         "isNew": bubble.get("isNew", False),
         "ownershipInfo": bubble.get("ownershipInfo"),
         "extensions": bubble.get("extensions", {}),
+        "availableNdcIds": bubble.get("availableNdcIds", [])
     }

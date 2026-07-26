@@ -500,6 +500,7 @@ async def create_frame(request: Request):
             "createdTime": _iso(),
             "modifiedTime": _iso(),
             "extensions": {},
+            "availableNdcIds": data.get("availableNdcIds", [])
         }
 
         frames = db.get(table="AvatarFrames")
@@ -633,6 +634,7 @@ async def create_bubble(request: Request):
             "createdTime": _iso(),
             "modifiedTime": _iso(),
             "extensions": {},
+            "availableNdcIds": data.get("availableNdcIds", [])
         }
 
         bubbles = db.get(table="ChatBubbles")
