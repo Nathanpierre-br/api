@@ -210,7 +210,7 @@ class Chat:
         return {
             "userAddedTopicList": [],
             "uid": data["hostId"],
-            "chatBubbles": Chat.resolve_chat_bubbles(connection, ndcId, chatId, data["memberList"]),
+            "chatBubbles": await Chat.resolve_chat_bubbles(connection, ndcId, chatId, data["memberList"]),
             "membersQuota": 9999,
             "membersSummary": [
                 Chat.Member_ShortInfo(i, ndcId=ndcId)
