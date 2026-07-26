@@ -6,6 +6,11 @@ class StoreItemType:
     AvatarFrame: int = 122
 
     STORE_SECTIONS = (StickerCollection, ChatBubble, AvatarFrame)
+    SECTION_META = {
+        "avatar-frame": {"name": "Avatar Frames", "collection": "AvatarFrames"},
+        "chat-bubble":  {"name": "Chat Bubbles",  "collection": "ChatBubbles"},
+        "sticker":      {"name": "Stickers",      "collection": "StickerCollections"},
+    }
 
 
 class RestrictType:

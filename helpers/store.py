@@ -186,3 +186,12 @@ def build_avatar_frame_response(
             "extensions": frame.get("extensions", {}),
         }
     }
+
+
+def build_preview_item(group_id: str, doc: dict):
+    price = doc.get("price", 0)
+    if group_id == "avatar-frame":
+        return build_store_frame_item(doc, price=price)
+    if group_id == "chat-bubble":
+        return build_store_bubble_item(doc, price=price)
+    return None

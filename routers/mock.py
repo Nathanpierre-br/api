@@ -56,11 +56,6 @@ async def personabasic_mock(request: Request):
     )
 
 
-@mock.get("/g/s/store/sections")
-async def storesections_mock(request: Request):
-    return Base.Answer({"storeSectionList": []})
-
-
 @mock.get("/g/s/coupon/new-user-coupon")
 async def newusercoupon_mock(request: Request):
     return Base.Answer({"couponMappingList": []})

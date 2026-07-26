@@ -11,7 +11,8 @@ from helpers.store import (
     build_avatar_frame_response,
     build_store_bubble_item,
     build_store_frame_item,
-    build_store_items_response
+    build_store_items_response,
+    build_preview_item
 )
 from objects import Base, Errors
 from objects.types.store import RestrictType, DiscountStatus
@@ -43,37 +44,35 @@ store = APIRouter()
 store.route_class = CachableRoute
 
 
-
 @store.get("/x{ndcId}/s/store/items")
 @store.get("/g/s/store/items")
 @validauth_required
 async def get_store_items(request: Request, ndcId: int = 0):
     t1 = timestamp()
 
-    # TODO: параметры пагинации/секции
-    # sectionGroupId = request.query_params.get("sectionGroupId")
-    # start = int(request.query_params.get("start", 0))
-    # size = int(request.query_params.get("size", 25))
+    group_id = request.query_params.get("sectionGroupId", "avatar-frame")
+    start = int(request.query_params.get("start", 0))
+    size = int(request.query_params.get("size", 25))
+
+    meta = StoreItemType.SECTION_META.get(group_id)
+    if not meta:
+        return Base.Answer(build_store_items_response([]), spent_time=timestamp() - t1)
 
     connection = await Database().init()
-    frames = connection.get(f"x{ndcId}", "AvatarFrames")
-    bubbles = connection.get(f"x{ndcId}", "ChatBubbles")
-
-    frame_docs = await frames.find({}).to_list(length=None)
-    bubble_docs = await bubbles.find({}).to_list(length=None)
+    col = connection.get(f"x{ndcId}", meta["collection"])
+    docs = await col.find({}).skip(start).limit(size).to_list(length=size)
     connection.close()
 
     items = []
-    for f in frame_docs:
-        items.append(build_store_frame_item(f, price=f.get("price", 0)))
-    for b in bubble_docs:
-        items.append(build_store_bubble_item(b, price=b.get("price", 0)))
+    for d in docs:
+        item = build_preview_item(group_id, d)
+        if item:
+            items.append(item)
 
     return Base.Answer(
         build_store_items_response(items),
-        spent_time=timestamp() - t1
+        spent_time=timestamp() - t1,
     )
-
 
 
 @store.get("/x{ndcId}/s/avatar-frame/{frameId}")
@@ -151,4 +150,47 @@ async def recommend_store_by_product(request: Request, ndcId: int = 0):
             "storeItemCommunityCheckList": []
         },
         spent_time=timestamp() - t1
+    )
+
+
+@store.get("/g/s/store/sections")
+@store.get("/x{ndcId}/s/store/sections")
+@validauth_required
+async def storesections(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+
+    raw = request.query_params.get("storeSectionGroupIds", "")
+    wanted = [x.strip() for x in raw.split(",") if x.strip()] or list(StoreItemType.SECTION_META)
+
+    connection = await Database().init()
+    section_list = []
+
+    for group_id in wanted:
+        meta = StoreItemType.SECTION_META.get(group_id)
+        if not meta:
+            continue
+
+        col = connection.get(f"x{ndcId}", meta["collection"])
+        docs = await col.find({}).to_list(length=6)
+        total = await col.count_documents({})
+
+        preview = []
+        for d in docs:
+            item = build_preview_item(group_id, d)
+            if item:
+                preview.append(item)
+
+        section_list.append({
+            "name": meta["name"],
+            "sectionGroupId": group_id,
+            "storeSectionId": group_id,
+            "allItemsCount": total,
+            "previewStoreItemList": preview,
+        })
+
+    connection.close()
+
+    return Base.Answer(
+        {"storeSectionList": section_list},
+        spent_time=timestamp() - t1,
     )
