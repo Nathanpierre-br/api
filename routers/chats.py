@@ -260,7 +260,7 @@ async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str)
 	chatId = data.get("threadId")
 	apply_to_all = int(data.get("applyToAll", 0)) == 1
 
-	if not bubble_id or not chatId:
+	if not bubble_id or (not chatId and apply_to_all):
 		return Errors.InvalidRequest(timestamp() - t1)
 
 	db = await Database().init()
@@ -1009,7 +1009,22 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 		},
 	)
 
-	messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
+
+	user_table = db.get(f"x{ndcId}", "Users")
+	user = await user_table.find_one({"id": trigger_uid}) or {}
+
+	globalBubbleId = user.get("bubbleId")
+	chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+
+	bubbleId = chatBubbleId or globalBubbleId
+	bubbleVersion = None
+
+	if bubbleId:
+		bubbles_table = db.get(table="ChatBubbles")
+		bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+		bubbleVersion = bubble.get("version", 1)
+
+	messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId, bubbleId=bubbleId, bubbleVersion=bubbleVersion)
 	answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
 
 	ws_send_obj = {

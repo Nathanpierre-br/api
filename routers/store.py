@@ -126,7 +126,7 @@ def _group_for_type(object_type: int) -> str:
         if meta["objectType"] == object_type:
             return gid
     return "avatar-frame"
-
+  
 
 
 

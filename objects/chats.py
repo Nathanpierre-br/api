@@ -78,6 +78,8 @@ class Chat:
         ndcId: int = 0,
         mentionedArray: list = [],
         history_table=None,
+        chatBubbleVersion=None,
+        chatBubbleId=None
     ):
         extensions = data.get("extensions", {})
         if extensions is None:
@@ -105,6 +107,10 @@ class Chat:
                 )
 
         xndc_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
+
+        if chatBubbleId:
+            data["chatBubbleId"] = chatBubbleId
+            data["chatBubbleVersion"] = chatBubbleVersion or 1
 
         return {
             "includedInSummary": True,
