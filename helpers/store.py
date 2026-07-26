@@ -30,12 +30,10 @@ def _timestamps(src: dict) -> tuple[str, str]:
     return created, src.get("modifiedTime") or created
 
 
-
 def _ndc_ids(obj: dict, ndcId: int | None = None) -> list:
-    availableNdcIds = []
-    if isinstance(ndcId, int):
-        availableNdcIds = [ndcId]
-    return obj.get("availableNdcIds") or availableNdcIds
+    if ndcId:
+        return [ndcId]
+    return obj.get("availableNdcIds") or []
 
 
 def _common_ref_fields(obj: dict, restriction: dict, created: str, modified: str, *,
@@ -55,8 +53,6 @@ def _common_ref_fields(obj: dict, restriction: dict, created: str, modified: str
         "availableNdcIds": _ndc_ids(obj, ndcId),
     }
 
-
-# --- refObject builders per type ---
 
 def _build_frame_ref(frame: dict, restriction: dict, created: str, modified: str,
                      ndcId: int | None = None) -> dict:
@@ -83,7 +79,7 @@ def _build_bubble_ref(bubble: dict, restriction: dict, created: str, modified: s
         "coverImage": bubble.get("coverImage"),
         "templateId": bubble.get("templateId"),
         "config": bubble.get("config", {}),
-        "deletable": bubble.get("ownershipInfo") is not None,
+        "deletable": bubble.get("deletable", True) if bubble.get("ownershipInfo") is not None else False,
         **_common_ref_fields(bubble, restriction, created, modified, ndcId=ndcId),
     }
 
@@ -126,6 +122,7 @@ _ICON_FIELDS: dict[int, str] = {
     StoreItemType.ChatBubble: "coverImage",
     StoreItemType.StickerCollection: "icon",
 }
+
 
 SPECS: dict[str, StoreItemSpec] = {
     group_id: StoreItemSpec(
@@ -216,11 +213,13 @@ def build_chat_bubble_object(bubble: dict, ndcId: int | None = None) -> dict:
     )
     created, modified = _timestamps(bubble)
     ref = _build_bubble_ref(bubble, restriction, created, modified, ndcId=ndcId)
-    ref["isActivated"] = False
+    ref["isActivated"] = bubble.get("isActivated", False)
     ref["isNew"] = bubble.get("isNew", False)
     return ref
 
+
 def build_avatar_frame_icon(frame: dict) -> dict | None:
+
     if not frame:
         return None
     ownership = frame.get("ownershipInfo") or {}
@@ -236,8 +235,6 @@ def build_avatar_frame_icon(frame: dict) -> dict | None:
     }
 
 
-
-# --- Ownership ---
 
 async def get_ownership_map(db, uid: str, object_type: int, ids: list[str]) -> dict:
     if not ids:
@@ -257,6 +254,11 @@ def apply_ownership(doc: dict, id_field: str, own_map: dict) -> dict:
     return {
         **doc,
         "ownershipInfo": own.get("ownershipInfo"),
-        "isActivated": own.get("isActivated", False),
         "isNew": False,
     }
+
+
+def mark_activated(doc: dict, id_field: str, active_id: str | None) -> dict:
+    doc = {**doc}
+    doc["isActivated"] = bool(active_id) and doc.get(id_field) == active_id
+    return doc
