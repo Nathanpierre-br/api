@@ -83,7 +83,7 @@ def _build_bubble_ref(bubble: dict, restriction: dict, created: str, modified: s
         "coverImage": bubble.get("coverImage"),
         "templateId": bubble.get("templateId"),
         "config": bubble.get("config", {}),
-        "deletable": bubble.get("deletable", True),
+        "deletable": bubble.get("ownershipInfo") is not None,
         **_common_ref_fields(bubble, restriction, created, modified, ndcId=ndcId),
     }
 
