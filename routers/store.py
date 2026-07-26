@@ -156,19 +156,17 @@ async def store_purchase(request: Request, ndcId: int = 0):
         if item is None:
             return Errors.InvalidRequest(timestamp() - t1)
 
-        users = db.get(table="Users")
-        user = await users.find_one({"id": uid})
-        if user is None:
-            return Errors.InvalidRequest(timestamp() - t1)
+        owned = db.get(table="UserStoreItems")
+        existing = await owned.find_one({
+            "uid": uid,
+            "objectType": object_type,
+            "objectId": object_id,
+        })
 
-        own_key = f"{object_type}:{object_id}"
-        purchased = user.get("purchasedItems") or {}
-
-        if own_key in purchased:
-            entry = purchased[own_key]
+        if existing:
             item.pop("_id", None)
-            item["ownershipInfo"] = entry.get("ownershipInfo")
-            item["isActivated"] = entry.get("isActivated", False)
+            item["ownershipInfo"] = existing.get("ownershipInfo")
+            item["isActivated"] = existing.get("isActivated", False)
             item["isNew"] = False
             store_item = build_preview_item(_group_for_type(object_type), item)
             return Base.Answer({"storeItem": store_item}, spent_time=timestamp() - t1)
@@ -181,12 +179,26 @@ async def store_purchase(request: Request, ndcId: int = 0):
         if restrict_type == RestrictType.NONE:
             return Errors.InvalidRequest(timestamp() - t1)
 
-
         if restrict_type == RestrictType.AMINO_MEMBERSHIP:
-            if not user.get("isPaidSubscriber"):
+            users = db.get(table="Users")
+            u = await users.find_one({"id": uid}, {"isPaidSubscriber": 1})
+            if not u or not u.get("isPaidSubscriber"):
                 return Errors.Custom(
                     PurchaseError.MEMBERSHIP_NOT_SATISFIED,
                     "Membership required",
+                    spent_time=timestamp() - t1,
+                )
+
+        if restrict_type == RestrictType.COIN and price > 0:
+            users = db.get(table="Users")
+            result = await users.update_one(
+                {"id": uid, "coins": {"$gte": price}},
+                {"$inc": {"coins": -price}},
+            )
+            if result.modified_count == 0:
+                return Errors.Custom(
+                    PurchaseError.NOT_ENOUGH_COINS,
+                    "Not enough coins",
                     spent_time=timestamp() - t1,
                 )
 
@@ -203,44 +215,16 @@ async def store_purchase(request: Request, ndcId: int = 0):
             "isAutoRenew": False,
             "ownershipStatus": 1,
         }
-        purchase_entry = {
+        ownership = {
+            "uid": uid,
             "objectId": object_id,
             "objectType": object_type,
             "isActivated": False,
             "ownershipInfo": ownership_info,
             "createdTime": _iso(),
         }
+        await owned.insert_one(ownership)
 
-        if restrict_type == RestrictType.COIN and price > 0:
-            result = await users.update_one(
-                {
-                    "id": uid,
-                    "coins": {"$gte": price},
-                    f"purchasedItems.{own_key}": {"$exists": False},
-                },
-                {
-                    "$inc": {"coins": -price},
-                    "$set": {f"purchasedItems.{own_key}": purchase_entry},
-                },
-            )
-            if result.modified_count == 0:
-                fresh = await users.find_one(
-                    {"id": uid}, {f"purchasedItems.{own_key}": 1}
-                )
-                if not (fresh and own_key in (fresh.get("purchasedItems") or {})):
-                    return Errors.Custom(
-                        PurchaseError.NOT_ENOUGH_COINS,
-                        "Not enough coins",
-                        spent_time=timestamp() - t1,
-                    )
-        else:
-            # бесплатно
-            await users.update_one(
-                {"id": uid},
-                {"$set": {f"purchasedItems.{own_key}": purchase_entry}},
-            )
-
-        # ответ с обновлённым товаром
         item.pop("_id", None)
         item["ownershipInfo"] = ownership_info
         item["isActivated"] = False
