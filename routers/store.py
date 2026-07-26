@@ -296,6 +296,137 @@ async def get_chat_bubble(request: Request, bubbleId: str, ndcId: int = 0):
 
 
 
+@store.get("/x{ndcId}/s/store/recommend-items")
+@store.get("/g/s/store/recommend-items")
+@validauth_required
+async def recommend_items(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+
+    group_id = request.query_params.get("sectionGroupId", "avatar-frame")
+    object_id = request.query_params.get("objectId")
+    size = int(request.query_params.get("size", 25))
+
+    meta = StoreItemType.SECTION_META.get(group_id)
+    if not meta:
+        return Base.Answer(build_store_items_response([]), spent_time=timestamp() - t1)
+
+    db = await Database().init()
+    try:
+        col = db.get(table=meta["collection"])
+        id_field = StoreItemType.TYPE_INFO.get(meta["objectType"], (None, None))[1]
+
+        # исключаем сам товар, по которому рекомендуем
+        query = {id_field: {"$ne": object_id}} if (id_field and object_id) else {}
+        docs = await col.find(query).limit(size).to_list(length=size)
+
+        object_type = meta["objectType"]
+        own_map = {}
+        if id_field:
+            ids = [d.get(id_field) for d in docs if d.get(id_field)]
+            own_map = await _get_ownership_map(db, uid, object_type, ids)
+
+        items = []
+        for d in docs:
+            if id_field:
+                d = _apply_ownership(d, id_field, own_map)
+            item = build_preview_item(group_id, d)
+            if item:
+                items.append(item)
+    finally:
+        db.close()
+
+    return Base.Answer(build_store_items_response(items), spent_time=timestamp() - t1)
+
+
+
+@store.get("/x{ndcId}/s/avatar-frame")
+@store.get("/g/s/avatar-frame")
+@validauth_required
+async def list_my_avatar_frames(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+
+    start = int(request.query_params.get("start", 0))
+    size = int(request.query_params.get("size", 20))
+
+    db = await Database().init()
+    try:
+        owned = db.get(table="UserStoreItems")
+        own_docs = await owned.find(
+            {"uid": uid, "objectType": StoreItemType.AvatarFrame},
+            {"_id": 0},
+        ).to_list(length=None)
+
+        own_map = {d["objectId"]: d for d in own_docs}
+        owned_ids = list(own_map.keys())
+
+        frames = db.get(table="AvatarFrames")
+        docs = await frames.find(
+            {"frameId": {"$in": owned_ids}}, {"_id": 0}
+        ).skip(start).limit(size).to_list(length=size)
+
+        result = []
+        for d in docs:
+            d = _apply_ownership(d, "frameId", own_map)
+            result.append(build_avatar_frame_response(d, price=d.get("price", 0))["avatarFrame"])
+    finally:
+        db.close()
+
+    return Base.Answer({"avatarFrameList": result}, spent_time=timestamp() - t1)
+
+
+
+@store.get("/x{ndcId}/s/chat/chat-bubble")
+@store.get("/g/s/chat/chat-bubble")
+@validauth_required
+async def list_my_bubbles(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+
+    bubble_type = request.query_params.get("type", "all-my-bubbles")
+    start = int(request.query_params.get("start", 0))
+    size = int(request.query_params.get("size", 20))
+
+    db = await Database().init()
+    try:
+        owned = db.get(table="UserStoreItems")
+        own_docs = await owned.find(
+            {"uid": uid, "objectType": StoreItemType.ChatBubble},
+            {"_id": 0},
+        ).to_list(length=None)
+
+        own_map = {d["objectId"]: d for d in own_docs}
+        owned_ids = list(own_map.keys())
+
+        bubbles = db.get(table="ChatBubbles")
+        docs = await bubbles.find(
+            {"bubbleId": {"$in": owned_ids}}, {"_id": 0}
+        ).skip(start).limit(size).to_list(length=size)
+
+        chat_bubble_list = []
+        for d in docs:
+            d = _apply_ownership(d, "bubbleId", own_map)
+            chat_bubble_list.append(build_chat_bubble_object(d))
+    finally:
+        db.close()
+
+    return Base.Answer(
+        {
+            "chatBubbleList": chat_bubble_list,
+            "allChatsBubbleId": None,
+            "currentSelectedBubbleId": None,
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+
+
+
+
+
+
 @store.get("/g/s/store/subscription")
 @validauth_required
 async def get_store_subscription(request: Request):
