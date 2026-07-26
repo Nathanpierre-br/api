@@ -23,6 +23,18 @@ from helpers.database.models import Global, ModelFabric
 from helpers.generator import Generator
 from objects import Links
 
+import uuid
+from datetime import UTC, datetime
+from objects.types.store import DiscountStatus
+
+
+
+
+def _iso() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+
 
 
 altteam = APIRouter()
@@ -434,5 +446,276 @@ async def get_user_communities(request: Request, userId: str):
             },
             spent_time=timestamp() - t1,
         )
+    finally:
+        db.close()
+
+
+
+
+
+
+
+#STORE
+
+
+
+
+#  Avatar Frames
+
+@altteam.post("/g/s/altteam/altstore/avatar-frame")
+async def create_frame(request: Request):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        try:
+            data = await request.json()
+            name = data["name"]
+            resource_url = data["resourceUrl"]
+        except Exception:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        frame_id = str(uuid.uuid4())
+        doc = {
+            "frameId": frame_id,
+            "name": name,
+            "resourceUrl": resource_url,
+            "icon": data.get("icon"),
+            "frameType": data.get("frameType", 1),
+            "description": data.get("description", ""),
+            "price": data.get("price", 0),
+            "restrictType": data.get("restrictType"),
+            "discountStatus": data.get("discountStatus", DiscountStatus.OFF),
+            "discountValue": data.get("discountValue", 0),
+            "availableDuration": data.get("availableDuration", 0),
+            "md5": data.get("md5"),
+            "version": data.get("version", 1),
+            "status": 0,
+            "uid": trigger_uid,
+            "createdTime": _iso(),
+            "modifiedTime": _iso(),
+            "extensions": {},
+        }
+
+        frames = db.get(table="AvatarFrames")
+        await frames.insert_one(doc)
+        doc.pop("_id", None)
+
+        return Base.Answer({"frameId": frame_id, "avatarFrame": doc}, spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.post("/g/s/altteam/altstore/avatar-frame/{frameId}/edit")
+async def edit_frame(request: Request, frameId: str):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        try:
+            data = await request.json()
+        except Exception:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        allowed = {
+            "name", "resourceUrl", "icon", "frameType", "description",
+            "price", "restrictType", "discountStatus", "discountValue",
+            "availableDuration", "md5", "version", "status",
+        }
+        changes = {k: v for k, v in data.items() if k in allowed and v is not None}
+        if not changes:
+            return Errors.InvalidRequest(timestamp() - t1)
+        changes["modifiedTime"] = _iso()
+
+        frames = db.get(table="AvatarFrames")
+        result = await frames.update_one({"frameId": frameId}, {"$set": changes})
+        if result.matched_count == 0:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        return Base.Answer(spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.post("/g/s/altteam/altstore/avatar-frame/{frameId}/delete")
+async def delete_frame(request: Request, frameId: str):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        frames = db.get(table="AvatarFrames")
+        result = await frames.delete_one({"frameId": frameId})
+        if result.deleted_count == 0:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        return Base.Answer(spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.get("/g/s/altteam/altstore/avatar-frame")
+async def list_frames(request: Request):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        frames = db.get(table="AvatarFrames")
+        docs = await frames.find({}, {"_id": 0}).to_list(length=None)
+
+        return Base.Answer({"avatarFrameList": docs}, spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+
+#  Chat Bubbles
+
+
+@altteam.post("/g/s/altteam/altstore/chat-bubble")
+async def create_bubble(request: Request):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        try:
+            data = await request.json()
+            name = data["name"]
+            resource_url = data["resourceUrl"]
+        except Exception:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        bubble_id = str(uuid.uuid4())
+        doc = {
+            "bubbleId": bubble_id,
+            "name": name,
+            "resourceUrl": resource_url,
+            "coverImage": data.get("coverImage"),
+            "backgroundImage": data.get("backgroundImage"),
+            "bannerImage": data.get("bannerImage"),
+            "bubbleType": data.get("bubbleType", 1),
+            "config": data.get("config", {}),
+            "templateId": data.get("templateId"),
+            "price": data.get("price", 0),
+            "restrictType": data.get("restrictType"),
+            "discountStatus": data.get("discountStatus", DiscountStatus.OFF),
+            "discountValue": data.get("discountValue", 0),
+            "availableDuration": data.get("availableDuration", 0),
+            "md5": data.get("md5"),
+            "version": data.get("version", 1),
+            "status": 0,
+            "deletable": True,
+            "uid": trigger_uid,
+            "createdTime": _iso(),
+            "modifiedTime": _iso(),
+            "extensions": {},
+        }
+
+        bubbles = db.get(table="ChatBubbles")
+        await bubbles.insert_one(doc)
+        doc.pop("_id", None)
+
+        return Base.Answer({"bubbleId": bubble_id, "chatBubble": doc}, spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.post("/g/s/altteam/altstore/chat-bubble/{bubbleId}/edit")
+async def edit_bubble(request: Request, bubbleId: str):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        try:
+            data = await request.json()
+        except Exception:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        allowed = {
+            "name", "resourceUrl", "coverImage", "backgroundImage", "bannerImage",
+            "bubbleType", "config", "templateId", "price", "restrictType",
+            "discountStatus", "discountValue", "availableDuration", "md5",
+            "version", "status", "deletable",
+        }
+        changes = {k: v for k, v in data.items() if k in allowed and v is not None}
+        if not changes:
+            return Errors.InvalidRequest(timestamp() - t1)
+        changes["modifiedTime"] = _iso()
+
+        bubbles = db.get(table="ChatBubbles")
+        result = await bubbles.update_one({"bubbleId": bubbleId}, {"$set": changes})
+        if result.matched_count == 0:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        return Base.Answer(spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.post("/g/s/altteam/altstore/chat-bubble/{bubbleId}/delete")
+async def delete_bubble(request: Request, bubbleId: str):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        bubbles = db.get(table="ChatBubbles")
+        result = await bubbles.delete_one({"bubbleId": bubbleId})
+        if result.deleted_count == 0:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        return Base.Answer(spent_time=timestamp() - t1)
+    finally:
+        db.close()
+
+
+@altteam.get("/g/s/altteam/altstore/chat-bubble")
+async def list_bubbles(request: Request):
+    t1 = timestamp()
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    try:
+        sensitive_table = db.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        bubbles = db.get(table="ChatBubbles")
+        docs = await bubbles.find({}, {"_id": 0}).to_list(length=None)
+
+        return Base.Answer({"chatBubbleList": docs}, spent_time=timestamp() - t1)
     finally:
         db.close()

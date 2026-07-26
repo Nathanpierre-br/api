@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from time import time as timestamp
 
 from fastapi import APIRouter, Request
@@ -12,36 +12,43 @@ from helpers.store import (
     build_store_bubble_item,
     build_store_frame_item,
     build_store_items_response,
-    build_preview_item
+    build_preview_item,
 )
 from objects import Base, Errors
-from objects.types.store import RestrictType, DiscountStatus
+from objects.types.store import (
+    RestrictType, StoreItemType, PurchaseError,
+)
 
 store = APIRouter()
 store.route_class = CachableRoute
 
 
+def _iso():
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-from datetime import UTC, datetime
-from time import time as timestamp
 
-from fastapi import APIRouter, Request
+async def _get_ownership_map(db, uid: str, object_type: int, ids: list[str]) -> dict:
+    if not ids:
+        return {}
+    owned = db.get(table="UserStoreItems")
+    cursor = owned.find(
+        {"uid": uid, "objectType": object_type, "objectId": {"$in": ids}},
+        {"_id": 0},
+    )
+    docs = await cursor.to_list(length=None)
+    return {d["objectId"]: d for d in docs}
 
-from helpers.config import Config
-from helpers.database.mongo import Database
-from helpers.decorators.validauth import validauth_required
-from helpers.routers.cachable import CachableRoute
-from helpers.store import (
-    build_avatar_frame_response,
-    build_store_bubble_item,
-    build_store_frame_item,
-    build_store_items_response,
-)
-from objects import Base, Errors
-from objects.types.store import RestrictType, DiscountStatus, StoreItemType
 
-store = APIRouter()
-store.route_class = CachableRoute
+def _apply_ownership(doc: dict, id_field: str, own_map: dict) -> dict:
+    own = own_map.get(doc.get(id_field))
+    if own:
+        doc = {**doc}
+        doc["ownershipInfo"] = own.get("ownershipInfo")
+        doc["isActivated"] = own.get("isActivated", False)
+        doc["isNew"] = False
+    return doc
+
+
 
 
 @store.get("/x{ndcId}/s/store/items")
@@ -49,6 +56,7 @@ store.route_class = CachableRoute
 @validauth_required
 async def get_store_items(request: Request, ndcId: int = 0):
     t1 = timestamp()
+    uid = request.state.session["uid"]
 
     group_id = request.query_params.get("sectionGroupId", "avatar-frame")
     start = int(request.query_params.get("start", 0))
@@ -58,21 +66,31 @@ async def get_store_items(request: Request, ndcId: int = 0):
     if not meta:
         return Base.Answer(build_store_items_response([]), spent_time=timestamp() - t1)
 
-    connection = await Database().init()
-    col = connection.get(f"x{ndcId}", meta["collection"])
-    docs = await col.find({}).skip(start).limit(size).to_list(length=size)
-    connection.close()
+    db = await Database().init()
+    try:
+        col = db.get(table=meta["collection"])
+        docs = await col.find({}).skip(start).limit(size).to_list(length=size)
 
-    items = []
-    for d in docs:
-        item = build_preview_item(group_id, d)
-        if item:
-            items.append(item)
+        object_type = meta["objectType"]
+        id_field = StoreItemType.TYPE_INFO.get(object_type, (None, None))[1]
 
-    return Base.Answer(
-        build_store_items_response(items),
-        spent_time=timestamp() - t1,
-    )
+        own_map = {}
+        if id_field:
+            ids = [d.get(id_field) for d in docs if d.get(id_field)]
+            own_map = await _get_ownership_map(db, uid, object_type, ids)
+
+        items = []
+        for d in docs:
+            if id_field:
+                d = _apply_ownership(d, id_field, own_map)
+            item = build_preview_item(group_id, d)
+            if item:
+                items.append(item)
+    finally:
+        db.close()
+
+    return Base.Answer(build_store_items_response(items), spent_time=timestamp() - t1)
+
 
 
 @store.get("/x{ndcId}/s/avatar-frame/{frameId}")
@@ -80,18 +98,25 @@ async def get_store_items(request: Request, ndcId: int = 0):
 @validauth_required
 async def get_avatar_frame(request: Request, frameId: str, ndcId: int = 0):
     t1 = timestamp()
+    uid = request.state.session["uid"]
 
-    connection = await Database().init()
-    frames = connection.get(f"x{ndcId}", "AvatarFrames")
-    frame = await frames.find_one({"frameId": frameId})
-    connection.close()
+    db = await Database().init()
+    try:
+        frames = db.get(table="AvatarFrames")
+        frame = await frames.find_one({"frameId": frameId}, {"_id": 0})
+        if frame is None:
+            return Errors.InvalidRequest(timestamp() - t1)
 
-    if frame is None:
-        return Errors.InvalidRequest(timestamp() - t1)
+        own_map = await _get_ownership_map(
+            db, uid, StoreItemType.AvatarFrame, [frameId]
+        )
+        frame = _apply_ownership(frame, "frameId", own_map)
+    finally:
+        db.close()
 
     return Base.Answer(
-        build_avatar_frame_response(frame, frame, price=frame.get("price", 0)),
-        spent_time=timestamp() - t1
+        build_avatar_frame_response(frame, price=frame.get("price", 0)),
+        spent_time=timestamp() - t1,
     )
 
 
@@ -101,56 +126,90 @@ async def get_avatar_frame(request: Request, frameId: str, ndcId: int = 0):
 @validauth_required
 async def store_purchase(request: Request, ndcId: int = 0):
     t1 = timestamp()
-    data = await request.json()
-
-    object_id = data.get("objectId")
-    object_type = data.get("objectType")
-    payment_context = data.get("paymentContext", {})
-
-    if not object_id or object_type not in StoreItemType.STORE_SECTIONS:
-        return Errors.InvalidRequest(timestamp() - t1)
-
     uid = request.state.session["uid"]
 
-    # TODO: 1) достать товар и цену из БД (цену НЕ брать из запроса!)
-    # TODO: 2) проверить restrictType (2=membership, 4=coin)
-    # TODO: 3) атомарно списать монеты, при нехватке -> 4300
-    # TODO: 4) записать ownership юзеру
-    # заглушка: считаем успешной
+    try:
+        data = await request.json()
+        object_id = data["objectId"]
+        object_type = int(data["objectType"])
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    if object_type not in StoreItemType.TYPE_INFO:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    collection, id_field = StoreItemType.TYPE_INFO[object_type]
+
+    db = await Database().init()
+    try:
+        col = db.get(table=collection)
+        item = await col.find_one({id_field: object_id})
+        if item is None:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        owned = db.get(table="UserStoreItems")
+        existing = await owned.find_one({
+            "uid": uid, "objectType": object_type, "objectId": object_id,
+        })
+        if existing:
+            return Base.Answer(spent_time=timestamp() - t1)
+
+        restrict_type = item.get("restrictType")
+        price = item.get("price", 0)
+
+        if restrict_type is None:
+            restrict_type = RestrictType.COIN if price else RestrictType.FREE
+
+        if restrict_type == RestrictType.AMINO_MEMBERSHIP:
+            sensitive = db.get(table="Users")
+            u = await sensitive.find_one({"id": uid}, {"membership": 1})
+            if not u or not u.get("membership"):
+                return Errors.Custom(
+                    PurchaseError.MEMBERSHIP_NOT_SATISFIED,
+                    "Membership required",
+                    timestamp() - t1,
+                )
+
+        if restrict_type == RestrictType.COIN and price > 0:
+            wallets = db.get(table="Wallets")
+            result = await wallets.update_one(
+                {"uid": uid, "totalCoins": {"$gte": price}},
+                {"$inc": {"totalCoins": -price, "totalCoinsSpent": price}},
+            )
+            if result.modified_count == 0:
+                return Errors.Custom(
+                    PurchaseError.NOT_ENOUGH_COINS,
+                    "Not enough coins",
+                    timestamp() - t1,
+                )
+
+        duration = item.get("availableDuration", 0)
+        expired = None
+        if duration:
+            expired = (datetime.now(UTC) + timedelta(days=duration)).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+
+        ownership = {
+            "uid": uid,
+            "objectId": object_id,
+            "objectType": object_type,
+            "isActivated": False,
+            "ownershipInfo": {
+                "createdTime": _iso(),
+                "expiredTime": expired,
+                "isAutoRenew": False,
+                "ownershipStatus": 1,
+            },
+            "createdTime": _iso(),
+        }
+        await owned.insert_one(ownership)
+
+    finally:
+        db.close()
+
     return Base.Answer(spent_time=timestamp() - t1)
 
-
-
-@store.get("/g/s/store/subscription")
-@validauth_required
-async def get_store_subscription(request: Request):
-    t1 = timestamp()
-    # TODO: список подписок пользователя
-
-    return Base.Answer(
-        {
-            "storeSubscriptionItemList": []
-        },
-        spent_time=timestamp() - t1
-    )
-
-@store.get("/x{ndcId}/s/store/recommend-store-by-product")
-@store.get("/g/s/store/recommend-store-by-product")
-@validauth_required
-async def recommend_store_by_product(request: Request, ndcId: int = 0):
-    t1 = timestamp()
-    # объект, по которому рекомендуют (objectId=frameId, objectType=122)
-    # object_id = request.query_params.get("objectId")
-    # object_type = request.query_params.get("objectType")
-
-    # TODO: список сообществ, где доступен товар
-    return Base.Answer(
-        {
-            "communityList": [],
-            "storeItemCommunityCheckList": []
-        },
-        spent_time=timestamp() - t1
-    )
 
 
 @store.get("/g/s/store/sections")
@@ -158,39 +217,66 @@ async def recommend_store_by_product(request: Request, ndcId: int = 0):
 @validauth_required
 async def storesections(request: Request, ndcId: int = 0):
     t1 = timestamp()
+    uid = request.state.session["uid"]
 
     raw = request.query_params.get("storeSectionGroupIds", "")
     wanted = [x.strip() for x in raw.split(",") if x.strip()] or list(StoreItemType.SECTION_META)
 
-    connection = await Database().init()
-    section_list = []
+    db = await Database().init()
+    try:
+        section_list = []
+        for group_id in wanted:
+            meta = StoreItemType.SECTION_META.get(group_id)
+            if not meta:
+                continue
 
-    for group_id in wanted:
-        meta = StoreItemType.SECTION_META.get(group_id)
-        if not meta:
-            continue
+            col = db.get(table=meta["collection"])
+            docs = await col.find({}).to_list(length=6)
+            total = await col.count_documents({})
 
-        col = connection.get(f"x{ndcId}", meta["collection"])
-        docs = await col.find({}).to_list(length=6)
-        total = await col.count_documents({})
+            object_type = meta["objectType"]
+            id_field = StoreItemType.TYPE_INFO.get(object_type, (None, None))[1]
 
-        preview = []
-        for d in docs:
-            item = build_preview_item(group_id, d)
-            if item:
-                preview.append(item)
+            own_map = {}
+            if id_field:
+                ids = [d.get(id_field) for d in docs if d.get(id_field)]
+                own_map = await _get_ownership_map(db, uid, object_type, ids)
 
-        section_list.append({
-            "name": meta["name"],
-            "sectionGroupId": group_id,
-            "storeSectionId": group_id,
-            "allItemsCount": total,
-            "previewStoreItemList": preview,
-        })
+            preview = []
+            for d in docs:
+                if id_field:
+                    d = _apply_ownership(d, id_field, own_map)
+                item = build_preview_item(group_id, d)
+                if item:
+                    preview.append(item)
 
-    connection.close()
+            section_list.append({
+                "name": meta["name"],
+                "sectionGroupId": group_id,
+                "storeSectionId": group_id,
+                "allItemsCount": total,
+                "previewStoreItemList": preview,
+            })
+    finally:
+        db.close()
 
+    return Base.Answer({"storeSectionList": section_list}, spent_time=timestamp() - t1)
+
+
+
+@store.get("/g/s/store/subscription")
+@validauth_required
+async def get_store_subscription(request: Request):
+    t1 = timestamp()
+    return Base.Answer({"storeSubscriptionItemList": []}, spent_time=timestamp() - t1)
+
+
+@store.get("/x{ndcId}/s/store/recommend-store-by-product")
+@store.get("/g/s/store/recommend-store-by-product")
+@validauth_required
+async def recommend_store_by_product(request: Request, ndcId: int = 0):
+    t1 = timestamp()
     return Base.Answer(
-        {"storeSectionList": section_list},
+        {"communityList": [], "storeItemCommunityCheckList": []},
         spent_time=timestamp() - t1,
     )

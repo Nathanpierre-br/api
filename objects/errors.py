@@ -15,6 +15,16 @@ class Errors:
         )
 
     @staticmethod
+    def Custom(api_code: int, api_message: str = "Invalid request. Check all data that you sended or try again later.", html_status_code: int = 400, spent_time: Union[int, float] = 0):
+        return Base.Answer(
+            api_status_code=api_code,
+            html_status_code=html_status_code,
+            api_message=api_message,
+            spent_time=spent_time,
+        )
+
+
+    @staticmethod
     def Exs9(spent_time: Union[int, float] = 0):
         return Base.Answer(
             api_status_code=1000000,

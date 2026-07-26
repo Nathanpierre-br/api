@@ -24,6 +24,7 @@ class Config:
     S3_IMAGES_FOLDER = S3_UPLOADS_FOLDER + "images/"
     S3_VOICES_FOLDER = S3_UPLOADS_FOLDER + "voices/"
     S3_NDCTHEMES_FOLDER = "ndc-themes/"
+    S3_STORE_FOLDER = "store-resources/"
 
     # maximums settings (optional to configure)
     MAX_FILE_SIZE = int(environ.get("MAX_FILE_SIZE", 5000000))

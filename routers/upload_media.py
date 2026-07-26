@@ -79,9 +79,38 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
                 return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
 
             filename = Config.S3_NDCTHEMES_FOLDER + f"x{ndcId}-rev{rev}.ndthemepack"
-        # leaving it here for maybe another use of this?
+        elif target in ("avatar-frame", "chat-bubble", "sticker"):
+            db = await Database().init()
+            try:
+                g = db.get(table="Users")
+                user_info = await g.find_one({"id": uid})
+                if not user_info or not RoleTypes.is_global_staff(user_info.get("role", 0)):
+                    return Errors.NotEnoughRights(timestamp() - t1)
+            finally:
+                db.close()
+
+            try:
+                with BytesIO(body) as buffer:
+                    with ZipFile(buffer) as zip_ref:
+                        if zip_ref.testzip() is not None:
+                            raise ValueError("bad zip")
+            except Exception:
+                return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+
+            filename = (
+                Config.S3_STORE_FOLDER
+                + "".join(choice(ascii_letters + digits) for _ in range(64))
+                + ".zip"
+            )
+
         else:
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
+
+
+
+
+
+        
     else:
         # generating filename
         filename = (

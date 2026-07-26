@@ -7,9 +7,13 @@ class StoreItemType:
 
     STORE_SECTIONS = (StickerCollection, ChatBubble, AvatarFrame)
     SECTION_META = {
-        "avatar-frame": {"name": "Avatar Frames", "collection": "AvatarFrames"},
-        "chat-bubble":  {"name": "Chat Bubbles",  "collection": "ChatBubbles"},
-        "sticker":      {"name": "Stickers",      "collection": "StickerCollections"},
+        "avatar-frame": {"name": "Avatar Frames", "collection": "AvatarFrames", "objectType": AvatarFrame},
+        "chat-bubble":  {"name": "Chat Bubbles",  "collection": "ChatBubbles",  "objectType": ChatBubble},
+        "sticker":      {"name": "Stickers",      "collection": "StickerCollections", "objectType": StickerCollection},
+    }
+    TYPE_INFO = {
+        AvatarFrame: ("AvatarFrames", "frameId"),
+        ChatBubble:  ("ChatBubbles", "bubbleId"),
     }
 
 
