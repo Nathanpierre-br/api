@@ -25,7 +25,7 @@ from objects import Links
 
 import uuid
 from datetime import UTC, datetime
-from objects.types.store import DiscountStatus
+from objects.types.store import DiscountStatus, RestrictType
 
 
 
@@ -489,7 +489,7 @@ async def create_frame(request: Request):
             "frameType": data.get("frameType", 1),
             "description": data.get("description", ""),
             "price": data.get("price", 0),
-            "restrictType": data.get("restrictType"),
+            "restrictType": data.get("restrictType") or (RestrictType.COIN if data.get("price", 0) else RestrictType.FREE),
             "discountStatus": data.get("discountStatus", DiscountStatus.OFF),
             "discountValue": data.get("discountValue", 0),
             "availableDuration": data.get("availableDuration", 0),
@@ -621,7 +621,7 @@ async def create_bubble(request: Request):
             "config": data.get("config", {}),
             "templateId": data.get("templateId"),
             "price": data.get("price", 0),
-            "restrictType": data.get("restrictType"),
+            "restrictType": data.get("restrictType") or (RestrictType.COIN if data.get("price", 0) else RestrictType.FREE),
             "discountStatus": data.get("discountStatus", DiscountStatus.OFF),
             "discountValue": data.get("discountValue", 0),
             "availableDuration": data.get("availableDuration", 0),

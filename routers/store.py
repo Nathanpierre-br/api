@@ -13,6 +13,7 @@ from helpers.store import (
     build_store_frame_item,
     build_store_items_response,
     build_preview_item,
+    build_chat_bubble_object,
 )
 from objects import Base, Errors
 from objects.types.store import (
@@ -261,6 +262,37 @@ async def storesections(request: Request, ndcId: int = 0):
         db.close()
 
     return Base.Answer({"storeSectionList": section_list}, spent_time=timestamp() - t1)
+
+
+
+@store.get("/x{ndcId}/s/chat/chat-bubble/{bubbleId}")
+@store.get("/g/s/chat/chat-bubble/{bubbleId}")
+@validauth_required
+async def get_chat_bubble(request: Request, bubbleId: str, ndcId: int = 0):
+    t1 = timestamp()
+    uid = request.state.session["uid"]
+
+    db = await Database().init()
+    try:
+        bubbles = db.get(table="ChatBubbles")
+        bubble = await bubbles.find_one({"bubbleId": bubbleId}, {"_id": 0})
+        if bubble is None:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        own_map = await _get_ownership_map(db, uid, StoreItemType.ChatBubble, [bubbleId])
+        bubble = _apply_ownership(bubble, "bubbleId", own_map)
+    finally:
+        db.close()
+
+    return Base.Answer(
+        {
+            "chatBubble": build_chat_bubble_object(bubble),
+            "allChatsBubbleId": bubble.get("bubbleId"),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
 
 
 

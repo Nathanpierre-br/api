@@ -195,3 +195,39 @@ def build_preview_item(group_id: str, doc: dict):
     if group_id == "chat-bubble":
         return build_store_bubble_item(doc, price=price)
     return None
+
+
+
+
+def build_chat_bubble_object(bubble: dict) -> dict:
+    price = bubble.get("price", 0)
+    restriction = _restriction(
+        price=price,
+        restrictType=bubble.get("restrictType"),
+        discountStatus=bubble.get("discountStatus"),
+        discountValue=bubble.get("discountValue"),
+        availableDuration=bubble.get("availableDuration", 0),
+    )
+    created = bubble.get("createdTime") or _iso()
+    return {
+        "bubbleId": bubble["bubbleId"],
+        "bubbleType": bubble.get("bubbleType", 1),
+        "name": bubble["name"],
+        "resourceUrl": bubble["resourceUrl"],
+        "backgroundImage": bubble.get("backgroundImage"),
+        "bannerImage": bubble.get("bannerImage"),
+        "coverImage": bubble.get("coverImage"),
+        "md5": bubble.get("md5"),
+        "status": bubble.get("status", 0),
+        "version": bubble.get("version", 1),
+        "templateId": bubble.get("templateId"),
+        "config": bubble.get("config", {}),
+        "createdTime": created,
+        "modifiedTime": bubble.get("modifiedTime") or created,
+        "deletable": bubble.get("deletable", True),
+        "restrictionInfo": restriction,
+        "isActivated": bubble.get("isActivated", False),
+        "isNew": bubble.get("isNew", False),
+        "ownershipInfo": bubble.get("ownershipInfo"),
+        "extensions": bubble.get("extensions", {}),
+    }
