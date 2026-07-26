@@ -39,12 +39,6 @@ chats = APIRouter()
 chats.route_class = CachableRoute
 
 
-
-def _iso():
-	return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-
 # chat search
 # /g/s/chat/thread/explore/search?q=Hello&size=25
 
