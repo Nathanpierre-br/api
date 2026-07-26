@@ -317,7 +317,7 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
 	print(f"editing data for chat {chatId}:", data)
 	trigger_uid = request.state.session["uid"]
 	if chatId == "apply-bubble":
-		return chat_apply_bubble(t1, ndcId, data, trigger_uid)
+		return await chat_apply_bubble(t1, ndcId, data, trigger_uid)
 
 	db = await Database().init()
 	table = db.get(f"x{ndcId}", "Chats")
