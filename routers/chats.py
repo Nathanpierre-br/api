@@ -1024,7 +1024,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 		bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
 		bubbleVersion = bubble.get("version", 1)
 
-	messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId, bubbleId=bubbleId, bubbleVersion=bubbleVersion)
+	messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId, chatBubbleId=bubbleId, chatBubbleVersion=bubbleVersion)
 	answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
 
 	ws_send_obj = {
