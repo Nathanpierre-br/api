@@ -260,26 +260,27 @@ async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str)
 	chatId = data.get("threadId")
 	apply_to_all = int(data.get("applyToAll", 0)) == 1
 
-	if not bubble_id or (not chatId and apply_to_all):
+	if (not chatId and not apply_to_all):
 		return Errors.InvalidRequest(timestamp() - t1)
 
 	db = await Database().init()
 	try:
-		owned = db.get(table="UserStoreItems")
-		ownership = await owned.find_one({
-			"uid": trigger_uid,
-			"objectType": StoreItemType.ChatBubble,
-			"objectId": bubble_id,
-		})
-		if not ownership:
-			return Errors.NotEnoughRights(timestamp() - t1)
+		if bubble_id:
+			owned = db.get(table="UserStoreItems")
+			ownership = await owned.find_one({
+				"uid": trigger_uid,
+				"objectType": StoreItemType.ChatBubble,
+				"objectId": bubble_id,
+			})
+			if not ownership:
+				return Errors.NotEnoughRights(timestamp() - t1)
 
 		table = db.get(f"x{ndcId}", "Users")
 		user = await table.find_one({"id": trigger_uid})
 		if user is None:
 			return Errors.AccountNotExist(timestamp() - t1)
 
-		if apply_to_all:
+		if apply_to_all or bubble_id is None:
 			await table.update_one(
 				{"id": trigger_uid},
 				{"$set": {"bubbleId": bubble_id, "chatBubbles": {}}},
