@@ -30,9 +30,10 @@ def _timestamps(src: dict) -> tuple[str, str]:
     return created, src.get("modifiedTime") or created
 
 
+
 def _ndc_ids(obj: dict, ndcId: int | None = None) -> list:
     availableNdcIds = []
-    if ndcId:
+    if isinstance(ndcId, int):
         availableNdcIds = [ndcId]
     return obj.get("availableNdcIds") or availableNdcIds
 
@@ -126,7 +127,6 @@ _ICON_FIELDS: dict[int, str] = {
     StoreItemType.StickerCollection: "icon",
 }
 
-
 SPECS: dict[str, StoreItemSpec] = {
     group_id: StoreItemSpec(
         id_field=StoreItemType.TYPE_INFO[meta["objectType"]][1],
@@ -136,6 +136,7 @@ SPECS: dict[str, StoreItemSpec] = {
     )
     for group_id, meta in StoreItemType.SECTION_META.items()
 }
+
 
 TYPE_TO_GROUP: dict[int, str] = {
     meta["objectType"]: group_id for group_id, meta in StoreItemType.SECTION_META.items()
@@ -194,7 +195,14 @@ def build_preview_item(group_id: str, doc: dict, ndcId: int | None = None):
     spec = SPECS.get(group_id)
     if spec is None:
         return None
-    return build_store_item(spec, doc, price=doc.get("price", 0), ndcId=ndcId)
+    return build_store_item(
+        spec, doc,
+        price=doc.get("price", 0),
+        ndcId=ndcId,
+        restrictType=doc.get("restrictType"),
+        discountStatus=doc.get("discountStatus"),
+        discountValue=doc.get("discountValue"),
+    )
 
 
 def build_chat_bubble_object(bubble: dict, ndcId: int | None = None) -> dict:
