@@ -126,8 +126,8 @@ class Chat:
         }
 
         if chatBubbleId:
-            data["result"] = chatBubbleId
-            data["result"] = chatBubbleVersion or 1
+            result["chatBubbleId"] = chatBubbleId
+            result["chatBubbleVersion"] = chatBubbleVersion or 1
 
         return result
 
