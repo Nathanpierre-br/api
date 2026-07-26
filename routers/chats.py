@@ -678,10 +678,27 @@ async def create_chat(request: Request, ndcId: int = 0):
 	chatInfo_obj = await Chat.Info(
 		chatId, db, trigger_uid=trigger_uid, xndc_users=xndc_users, ndcId=ndcId
 	)
-	messages_obj = [
-		await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
-		for message in messages
-	]
+
+
+	messages_obj = []
+
+	for message in messages:
+		user = await xndc_users.find_one({"id": message["authorId"]}) or {}
+
+		globalBubbleId = user.get("bubbleId")
+		chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+
+		bubbleId = chatBubbleId or globalBubbleId
+		bubbleVersion = None
+
+		if bubbleId:
+			bubbles_table = db.get(table="ChatBubbles")
+			bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+			bubbleVersion = bubble.get("version", 1)
+
+		messages_obj.append(await Chat.LongMessage(
+					message, chatId, xndc_users, history_table=table, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
+				))
 
 
 
@@ -773,12 +790,26 @@ async def get_chat_messages(
 		.sort("timestamp", DESCENDING)
 	]
 	xndc_users = db.get(f"x{ndcId}", "Users")
-	messageList = [
-		await Chat.LongMessage(
-			message, chatId, xndc_users, history_table=table, ndcId=ndcId
-		)
-		for message in messages
-	]
+	messageList = []
+
+	for message in messages:
+		user = await xndc_users.find_one({"id": message["authorId"]}) or {}
+
+		globalBubbleId = user.get("bubbleId")
+		chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+
+		bubbleId = chatBubbleId or globalBubbleId
+		bubbleVersion = None
+
+		if bubbleId:
+			bubbles_table = db.get(table="ChatBubbles")
+			bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+			bubbleVersion = bubble.get("version", 1)
+
+		messageList.append(await Chat.LongMessage(
+					message, chatId, xndc_users, history_table=table, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
+				))
+		
 	if len(messages) > 0:
 		answer = Base.Answer(
 			{
@@ -1087,9 +1118,22 @@ async def get_message(request: Request, chatId: str, messageId: str, ndcId: int 
 
 	xndc_users = db.get(f"x{ndcId}", "Users")
 
+	user = await xndc_users.find_one({"id": message_data["authorId"]}) or {}
+
+	globalBubbleId = user.get("bubbleId")
+	chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+
+	bubbleId = chatBubbleId or globalBubbleId
+	bubbleVersion = None
+
+	if bubbleId:
+		bubbles_table = db.get(table="ChatBubbles")
+		bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+		bubbleVersion = bubble.get("version", 1)
+
 	message_obj = await Chat.LongMessage(
-		message_data, chatId, xndc_users, ndcId=ndcId, history_table=message_table
-	)
+				message_data, chatId, xndc_users, history_table=message_table, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
+			)
 
 	answer = Base.Answer({"message": message_obj}, spent_time=timestamp() - t1)
 	db.close()
@@ -1958,9 +2002,23 @@ async def toggle_things(
 			)
 
 			xndc_users = db.get(f"x{ndcId}", "Users")
+			user = await xndc_users.find_one({"id": message["authorId"]}) or {}
+
+			globalBubbleId = user.get("bubbleId")
+			chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+
+			bubbleId = chatBubbleId or globalBubbleId
+			bubbleVersion = None
+
+			if bubbleId:
+				bubbles_table = db.get(table="ChatBubbles")
+				bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+				bubbleVersion = bubble.get("version", 1)
+
 			messageObj = await Chat.LongMessage(
-				message, chatId, xndc_users, ndcId=ndcId
-			)
+						message, chatId, xndc_users, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
+					)
+
 			ws_send_obj = {
 				"t": 1000,
 				"o": {
