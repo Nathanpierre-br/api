@@ -127,6 +127,9 @@ def _group_for_type(object_type: int) -> str:
             return gid
     return "avatar-frame"
 
+
+
+
 @store.post("/x{ndcId}/s/store/purchase")
 @store.post("/g/s/store/purchase")
 @validauth_required
@@ -153,39 +156,37 @@ async def store_purchase(request: Request, ndcId: int = 0):
         if item is None:
             return Errors.InvalidRequest(timestamp() - t1)
 
-        owned = db.get(table="UserStoreItems")
-        existing = await owned.find_one({
-            "uid": uid, "objectType": object_type, "objectId": object_id,
-        })
-        if existing:
-            return Base.Answer(spent_time=timestamp() - t1)
+        users = db.get(table="Users")
+        user = await users.find_one({"id": uid})
+        if user is None:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        own_key = f"{object_type}:{object_id}"
+        purchased = user.get("purchasedItems") or {}
+
+        if own_key in purchased:
+            entry = purchased[own_key]
+            item.pop("_id", None)
+            item["ownershipInfo"] = entry.get("ownershipInfo")
+            item["isActivated"] = entry.get("isActivated", False)
+            item["isNew"] = False
+            store_item = build_preview_item(_group_for_type(object_type), item)
+            return Base.Answer({"storeItem": store_item}, spent_time=timestamp() - t1)
 
         restrict_type = item.get("restrictType")
         price = item.get("price", 0)
-
         if restrict_type is None:
             restrict_type = RestrictType.COIN if price else RestrictType.FREE
 
+        if restrict_type == RestrictType.NONE:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+
         if restrict_type == RestrictType.AMINO_MEMBERSHIP:
-            sensitive = db.get(table="Users")
-            u = await sensitive.find_one({"id": uid}, {"membership": 1})
-            if not u or not u.get("membership"):
+            if not user.get("isPaidSubscriber"):
                 return Errors.Custom(
                     PurchaseError.MEMBERSHIP_NOT_SATISFIED,
                     "Membership required",
-                    spent_time=timestamp() - t1,
-                )
-
-        if restrict_type == RestrictType.COIN and price > 0:
-            wallets = db.get(table="Wallets")
-            result = await wallets.update_one(
-                {"uid": uid, "totalCoins": {"$gte": price}},
-                {"$inc": {"totalCoins": -price, "totalCoinsSpent": price}},
-            )
-            if result.modified_count == 0:
-                return Errors.Custom(
-                    PurchaseError.NOT_ENOUGH_COINS,
-                    "Not enough coins",
                     spent_time=timestamp() - t1,
                 )
 
@@ -202,31 +203,56 @@ async def store_purchase(request: Request, ndcId: int = 0):
             "isAutoRenew": False,
             "ownershipStatus": 1,
         }
-
-        ownership = {
-            "uid": uid,
+        purchase_entry = {
             "objectId": object_id,
             "objectType": object_type,
             "isActivated": False,
             "ownershipInfo": ownership_info,
             "createdTime": _iso(),
         }
-        await owned.insert_one(ownership)
 
-        # обновлённый товар с ownership для ответа
+        if restrict_type == RestrictType.COIN and price > 0:
+            result = await users.update_one(
+                {
+                    "id": uid,
+                    "coins": {"$gte": price},
+                    f"purchasedItems.{own_key}": {"$exists": False},
+                },
+                {
+                    "$inc": {"coins": -price},
+                    "$set": {f"purchasedItems.{own_key}": purchase_entry},
+                },
+            )
+            if result.modified_count == 0:
+                fresh = await users.find_one(
+                    {"id": uid}, {f"purchasedItems.{own_key}": 1}
+                )
+                if not (fresh and own_key in (fresh.get("purchasedItems") or {})):
+                    return Errors.Custom(
+                        PurchaseError.NOT_ENOUGH_COINS,
+                        "Not enough coins",
+                        spent_time=timestamp() - t1,
+                    )
+        else:
+            # бесплатно
+            await users.update_one(
+                {"id": uid},
+                {"$set": {f"purchasedItems.{own_key}": purchase_entry}},
+            )
+
+        # ответ с обновлённым товаром
         item.pop("_id", None)
         item["ownershipInfo"] = ownership_info
         item["isActivated"] = False
         item["isNew"] = False
-
-        # собрать StoreItem-обёртку того же типа
-        group_id = _group_for_type(object_type)   # 122->avatar-frame, 116->chat-bubble
-        store_item = build_preview_item(group_id, item)
+        store_item = build_preview_item(_group_for_type(object_type), item)
 
     finally:
         db.close()
 
     return Base.Answer({"storeItem": store_item}, spent_time=timestamp() - t1)
+
+
 
 
 
