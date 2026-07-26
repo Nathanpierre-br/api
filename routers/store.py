@@ -33,8 +33,9 @@ async def get_store_items(request: Request, ndcId: int = 0):
 
     async with await StoreService.create(_uid(request), ndcId) as svc:
         items = await svc.list_items(group_id, start, size)
+        storeSection=StoreItemType.SECTION_META.get("group_id", {}).get("objectType")
 
-    return Base.Answer(build_store_items_response(items), spent_time=timestamp() - t1)
+    return Base.Answer(build_store_items_response(items, storeSection), spent_time=timestamp() - t1)
 
 
 @store.get("/x{ndcId}/s/avatar-frame/{frameId}")
@@ -111,8 +112,9 @@ async def recommend_items(request: Request, ndcId: int = 0):
 
     async with await StoreService.create(_uid(request), ndcId) as svc:
         items = await svc.recommend_items(group_id, object_id, size)
+        storeSection=StoreItemType.SECTION_META.get("group_id", {}).get("objectType")
 
-    return Base.Answer(build_store_items_response(items), spent_time=timestamp() - t1)
+    return Base.Answer(build_store_items_response(items, storeSection), spent_time=timestamp() - t1)
 
 
 @store.get("/x{ndcId}/s/avatar-frame")

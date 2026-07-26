@@ -165,6 +165,7 @@ class StoreService:
             {"frameId": {"$in": owned_ids}}, {"_id": 0},
         ).skip(start).limit(size).to_list(length=size)
         result = []
+        print(docs)
         for d in docs:
             d = apply_ownership(d, "frameId", own_map)
             result.append(build_avatar_frame_response(d, price=d.get("price", 0), ndcId=self.ndcId)["avatarFrame"])
