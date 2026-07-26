@@ -20,11 +20,6 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
     return Base.Answer({})
 
 
-@mock.post("/g/s/avatar-frame/apply")
-@mock.post("/x{ndcId}/s/avatar-frame/apply")
-async def avatar_frame_apply_mock(request: Request, ndcId: int = 0):
-    return Base.Answer({})
-
 @mock.get("/g/s/sticker-collection")
 @mock.get("/x{ndcId}/s/sticker-collection")
 async def stickers_mock(

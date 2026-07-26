@@ -17,6 +17,7 @@ from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Blog, Comments, Errors, User
 from objects.types import BlogType, UserRole
+from services.store import StoreService
 
 blog_methods = APIRouter()
 blog_methods.route_class = CachableRoute
@@ -596,6 +597,7 @@ async def get_blog_voters(
 
 	xndc_users = db.get(f"x{ndcId}", "Users")
 	trigger_uid = request.state.session.get("uid")
+
 	voters_list = [
 		User.GetUserInfo(u, ndcId=ndcId, triggerUserId=trigger_uid)
 		for item in votes_selected

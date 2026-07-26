@@ -1,7 +1,7 @@
 from typing import Union
 
 from .medialist import MediaList
-
+from helpers.store import build_avatar_frame_icon
 
 class User:
     @staticmethod
@@ -227,11 +227,12 @@ class User:
         if membershipStatus is not None:
             followingStatus = membershipStatus
 
+        iconFrame = row.get("iconFrame")
+        if iconFrame is None: iconFrame = {}
+
         return {
-            "iconFrameId": row.get("frame"),
-            "iconFrame": (
-                None if row.get("frame") is None else User.iconFrame(row.get("frame"))
-            ),
+            "iconFrameId": iconFrame.get("frameId"),
+            "iconFrame": iconFrame or None,
             "status": row["status"],
             "uid": row["id"],
             "modifiedTime": row["modifiedTime"],
@@ -312,7 +313,3 @@ class User:
             "frameId":"93c220b6-2460-4c26-bde1-52095fffd6cd"
         }
     """
-
-    @staticmethod
-    def iconFrame(frameId: str):
-        return {"frameId": frameId}

@@ -216,9 +216,25 @@ def build_chat_bubble_object(bubble: dict, ndcId: int | None = None) -> dict:
     )
     created, modified = _timestamps(bubble)
     ref = _build_bubble_ref(bubble, restriction, created, modified, ndcId=ndcId)
-    ref["isActivated"] = True
+    ref["isActivated"] = False
     ref["isNew"] = bubble.get("isNew", False)
     return ref
+
+def build_avatar_frame_icon(frame: dict) -> dict | None:
+    if not frame:
+        return None
+    ownership = frame.get("ownershipInfo") or {}
+    return {
+        "status": frame.get("status", 0),
+        "ownershipStatus": ownership.get("ownershipStatus", frame.get("ownershipStatus", 1)),
+        "version": frame.get("version", 1),
+        "resourceUrl": frame.get("resourceUrl"),
+        "name": frame.get("name"),
+        "icon": frame.get("icon"),
+        "frameType": frame.get("frameType", 1),
+        "frameId": frame.get("frameId"),
+    }
+
 
 
 # --- Ownership ---

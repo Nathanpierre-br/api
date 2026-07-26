@@ -9,7 +9,7 @@ from uuid import uuid4
 from boto3 import resource
 from fastapi import APIRouter, Request
 from pymongo import DESCENDING
-
+from services.store import StoreService
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
 from helpers.config import Config
@@ -716,6 +716,8 @@ async def create_chat(request: Request, ndcId: int = 0):
 		if ndcId == 0:
 			row2 = global_row | row2
 
+	async with await StoreService.create(trigger_uid, ndcId) as svc:
+		row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
 
 	inviter = User.GetUserInfo(row2, triggerUserId=trigger_uid, extensions=row2.get("extensions"), ndcId=ndcId)
 

@@ -7,6 +7,7 @@ from helpers.store import (
     build_chat_bubble_object,
     get_ownership_map,
     apply_ownership,
+    build_avatar_frame_icon,
     _iso,
     TYPE_TO_GROUP,
 )
@@ -165,7 +166,6 @@ class StoreService:
             {"frameId": {"$in": owned_ids}}, {"_id": 0},
         ).skip(start).limit(size).to_list(length=size)
         result = []
-        print(docs)
         for d in docs:
             d = apply_ownership(d, "frameId", own_map)
             result.append(build_avatar_frame_response(d, price=d.get("price", 0), ndcId=self.ndcId)["avatarFrame"])
@@ -193,6 +193,52 @@ class StoreService:
             "allChatsBubbleId": default_bubble_id,
             "currentSelectedBubbleId": per_chat or default_bubble_id,
         }
+
+
+
+    async def frame_icon(self, frame_id: str | None) -> dict | None:
+        if not frame_id:
+            return None
+        frame = await self._collection("AvatarFrames").find_one({"frameId": frame_id}, {"_id": 0})
+        if frame is None:
+            return None
+        own_map = await self._owned_map_by_object(StoreItemType.AvatarFrame, [frame_id])
+        frame = apply_ownership(frame, "frameId", own_map)
+        return build_avatar_frame_icon(frame)
+ 
+    async def _owns(self, object_type: int, object_id: str) -> bool:
+        doc = await self._collection("UserStoreItems").find_one(
+            {"uid": self.uid, "objectType": object_type, "objectId": object_id},
+            {"_id": 1},
+        )
+        return doc is not None
+ 
+
+
+
+    async def apply_avatar_frame(self, frame_id: str | None, apply_to_all: bool) -> bool:
+        if frame_id is not None and not await self._owns(StoreItemType.AvatarFrame, frame_id):
+            return False
+ 
+        update = {"$set": {"frameId": frame_id}}
+ 
+        if not apply_to_all:
+            table = self.db.get(f"x{self.ndcId}", "Users") if self.ndcId else self._collection("Users")
+            await table.update_one({"id": self.uid}, update)
+            return True
+ 
+        global_users = self._collection("Users")
+        profile = await global_users.find_one({"id": self.uid}, {"communityList": 1}) or {}
+        community_ids = profile.get("communityList") or []
+ 
+        await global_users.update_one({"id": self.uid}, update)
+ 
+        for cid in community_ids:
+            table = self.db.get(f"x{cid}", "Users")
+            await table.update_one({"id": self.uid}, update)
+ 
+        return True
+
 
 
     async def purchase(self, object_id: str, object_type: int) -> PurchaseResult:

@@ -15,7 +15,7 @@ from helpers.routers.cachable import CachableRoute
 from objects import Base, Communities, Errors, User
 from objects.types import UserGroupType
 from helpers.database.redis import get as get_redis
-
+from services.store import StoreService
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
 
@@ -447,6 +447,8 @@ async def get_community_info(request: Request, ndcId: int = 0):
         if not user_info:
             full_user_data = None
         else:
+            async with await StoreService.create(uid, ndcId) as svc:
+                full_user_data["iconFrame"] = await svc.frame_icon(user_info.get("frameId"))
             full_user_data = User.GetUserInfo(user_info, triggerUserId=uid, ndcId=ndcId)
 
         return Base.Answer(
@@ -609,6 +611,8 @@ async def get_user_groups(
 
         users_by_id = {}
         async for u in table.find({"id": {"$in": favIds}}):
+            async with await StoreService.create(uid, ndcId) as svc:
+                u["iconFrame"] = await svc.frame_icon(u.get("frameId"))
             users_by_id[u["id"]] = User.GetUserInfo(u, ndcId=ndcId)
 
         userProfileList = [
