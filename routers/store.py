@@ -121,6 +121,11 @@ async def get_avatar_frame(request: Request, frameId: str, ndcId: int = 0):
     )
 
 
+def _group_for_type(object_type: int) -> str:
+    for gid, meta in StoreItemType.SECTION_META.items():
+        if meta["objectType"] == object_type:
+            return gid
+    return "avatar-frame"
 
 @store.post("/x{ndcId}/s/store/purchase")
 @store.post("/g/s/store/purchase")
@@ -191,25 +196,37 @@ async def store_purchase(request: Request, ndcId: int = 0):
                 "%Y-%m-%dT%H:%M:%SZ"
             )
 
+        ownership_info = {
+            "createdTime": _iso(),
+            "expiredTime": expired,
+            "isAutoRenew": False,
+            "ownershipStatus": 1,
+        }
+
         ownership = {
             "uid": uid,
             "objectId": object_id,
             "objectType": object_type,
             "isActivated": False,
-            "ownershipInfo": {
-                "createdTime": _iso(),
-                "expiredTime": expired,
-                "isAutoRenew": False,
-                "ownershipStatus": 1,
-            },
+            "ownershipInfo": ownership_info,
             "createdTime": _iso(),
         }
         await owned.insert_one(ownership)
 
+        # обновлённый товар с ownership для ответа
+        item.pop("_id", None)
+        item["ownershipInfo"] = ownership_info
+        item["isActivated"] = False
+        item["isNew"] = False
+
+        # собрать StoreItem-обёртку того же типа
+        group_id = _group_for_type(object_type)   # 122->avatar-frame, 116->chat-bubble
+        store_item = build_preview_item(group_id, item)
+
     finally:
         db.close()
 
-    return Base.Answer(spent_time=timestamp() - t1)
+    return Base.Answer({"storeItem": store_item}, spent_time=timestamp() - t1)
 
 
 
@@ -296,6 +313,7 @@ async def get_chat_bubble(request: Request, bubbleId: str, ndcId: int = 0):
 
 
 
+
 @store.get("/x{ndcId}/s/store/recommend-items")
 @store.get("/g/s/store/recommend-items")
 @validauth_required
@@ -316,7 +334,6 @@ async def recommend_items(request: Request, ndcId: int = 0):
         col = db.get(table=meta["collection"])
         id_field = StoreItemType.TYPE_INFO.get(meta["objectType"], (None, None))[1]
 
-        # исключаем сам товар, по которому рекомендуем
         query = {id_field: {"$ne": object_id}} if (id_field and object_id) else {}
         docs = await col.find(query).limit(size).to_list(length=size)
 
