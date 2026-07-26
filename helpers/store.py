@@ -31,7 +31,7 @@ def _timestamps(src: dict) -> tuple[str, str]:
 
 
 def _ndc_ids(obj: dict, ndcId: int | None = None) -> list:
-    if ndcId:
+    if isinstance(ndcId, int):
         return [ndcId]
     return obj.get("availableNdcIds") or []
 
