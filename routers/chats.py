@@ -1023,6 +1023,8 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 		bubbles_table = db.get(table="ChatBubbles")
 		bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
 		bubbleVersion = bubble.get("version", 1)
+	print(bubbleVersion)
+	print(bubbleId)
 
 	messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId, chatBubbleId=bubbleId, chatBubbleVersion=bubbleVersion)
 	answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
