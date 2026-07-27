@@ -741,35 +741,38 @@ async def remove_from_user_group(request: Request, userGroupType: str, targetId:
 
 
 
-
-
-
 async def _get_online_uids(ndcId: int) -> list[str]:
     redis = get_redis()
     key = f"x{ndcId}:online"
     members = await redis.smembers(key)
-    return [m.decode() if isinstance(m, bytes) else m for m in members]
- 
- 
+    return sorted([m.decode() if isinstance(m, bytes) else m for m in members])
+
+
 async def _get_profiles_for_live_layer(ndcId: int, uids: list[str]) -> list[dict]:
     if not uids:
         return []
     db = await Database().init()
     try:
         table = db.get(f"x{ndcId}", "Users")
-        profiles = []
-        async for row in table.find({"id": {"$in": uids}}):
-            profiles.append(User.OwnNonSensetiveProfile(row, ndcId=ndcId, membershipStatus=1))
-        return profiles
+        cursor = table.find({"id": {"$in": uids}})
+        rows_by_id = {row["id"]: row async for row in cursor}
+        return [
+            User.OwnNonSensetiveProfile(rows_by_id[u], ndcId=ndcId, membershipStatus=1)
+            for u in uids if u in rows_by_id
+        ]
     finally:
         db.close()
- 
-
 
 
 @communities.get("/g/s/live-layer")
 @communities.get("/x{ndcId}/s/live-layer")
-async def live_layer_topic(request: Request, ndcId: int = 0, topic: str | None = None):
+async def live_layer_topic(
+    request: Request,
+    ndcId: int = 0,
+    topic: str | None = None,
+    start: int = 0,
+    size: int = 20,
+):
     if topic is None:
         return Errors.InvalidRequest()
 
@@ -783,13 +786,15 @@ async def live_layer_topic(request: Request, ndcId: int = 0, topic: str | None =
                     effective_ndcId = int(ndc_part[1:])
                 except ValueError:
                     pass
- 
-    uids = await _get_online_uids(effective_ndcId)
-    profiles = await _get_profiles_for_live_layer(effective_ndcId, uids)
- 
+
+    all_uids = await _get_online_uids(effective_ndcId)
+    total = len(all_uids)
+    page_uids = all_uids[start:start + size]
+    profiles = await _get_profiles_for_live_layer(effective_ndcId, page_uids)
+
     return Base.Answer(Base.LiveLayerTopic(
         topic_name=topic,
-        users_count=len(profiles),
+        users_count=total,
         users_list=profiles,
     ))
  

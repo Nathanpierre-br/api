@@ -313,7 +313,7 @@ class StoreService:
         update = {"$set": {"frameId": frame_id}}
 
         if not apply_to_all:
-            table = self.db.get(f"x{self.ndcId}", "Users") if self.ndcId else self._collection("Users")
+            table = self.db.get(f"x{self.ndcId}", "Users") if isinstance(self.ndcId, int) else self._collection("Users")
             await table.update_one({"id": self.uid}, update)
             return True
 

@@ -5,7 +5,7 @@ from typing import Union
 # sys.path.append('../')
 from helpers.database.mongo import Database
 from helpers.store import build_chat_bubble_object
-
+from services.store import StoreService
 from .user import User
 
 
@@ -108,6 +108,9 @@ class Chat:
                 )
 
         xndc_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
+
+        async with await StoreService.create(data["authorId"], ndcId) as svc:
+            xndc_data["iconFrame"] = await svc.frame_icon(xndc_data.get("frameId"))
 
         result = {
             "includedInSummary": True,

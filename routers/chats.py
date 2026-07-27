@@ -32,6 +32,7 @@ from helpers.routers.cachable import CachableRoute
 from objects import Base, Chat, Errors, User
 from objects.types import ChatType, UserRole
 from objects.types.store import StoreItemType
+from services.store import StoreService
 
 from datetime import UTC, datetime
 
@@ -733,6 +734,8 @@ async def create_chat(request: Request, ndcId: int = 0):
 		if ndcId == 0:
 			row2 = global_row | row2
 
+	async with await StoreService.create(trigger_uid, ndcId) as svc:
+		row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
 
 	inviter = User.GetUserInfo(row2, triggerUserId=trigger_uid, extensions=row2.get("extensions"), ndcId=ndcId)
 
@@ -1237,15 +1240,22 @@ async def get_chat_members(
 		users_data = {
 			u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
 		}
-		member_list = [
-			User.GetUserInfo(
-				users_data[uid],
-				membershipStatus=(1 if uid in members_in_chat else 2),
-				ndcId=ndcId,
-			)
-			for uid in target_ids
-			if uid in users_data
-		]
+
+		member_list = []
+		for uid in target_ids:
+			if uid in users_data:
+				udata =users_data[uid]
+				async with await StoreService.create(uid, ndcId) as svc:
+					udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+
+				member_list.append(
+					User.GetUserInfo(
+						udata,
+						membershipStatus=(1 if uid in members_in_chat else 2),
+						ndcId=ndcId,
+					)
+				)
+
 
 	elif type == "at":
 		chat_info = await chat_table.find_one({"id": chatId}, {"memberList": 1})
@@ -1258,10 +1268,15 @@ async def get_chat_members(
 		if q:
 			query["nickname"] = {"$regex": f"^{regex_escape(q)}", "$options": "i"}
 
-		member_list = [
-			User.GetUserInfo(u, membershipStatus=1, ndcId=ndcId)
-			async for u in xndc_users.find(query).skip(start).limit(size)
-		]
+
+		member_list = []
+		async for u in xndc_users.find(query).skip(start).limit(size):
+			async with await StoreService.create(u["id"], ndcId) as svc:
+				u["iconFrame"] = await svc.frame_icon(u.get("frameId"))
+
+			member_list.append(
+				User.GetUserInfo(u, membershipStatus=1, ndcId=ndcId)
+			)
 
 	elif type == "co-host":
 		chat_info = await chat_table.find_one(
@@ -1290,11 +1305,18 @@ async def get_chat_members(
 		users_data = {
 			u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
 		}
-		member_list = [
-			User.GetUserInfo(users_data[uid], membershipStatus=1, ndcId=ndcId)
-			for uid in target_ids
-			if uid in users_data
-		]
+		member_list = []
+
+		for uid in target_ids:
+			if uid in users_data:
+				udata = users_data[uid]
+				async with await StoreService.create(uid, ndcId) as svc:
+					udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+					
+				member_list.append(
+					User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId)
+				)
+				
 	elif type == "organizer-transfer-candidates":
 		chat_info = await chat_table.find_one(
 			{"id": chatId}, {"memberList": 1, "cohostsIds": 1, "hostId": 1}
@@ -1317,8 +1339,11 @@ async def get_chat_members(
 		for uid in target_ids:
 			if uid not in users_data or uid == chat_info.get("hostId") or uid in _temp:
 				continue
+			udata = users_data[uid]
+			async with await StoreService.create(uid, ndcId) as svc:
+				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
 			user = User.GetUserInfo(
-				users_data[uid],
+				udata,
 				membershipStatus=(1 if uid in members_in_chat else 2),
 				ndcId=ndcId,
 			)
@@ -1384,11 +1409,13 @@ async def get_chat_cohosts(
 	users_data = {
 		u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts_ids_sliced}})
 	}
-	user_list = [
-		User.GetUserInfo(users_data[uid], membershipStatus=1, ndcId=ndcId)
-		for uid in cohosts_ids_sliced
-		if uid in users_data
-	]
+	user_list = []
+	for uid in cohosts_ids_sliced:
+		udata = users_data[uid]
+		if uid in users_data:
+			async with await StoreService.create(uid, ndcId) as svc:
+				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+			user_list.append(User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId))
 
 	answer = Base.Answer(
 		{
@@ -1441,11 +1468,13 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
 		u["id"]: u async for u in xndc_users.find({"id": {"$in": new_cohosts}})
 	}
 
-	user_profile_list = [
-		User.GetUserInfo(users_data[uid], membershipStatus=1, ndcId=ndcId)
-		for uid in new_cohosts
-		if uid in users_data
-	]
+	user_profile_list = []
+	for uid in new_cohosts:
+		udata = users_data[uid]
+		if uid in users_data:
+			async with await StoreService.create(uid, ndcId) as svc:
+				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+			user_profile_list.append(User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId))	
 
 	answer = Base.Answer(
 		{"userProfileList": user_profile_list, "paging": {}},
@@ -1491,11 +1520,15 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
 
 	users_data = {u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts}})}
 
-	user_profile_list = [
-		User.GetUserInfo(users_data[cid], membershipStatus=1, ndcId=ndcId)
-		for cid in cohosts
-		if cid in users_data
-	]
+
+	user_profile_list = []
+	for uid in cohosts:
+		udata = users_data[uid]
+		if uid in users_data:
+			async with await StoreService.create(uid, ndcId) as svc:
+				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+			user_profile_list.append(User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId))	
+
 
 	answer = Base.Answer(
 		{"userProfileList": user_profile_list, "paging": {}},
@@ -1720,6 +1753,8 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
 		if ndcId == 0:
 			row2 = global_row | row2
 
+	async with await StoreService.create(uid, ndcId) as svc:
+		row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
 
 	inviter = User.GetUserInfo(row2, triggerUserId=uid, extensions=row2.get("extensions"), ndcId=ndcId)
 

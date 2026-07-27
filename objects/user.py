@@ -300,16 +300,3 @@ class User:
             "visitPrivacy": 1,
             "visitorsCount": 0,  # [TODO]: make visitors count as var in table and do smart count
         }
-
-    """
-        "iconFrame":{
-            "status":0,
-            "ownershipStatus":1,
-            "version":1,
-            "resourceUrl":"http://af1.aminoapps.com/packages/8105/828d84a47df292b765d47b71d1dfbad2b347ce60.zip",
-            "name":"Gray",
-            "icon":"http://af1.aminoapps.com/8105/1c67b12dec2dfb63e8d0a96f735cd4f8238eff6c_00.gif",
-            "frameType":1,
-            "frameId":"93c220b6-2460-4c26-bde1-52095fffd6cd"
-        }
-    """
