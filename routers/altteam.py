@@ -470,7 +470,8 @@ async def _fetch_resource_config(resource_url: str) -> tuple[str, dict] | None:
                 if resp.status != 200:
                     return None
                 raw = await resp.read()
-    except Exception:
+    except Exception as e:
+        print(e)
         return None
  
     md5_hex = hashlib.md5(raw).hexdigest()
@@ -480,6 +481,7 @@ async def _fetch_resource_config(resource_url: str) -> tuple[str, dict] | None:
             with zf.open("config.json") as f:
                 config = json.loads(f.read().decode("utf-8"))
     except (zipfile.BadZipFile, KeyError, json.JSONDecodeError, UnicodeDecodeError):
+        print("zip/json error")
         return None
  
     if not isinstance(config, dict):
@@ -504,6 +506,8 @@ async def _purge_ownership(db, object_type: int, object_id: str, worn_field: str
  
 #  Avatar Frames
  
+
+
 @altteam.post("/g/s/altteam/altstore/avatar-frame")
 async def create_frame(request: Request):
     t1 = timestamp()
@@ -517,10 +521,12 @@ async def create_frame(request: Request):
             data = await request.json()
             resource_url = data["resourceUrl"]
         except Exception:
+            print("data error")
             return Errors.InvalidRequest(timestamp() - t1)
  
         fetched = await _fetch_resource_config(resource_url)
         if fetched is None:
+            print("fetched none")
             return Errors.InvalidRequest(timestamp() - t1)
         md5_hex, config = fetched
  
@@ -549,6 +555,7 @@ async def create_frame(request: Request):
         }
  
         if not doc["name"]:
+            print("no name")
             return Errors.InvalidRequest(timestamp() - t1)
  
         frames = db.get(table="AvatarFrames")
