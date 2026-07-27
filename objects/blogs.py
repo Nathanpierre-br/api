@@ -4,6 +4,7 @@ from .medialist import MediaList
 from .user import User
 from services.store import StoreService
 
+
 class Blog:
     @staticmethod
     async def Info(
@@ -27,7 +28,9 @@ class Blog:
 
         if author_data:
             async with await StoreService.create(data["authorId"], ndcId) as svc:
-                author_data["iconFrame"] = await svc.frame_icon(author_data.get("frameId"))
+                author_data["iconFrame"] = await svc.frame_icon(
+                    author_data.get("frameId")
+                )
 
         extensions = data.get("extensions", {})
         return {
@@ -57,13 +60,19 @@ class Blog:
                 else 0
             ),
             "viewCount": 0,
-            "tipInfo": data.get("tipInfo", {
-                "tipMaxCoin": 500,
-                "tippersCount": 0,
-                "tippable": True,
-                "tipMinCoin": 1,
-                "tipCustomOption": {"value": None, "icon": "https://media.altamino.top/monetization/bag_of_coins.png"},
-                "tippedCoins": 0,
-                "tippersList": [],
-            }),
+            "tipInfo": data.get(
+                "tipInfo",
+                {
+                    "tipMaxCoin": 500,
+                    "tippersCount": 0,
+                    "tippable": True,
+                    "tipMinCoin": 1,
+                    "tipCustomOption": {
+                        "value": None,
+                        "icon": "https://media.altamino.top/monetization/bag_of_coins.png",
+                    },
+                    "tippedCoins": 0,
+                    "tippersList": [],
+                },
+            ),
         }

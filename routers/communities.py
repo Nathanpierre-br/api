@@ -38,7 +38,11 @@ async def humanreadable(request: Request, ndcIds: str = ""):
 # communities you currently in
 @communities.get("/g/s/community/joined")
 async def joined_communities(
-    request: Request, start: int = 0, size: int = 25, pageToken: str | None = None, q: str = ""
+    request: Request,
+    start: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
+    q: str = "",
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -119,6 +123,7 @@ async def joined_communities(
         spent_time=timestamp() - t1,
     )
 
+
 # communities search
 @communities.get("/g/s/community/search")
 async def search_community(
@@ -156,6 +161,7 @@ async def search_community(
         )
     finally:
         db.close()
+
 
 # all communities available
 @communities.get("/g/s/topic/0/feed/community")
@@ -209,7 +215,7 @@ async def search_community_by_amino_id(
     q = q.strip()
 
     if is_app_link(q) and "/c/" in q:
-        q = q[q.find("/c/") + 3:]
+        q = q[q.find("/c/") + 3 :]
         q = q.split("/")[0].split("?")[0].strip()
 
     if not q:
@@ -280,11 +286,11 @@ async def join_community(request: Request, ndcId: int):
             new_profile["following"] = []
             new_profile["wall"] = {}
             new_profile["reputation"] = 0
-            
+
             new_profile["role"] = (
                 0
                 if new_profile["role"] not in [200, 201, 254, 555]
-                else 0#new_profile["role"] if role in [200, 201, 254] profile will be like "amino team" with altamino avatar ect in android 
+                else 0  # new_profile["role"] if role in [200, 201, 254] profile will be like "amino team" with altamino avatar ect in android
             )
             for field in ["_id", "createdTime", "modifiedTime"]:
                 new_profile.pop(field, None)
@@ -331,16 +337,13 @@ async def join_community(request: Request, ndcId: int):
             {"id": trigger_uid}, {"$addToSet": {"communityList": ndcId}}
         )
 
-
-        asyncio.get_event_loop().create_task(send_admin_ws(
-            {
-                "ndcId": ndcId,
-                "user": User.GetUserInfo(user_info, ndcId)
-            },
-            None,
-            ApiBroadcastType.ChatMessagePush
-        ))
-
+        asyncio.get_event_loop().create_task(
+            send_admin_ws(
+                {"ndcId": ndcId, "user": User.GetUserInfo(user_info, ndcId)},
+                None,
+                ApiBroadcastType.ChatMessagePush,
+            )
+        )
 
         return Base.Answer(
             {"userProfile": User.OwnNonSensetiveProfile(user_info, ndcId)},
@@ -412,7 +415,11 @@ async def leave_community(request: Request, ndcId: int):
             if not user_info or user_info["role"] not in [200, 201, 254, 555]
             else user_info["role"]
         )
-        new_status = user_info.get("status", 0) if user_info and user_info.get("status") in (9, 11) else 5
+        new_status = (
+            user_info.get("status", 0)
+            if user_info and user_info.get("status") in (9, 11)
+            else 5
+        )
         await table_xndc_users.update_one(
             {"id": trigger_uid},
             {"$set": {"role": role, "status": new_status}},
@@ -436,8 +443,10 @@ async def leave_community(request: Request, ndcId: int):
 async def get_community_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
 
-    try:uid = request.state.session["uid"]
-    except:uid=None
+    try:
+        uid = request.state.session["uid"]
+    except:
+        uid = None
     db = await Database().init()
     try:
         ndc_info = await Communities.Info(ndcId, db, uid)
@@ -472,7 +481,9 @@ async def get_official_guidelines(
 ):
     try:
         file = await aioyaml("files/guidelines.yaml")
-        language = language.lower() if language.lower() in ["ru", "en", "ar", "es"] else "en"
+        language = (
+            language.lower() if language.lower() in ["ru", "en", "ar", "es"] else "en"
+        )
         # we should also think about not hardcoding ndc langs
         guideline = file[language]
     except Exception as e:
@@ -554,9 +565,9 @@ async def get_community_profiles(
         items = [
             User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1)
             async for item in table.find(query)
-                .skip(start)
-                .limit(size)
-                .sort([("role", DESCENDING), ("createdTime", -1)])
+            .skip(start)
+            .limit(size)
+            .sort([("role", DESCENDING), ("createdTime", -1)])
         ]
         return Base.Answer(
             {
@@ -567,8 +578,6 @@ async def get_community_profiles(
         )
     finally:
         db.close()
-
-
 
 
 @communities.get("/g/s/user-group/{userGroupType}")
@@ -596,8 +605,7 @@ async def get_user_groups(
 
         favEntries = row.get("quickAccessList", [])
         favEntries = [
-            e if isinstance(e, dict) else {"id": e, "addedAt": ""}
-            for e in favEntries
+            e if isinstance(e, dict) else {"id": e, "addedAt": ""} for e in favEntries
         ]
 
         if stoptime:
@@ -613,14 +621,13 @@ async def get_user_groups(
         async for u in table.find({"id": {"$in": favIds}}):
             users_by_id[u["id"]] = User.GetUserInfo(u, ndcId=ndcId)
 
-        userProfileList = [
-            users_by_id[fid] for fid in favIds if fid in users_by_id
-        ]
+        userProfileList = [users_by_id[fid] for fid in favIds if fid in users_by_id]
     finally:
         db.close()
 
-    return Base.Answer({"userProfileList": userProfileList}, spent_time=timestamp() - t1)
-
+    return Base.Answer(
+        {"userProfileList": userProfileList}, spent_time=timestamp() - t1
+    )
 
 
 @communities.post("/g/s/user-group/{userGroupType}/position")
@@ -648,8 +655,7 @@ async def reorder_user_group(request: Request, userGroupType: str, ndcId: int = 
 
         favEntries = row.get("quickAccessList", [])
         favEntries = [
-            e if isinstance(e, dict) else {"id": e, "addedAt": ""}
-            for e in favEntries
+            e if isinstance(e, dict) else {"id": e, "addedAt": ""} for e in favEntries
         ]
 
         entries_by_id = {e["id"]: e for e in favEntries}
@@ -671,11 +677,11 @@ async def reorder_user_group(request: Request, userGroupType: str, ndcId: int = 
     return Base.Answer({}, spent_time=timestamp() - t1)
 
 
-
-
 @communities.post("/g/s/user-group/{userGroupType}/{targetId}")
 @communities.post("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
-async def add_to_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
+async def add_to_user_group(
+    request: Request, userGroupType: str, targetId: str, ndcId: int = 0
+):
     t1 = timestamp()
     if userGroupType != UserGroupType.QuickAccess:
         return Errors.InvalidRequest(timestamp() - t1)
@@ -693,11 +699,9 @@ async def add_to_user_group(request: Request, userGroupType: str, targetId: str,
             return Errors.AccountNotExist(timestamp() - t1)
 
         existing = row.get("quickAccessList", [])
-        existing_ids = {
-            (e["id"] if isinstance(e, dict) else e) for e in existing
-        }
+        existing_ids = {(e["id"] if isinstance(e, dict) else e) for e in existing}
         if targetId in existing_ids:
-            return Base.Answer({}, spent_time=timestamp() - t1) 
+            return Base.Answer({}, spent_time=timestamp() - t1)
 
         entry = {
             "id": targetId,
@@ -712,7 +716,9 @@ async def add_to_user_group(request: Request, userGroupType: str, targetId: str,
 
 @communities.delete("/g/s/user-group/{userGroupType}/{targetId}")
 @communities.delete("/x{ndcId}/s/user-group/{userGroupType}/{targetId}")
-async def remove_from_user_group(request: Request, userGroupType: str, targetId: str, ndcId: int = 0):
+async def remove_from_user_group(
+    request: Request, userGroupType: str, targetId: str, ndcId: int = 0
+):
     t1 = timestamp()
     if userGroupType != UserGroupType.QuickAccess:
         return Errors.InvalidRequest(timestamp() - t1)
@@ -739,8 +745,6 @@ async def remove_from_user_group(request: Request, userGroupType: str, targetId:
     return Base.Answer({}, spent_time=timestamp() - t1)
 
 
-
-
 async def _get_online_uids(ndcId: int) -> list[str]:
     redis = get_redis()
     key = f"x{ndcId}:online"
@@ -758,7 +762,8 @@ async def _get_profiles_for_live_layer(ndcId: int, uids: list[str]) -> list[dict
         rows_by_id = {row["id"]: row async for row in cursor}
         return [
             User.OwnNonSensetiveProfile(rows_by_id[u], ndcId=ndcId, membershipStatus=1)
-            for u in uids if u in rows_by_id
+            for u in uids
+            if u in rows_by_id
         ]
     finally:
         db.close()
@@ -789,15 +794,17 @@ async def live_layer_topic(
 
     all_uids = await _get_online_uids(effective_ndcId)
     total = len(all_uids)
-    page_uids = all_uids[start:start + size]
+    page_uids = all_uids[start : start + size]
     profiles = await _get_profiles_for_live_layer(effective_ndcId, page_uids)
 
-    return Base.Answer(Base.LiveLayerTopic(
-        topic_name=topic,
-        users_count=total,
-        users_list=profiles,
-    ))
- 
+    return Base.Answer(
+        Base.LiveLayerTopic(
+            topic_name=topic,
+            users_count=total,
+            users_list=profiles,
+        )
+    )
+
 
 @communities.get("/g/s/live-layer/homepage")
 @communities.get("/x{ndcId}/s/live-layer/homepage")
@@ -855,9 +862,6 @@ async def reorder_communities(request: Request):
     )
 
 
-
-
-
 # looks like this request allows precheck if you can do it
 # for now it will be mocked
 # GET /api/v1/x1/s/user-profile/de838eb4-312c-4ba0-9d81-9aad3fc984e1/compose-eligible-check?objectType=chat-thread&objectSubtype=public
@@ -877,9 +881,6 @@ async def compose_eligible_check(request: Request, ndcId: int, uid: str):
 @communities.get("/g/s-x{ndcId}/community/kindred")
 async def get_leaders_choice(request: Request, ndcId: int = 0):
     return Base.Answer()
-
-
-
 
 
 @communities.get("/x{ndcId}/s/community/user-titles")

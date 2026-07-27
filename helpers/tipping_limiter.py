@@ -26,8 +26,3 @@ async def check_and_increment_tipping_limit(uid: str) -> tuple[bool, int]:
         return True, 86400
 
     return False, 0
-
-
-
-
-

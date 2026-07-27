@@ -82,7 +82,7 @@ class Chat:
         mentionedArray: list = [],
         history_table=None,
         chatBubbleVersion=None,
-        chatBubbleId=None
+        chatBubbleId=None,
     ):
         extensions = data.get("extensions", {})
         if extensions is None:
@@ -149,8 +149,11 @@ class Chat:
             "isHidden": False,
             "mediaValue": data.get("mediaValue"),
         }
+
     @staticmethod
-    async def resolve_chat_bubbles(db, ndc_id: int, chat_id: str, member_uids: list[str]) -> dict:
+    async def resolve_chat_bubbles(
+        db, ndc_id: int, chat_id: str, member_uids: list[str]
+    ) -> dict:
         if not member_uids:
             return {}
 
@@ -175,7 +178,9 @@ class Chat:
                 {"bubbleId": {"$in": list(set(uid_to_bid.values()))}},
                 {"_id": 0},
             ).to_list(length=None)
-            bubbles_by_id = {b["bubbleId"]: build_chat_bubble_object(b) for b in bubble_docs}
+            bubbles_by_id = {
+                b["bubbleId"]: build_chat_bubble_object(b) for b in bubble_docs
+            }
 
             return {
                 uid: bubbles_by_id[bid]
@@ -226,7 +231,9 @@ class Chat:
 
         if host_xndcId:
             async with await StoreService.create(data["hostId"], ndcId) as svc:
-                host_xndcId["iconFrame"] = await svc.frame_icon(host_xndcId.get("frameId"))
+                host_xndcId["iconFrame"] = await svc.frame_icon(
+                    host_xndcId.get("frameId")
+                )
 
         membershipStatus = 0
         if trigger_uid in data["memberList"]:
@@ -237,7 +244,9 @@ class Chat:
         return {
             "userAddedTopicList": [],
             "uid": data["hostId"],
-            "chatBubbles": await Chat.resolve_chat_bubbles(connection, ndcId, chatId, data["memberList"]),
+            "chatBubbles": await Chat.resolve_chat_bubbles(
+                connection, ndcId, chatId, data["memberList"]
+            ),
             "membersQuota": 9999,
             "membersSummary": [
                 Chat.Member_ShortInfo(i, ndcId=ndcId)
@@ -251,32 +260,35 @@ class Chat:
             "strategyInfo": "{}",
             "isPinned": False,
             "title": data.get("title"),
-            "tipInfo": data.get("tipInfo", {
-                "tipOptionList": [
-                    {
-                        "value": 2,
-                        "icon": "https://media.altamino.top/monetization/coins.png",
+            "tipInfo": data.get(
+                "tipInfo",
+                {
+                    "tipOptionList": [
+                        {
+                            "value": 2,
+                            "icon": "https://media.altamino.top/monetization/coins.png",
+                        },
+                        {
+                            "value": 10,
+                            "icon": "https://media.altamino.top/monetization/stack_of_coins.png",
+                        },
+                        {
+                            "value": 50,
+                            "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png",
+                        },
+                    ],
+                    "tipMaxCoin": 500,
+                    "tippersCount": 0,
+                    "tippable": True,
+                    "tipMinCoin": 1,
+                    "tipCustomOption": {
+                        "value": None,
+                        "icon": "https://media.altamino.top/monetization/bag_of_coins.png",
                     },
-                    {
-                        "value": 10,
-                        "icon": "https://media.altamino.top/monetization/stack_of_coins.png",
-                    },
-                    {
-                        "value": 50,
-                        "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png",
-                    },
-                ],
-                "tipMaxCoin": 500,
-                "tippersCount": 0,
-                "tippable": True,
-                "tipMinCoin": 1,
-                "tipCustomOption": {
-                    "value": None,
-                    "icon": "https://media.altamino.top/monetization/bag_of_coins.png",
+                    "tippedCoins": 0,
+                    "tippersList": [],
                 },
-                "tippedCoins": 0,
-                "tippersList": [],
-            }),
+            ),
             "membershipStatus": membershipStatus,
             "content": data.get("description"),
             "needHidden": False,

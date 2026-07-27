@@ -84,7 +84,9 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
             try:
                 g = db.get(table="Users")
                 user_info = await g.find_one({"id": uid})
-                if not user_info or not RoleTypes.is_global_staff(user_info.get("role", 0)):
+                if not user_info or not RoleTypes.is_global_staff(
+                    user_info.get("role", 0)
+                ):
                     return Errors.NotEnoughRights(timestamp() - t1)
             finally:
                 db.close()
@@ -106,11 +108,6 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
         else:
             return Errors.InvalidRequest(spent_time=timestamp() - t1)
 
-
-
-
-
-        
     else:
         # generating filename
         filename = (

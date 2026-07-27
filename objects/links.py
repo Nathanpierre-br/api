@@ -83,7 +83,9 @@ class Links:
                     "ndcId": ndcId,
                     "fullPath": f"ndc://{loc}/community/{ndcId}",
                     "shortCode": data["code"],
-                    "shareURLFullPath": Config.SITE_BASE_URL + "/web/x0/community/" + data["objectId"],
+                    "shareURLFullPath": Config.SITE_BASE_URL
+                    + "/web/x0/community/"
+                    + data["objectId"],
                     "objectType": data["objectType"],
                 }
             },

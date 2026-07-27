@@ -16,7 +16,6 @@ from objects.types.store import RestrictType, StoreItemType, PurchaseError
 
 
 class PurchaseResult:
-
     __slots__ = ("store_item", "error_code", "error_message")
 
     def __init__(self, store_item=None, error_code=None, error_message=None):
@@ -38,7 +37,6 @@ def _id_field(object_type: int) -> str | None:
 
 
 class StoreService:
-
     def __init__(self, db: Database, uid: str, ndcId: int = 0):
         self.db = db
         self.uid = uid
@@ -59,19 +57,29 @@ class StoreService:
     async def __aexit__(self, *exc):
         self.close()
 
-
     def _collection(self, name: str):
         return self.db.get(table=name)
 
     def _users_table(self):
-        return self.db.get(f"x{self.ndcId}", "Users") if self.ndcId else self._collection("Users")
+        return (
+            self.db.get(f"x{self.ndcId}", "Users")
+            if self.ndcId
+            else self._collection("Users")
+        )
 
     async def _worn_ids(self) -> dict:
         if self._worn is None:
-            user = await self._users_table().find_one(
-                {"id": self.uid}, {"bubbleId": 1, "frameId": 1},
-            ) or {}
-            self._worn = {"bubbleId": user.get("bubbleId"), "frameId": user.get("frameId")}
+            user = (
+                await self._users_table().find_one(
+                    {"id": self.uid},
+                    {"bubbleId": 1, "frameId": 1},
+                )
+                or {}
+            )
+            self._worn = {
+                "bubbleId": user.get("bubbleId"),
+                "frameId": user.get("frameId"),
+            }
         return self._worn
 
     async def _active_id_for(self, id_field: str | None) -> str | None:
@@ -82,8 +90,13 @@ class StoreService:
     async def _owned_map_by_object(self, object_type: int, ids: list[str]) -> dict:
         return await get_ownership_map(self.db, self.uid, object_type, ids)
 
-    def _decorate(self, docs: list[dict], id_field: str | None, own_map: dict,
-                  active_id: str | None = None) -> list[dict]:
+    def _decorate(
+        self,
+        docs: list[dict],
+        id_field: str | None,
+        own_map: dict,
+        active_id: str | None = None,
+    ) -> list[dict]:
         out = []
         for d in docs:
             if id_field:
@@ -92,8 +105,9 @@ class StoreService:
             out.append(d)
         return out
 
-    async def _fetch_with_ownership(self, group_id: str, query: dict,
-                                    skip: int = 0, limit: int | None = None) -> list[dict]:
+    async def _fetch_with_ownership(
+        self, group_id: str, query: dict, skip: int = 0, limit: int | None = None
+    ) -> list[dict]:
         meta = _meta(group_id)
         if not meta:
             return []
@@ -123,12 +137,15 @@ class StoreService:
                 items.append(item)
         return items
 
-
-    async def list_items(self, group_id: str, start: int = 0, size: int = 25) -> list[dict]:
+    async def list_items(
+        self, group_id: str, start: int = 0, size: int = 25
+    ) -> list[dict]:
         docs = await self._fetch_with_ownership(group_id, {}, skip=start, limit=size)
         return self._build_items(group_id, docs)
 
-    async def recommend_items(self, group_id: str, object_id: str | None, size: int = 25) -> list[dict]:
+    async def recommend_items(
+        self, group_id: str, object_id: str | None, size: int = 25
+    ) -> list[dict]:
         meta = _meta(group_id)
         if not meta:
             return []
@@ -145,27 +162,34 @@ class StoreService:
                 continue
             docs = await self._fetch_with_ownership(group_id, {}, limit=6)
             total = await self._collection(meta["collection"]).count_documents({})
-            section_list.append({
-                "name": meta["name"],
-                "sectionGroupId": group_id,
-                "storeSectionId": group_id,
-                "allItemsCount": total,
-                "previewStoreItemList": self._build_items(group_id, docs),
-            })
+            section_list.append(
+                {
+                    "name": meta["name"],
+                    "sectionGroupId": group_id,
+                    "storeSectionId": group_id,
+                    "allItemsCount": total,
+                    "previewStoreItemList": self._build_items(group_id, docs),
+                }
+            )
         return section_list
 
-
     async def get_avatar_frame(self, frame_id: str) -> dict | None:
-        frame = await self._collection("AvatarFrames").find_one({"frameId": frame_id}, {"_id": 0})
+        frame = await self._collection("AvatarFrames").find_one(
+            {"frameId": frame_id}, {"_id": 0}
+        )
         if frame is None:
             return None
         own_map = await self._owned_map_by_object(StoreItemType.AvatarFrame, [frame_id])
         frame = apply_ownership(frame, "frameId", own_map)
         frame = mark_activated(frame, "frameId", await self._active_id_for("frameId"))
-        return build_avatar_frame_response(frame, price=frame.get("price", 0), ndcId=self.ndcId)
+        return build_avatar_frame_response(
+            frame, price=frame.get("price", 0), ndcId=self.ndcId
+        )
 
     async def get_chat_bubble(self, bubble_id: str) -> dict | None:
-        bubble = await self._collection("ChatBubbles").find_one({"bubbleId": bubble_id}, {"_id": 0})
+        bubble = await self._collection("ChatBubbles").find_one(
+            {"bubbleId": bubble_id}, {"_id": 0}
+        )
         if bubble is None:
             return None
         own_map = await self._owned_map_by_object(StoreItemType.ChatBubble, [bubble_id])
@@ -179,10 +203,10 @@ class StoreService:
             "allChatsBubbleId": worn_bubble,
         }
 
-
     async def _owned_docs(self, object_type: int) -> tuple[dict, list[str]]:
         cursor = self._collection("UserStoreItems").find(
-            {"uid": self.uid, "objectType": object_type}, {"_id": 0},
+            {"uid": self.uid, "objectType": object_type},
+            {"_id": 0},
         )
         own_docs = await cursor.to_list(length=None)
         own_map = {d["objectId"]: d for d in own_docs}
@@ -190,25 +214,48 @@ class StoreService:
 
     async def list_my_avatar_frames(self, start: int = 0, size: int = 20) -> list[dict]:
         own_map, owned_ids = await self._owned_docs(StoreItemType.AvatarFrame)
-        docs = await self._collection("AvatarFrames").find(
-            {"frameId": {"$in": owned_ids}}, {"_id": 0},
-        ).skip(start).limit(size).to_list(length=size)
+        docs = (
+            await self._collection("AvatarFrames")
+            .find(
+                {"frameId": {"$in": owned_ids}},
+                {"_id": 0},
+            )
+            .skip(start)
+            .limit(size)
+            .to_list(length=size)
+        )
         active_id = await self._active_id_for("frameId")
         result = []
         for d in docs:
             d = apply_ownership(d, "frameId", own_map)
             d = mark_activated(d, "frameId", active_id)
-            result.append(build_avatar_frame_response(d, price=d.get("price", 0), ndcId=self.ndcId)["avatarFrame"])
+            result.append(
+                build_avatar_frame_response(
+                    d, price=d.get("price", 0), ndcId=self.ndcId
+                )["avatarFrame"]
+            )
         return result
 
-    async def list_my_bubbles(self, chat_id: str | None = None,
-                              start: int = 0, size: int = 20) -> dict:
+    async def list_my_bubbles(
+        self, chat_id: str | None = None, start: int = 0, size: int = 20
+    ) -> dict:
         own_map, owned_ids = await self._owned_docs(StoreItemType.ChatBubble)
-        docs = await self._collection("ChatBubbles").find(
-            {"bubbleId": {"$in": owned_ids}}, {"_id": 0},
-        ).skip(start).limit(size).to_list(length=size)
+        docs = (
+            await self._collection("ChatBubbles")
+            .find(
+                {"bubbleId": {"$in": owned_ids}},
+                {"_id": 0},
+            )
+            .skip(start)
+            .limit(size)
+            .to_list(length=size)
+        )
 
-        user_table = self.db.get(f"x{self.ndcId}", "Users") if self.ndcId else self._collection("Users")
+        user_table = (
+            self.db.get(f"x{self.ndcId}", "Users")
+            if self.ndcId
+            else self._collection("Users")
+        )
         user = await user_table.find_one({"id": self.uid}) or {}
         default_bubble_id = user.get("bubbleId")
         per_chat = (user.get("chatBubbles") or {}).get(chat_id) if chat_id else None
@@ -229,43 +276,52 @@ class StoreService:
     async def _user_ndc_ids(self) -> list[int]:
         """ndcId всех сообществ, где состоит юзер."""
         cursor = self._collection("CommunityMembers").find(
-            {"uid": self.uid}, {"_id": 0, "ndcId": 1},
+            {"uid": self.uid},
+            {"_id": 0, "ndcId": 1},
         )
         docs = await cursor.to_list(length=None)
         return [d["ndcId"] for d in docs if d.get("ndcId")]
 
     async def apply_avatar_frame(self, frame_id: str, apply_to_all: bool) -> bool:
         if frame_id:
-            owned = await self._collection("UserStoreItems").find_one({
-                "uid": self.uid,
-                "objectType": StoreItemType.AvatarFrame,
-                "objectId": frame_id,
-            })
+            owned = await self._collection("UserStoreItems").find_one(
+                {
+                    "uid": self.uid,
+                    "objectType": StoreItemType.AvatarFrame,
+                    "objectId": frame_id,
+                }
+            )
             if owned is None:
                 return False
 
         value = frame_id or None
         if not apply_to_all:
-            target = self.db.get(f"x{self.ndcId}", "Users") if self.ndcId else self._collection("Users")
+            target = (
+                self.db.get(f"x{self.ndcId}", "Users")
+                if self.ndcId
+                else self._collection("Users")
+            )
             await target.update_one({"id": self.uid}, {"$set": {"frameId": value}})
             return True
 
         for ndc in await self._user_ndc_ids():
             await self.db.get(f"x{ndc}", "Users").update_one(
-                {"id": self.uid}, {"$set": {"frameId": value}},
+                {"id": self.uid},
+                {"$set": {"frameId": value}},
             )
         await self._collection("Users").update_one(
-            {"id": self.uid}, {"$set": {"frameId": value}},
+            {"id": self.uid},
+            {"$set": {"frameId": value}},
         )
         return True
-
-
 
     async def frame_icon(self, frame_id: str | None) -> dict | None:
 
         if not frame_id:
             return None
-        frame = await self._collection("AvatarFrames").find_one({"frameId": frame_id}, {"_id": 0})
+        frame = await self._collection("AvatarFrames").find_one(
+            {"frameId": frame_id}, {"_id": 0}
+        )
         if frame is None:
             return None
         own_map = await self._owned_map_by_object(StoreItemType.AvatarFrame, [frame_id])
@@ -284,11 +340,14 @@ class StoreService:
             return rows
 
         cursor = self._collection("AvatarFrames").find(
-            {"frameId": {"$in": list(set(frame_ids))}}, {"_id": 0},
+            {"frameId": {"$in": list(set(frame_ids))}},
+            {"_id": 0},
         )
         frames = {f["frameId"]: f for f in await cursor.to_list(length=None)}
 
-        own_map = await self._owned_map_by_object(StoreItemType.AvatarFrame, list(frames))
+        own_map = await self._owned_map_by_object(
+            StoreItemType.AvatarFrame, list(frames)
+        )
 
         for r in rows:
             fid = r.get("frameId")
@@ -298,7 +357,6 @@ class StoreService:
             r["iconFrame"] = build_avatar_frame_icon(frame) if frame else None
         return rows
 
-
     async def _owns(self, object_type: int, object_id: str) -> bool:
         doc = await self._collection("UserStoreItems").find_one(
             {"uid": self.uid, "objectType": object_type, "objectId": object_id},
@@ -306,22 +364,30 @@ class StoreService:
         )
         return doc is not None
 
-    async def apply_avatar_frame(self, frame_id: str | None, apply_to_all: bool) -> bool:
-        if frame_id is not None and not await self._owns(StoreItemType.AvatarFrame, frame_id):
+    async def apply_avatar_frame(
+        self, frame_id: str | None, apply_to_all: bool
+    ) -> bool:
+        if frame_id is not None and not await self._owns(
+            StoreItemType.AvatarFrame, frame_id
+        ):
             return False
 
         update = {"$set": {"frameId": frame_id}}
 
         if not apply_to_all:
-            table = self.db.get(f"x{self.ndcId}", "Users") if isinstance(self.ndcId, int) else self._collection("Users")
+            table = (
+                self.db.get(f"x{self.ndcId}", "Users")
+                if isinstance(self.ndcId, int)
+                else self._collection("Users")
+            )
             await table.update_one({"id": self.uid}, update)
             return True
 
-
         global_users = self._collection("Users")
-        profile = await global_users.find_one({"id": self.uid}, {"communityList": 1}) or {}
+        profile = (
+            await global_users.find_one({"id": self.uid}, {"communityList": 1}) or {}
+        )
         community_ids = profile.get("communityList") or []
-
 
         await global_users.update_one({"id": self.uid}, update)
 
@@ -330,7 +396,6 @@ class StoreService:
             await table.update_one({"id": self.uid}, update)
 
         return True
-
 
     async def purchase(self, object_id: str, object_type: int) -> PurchaseResult:
         if object_type not in StoreItemType.TYPE_INFO:
@@ -342,15 +407,23 @@ class StoreService:
             return PurchaseResult(error_code="invalid")
 
         owned = self._collection("UserStoreItems")
-        existing = await owned.find_one({
-            "uid": self.uid, "objectType": object_type, "objectId": object_id,
-        })
+        existing = await owned.find_one(
+            {
+                "uid": self.uid,
+                "objectType": object_type,
+                "objectId": object_id,
+            }
+        )
 
         group_id = TYPE_TO_GROUP.get(object_type, "avatar-frame")
 
         if existing:
-            store_item = self._finalize_item(item, group_id, existing.get("ownershipInfo"),
-                                             existing.get("isActivated", False))
+            store_item = self._finalize_item(
+                item,
+                group_id,
+                existing.get("ownershipInfo"),
+                existing.get("isActivated", False),
+            )
             return PurchaseResult(store_item=store_item)
 
         restrict_type = item.get("restrictType")
@@ -361,10 +434,14 @@ class StoreService:
             return PurchaseResult(error_code="invalid")
 
         if restrict_type == RestrictType.AMINO_MEMBERSHIP:
-            u = await self._collection("Users").find_one({"id": self.uid}, {"isPaidSubscriber": 1})
+            u = await self._collection("Users").find_one(
+                {"id": self.uid}, {"isPaidSubscriber": 1}
+            )
             if not u or not u.get("isPaidSubscriber"):
-                return PurchaseResult(error_code=PurchaseError.MEMBERSHIP_NOT_SATISFIED,
-                                      error_message="Membership required")
+                return PurchaseResult(
+                    error_code=PurchaseError.MEMBERSHIP_NOT_SATISFIED,
+                    error_message="Membership required",
+                )
 
         if restrict_type == RestrictType.COIN and price > 0:
             result = await self._collection("Users").update_one(
@@ -372,13 +449,17 @@ class StoreService:
                 {"$inc": {"coins": -price}},
             )
             if result.modified_count == 0:
-                return PurchaseResult(error_code=PurchaseError.NOT_ENOUGH_COINS,
-                                      error_message="Not enough coins")
+                return PurchaseResult(
+                    error_code=PurchaseError.NOT_ENOUGH_COINS,
+                    error_message="Not enough coins",
+                )
 
         duration = item.get("availableDuration", 0)
         expired = None
         if duration:
-            expired = (datetime.now(UTC) + timedelta(seconds=duration)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            expired = (datetime.now(UTC) + timedelta(seconds=duration)).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
 
         ownership_info = {
             "createdTime": _iso(),
@@ -386,20 +467,23 @@ class StoreService:
             "isAutoRenew": False,
             "ownershipStatus": 1,
         }
-        await owned.insert_one({
-            "uid": self.uid,
-            "objectId": object_id,
-            "objectType": object_type,
-            "isActivated": False,
-            "ownershipInfo": ownership_info,
-            "createdTime": _iso(),
-        })
+        await owned.insert_one(
+            {
+                "uid": self.uid,
+                "objectId": object_id,
+                "objectType": object_type,
+                "isActivated": False,
+                "ownershipInfo": ownership_info,
+                "createdTime": _iso(),
+            }
+        )
 
         store_item = self._finalize_item(item, group_id, ownership_info, False)
         return PurchaseResult(store_item=store_item)
 
-    def _finalize_item(self, item: dict, group_id: str,
-                       ownership_info, is_activated: bool) -> dict:
+    def _finalize_item(
+        self, item: dict, group_id: str, ownership_info, is_activated: bool
+    ) -> dict:
         item = {**item}
         item.pop("_id", None)
         item["ownershipInfo"] = ownership_info

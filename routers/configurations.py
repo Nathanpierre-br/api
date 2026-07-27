@@ -203,9 +203,6 @@ def _build_reminder_result(row: dict | None, today_str: str) -> dict:
     }
 
 
-
-
-
 @configurations.get("/g/s/reminder/check")
 @configurations.get("/x{ndcId}/s/reminder/check")
 @validauth_required
@@ -213,8 +210,8 @@ async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
     t1 = timestamp()
     trigger_uid = request.state.session["uid"]
 
-    #tz = await get_tz(request)
-    today_str = datetime.now().strftime("%Y-%m-%d")#date_str(local_date(tz))
+    # tz = await get_tz(request)
+    today_str = datetime.now().strftime("%Y-%m-%d")  # date_str(local_date(tz))
 
     chunks: list[int] = []
     if ndcIds:
@@ -240,7 +237,6 @@ async def reminder_configs(request: Request, ndcId: int = 0, ndcIds: str = ""):
             per_community[str(cid)] = _build_reminder_result(c_row, today_str)
     finally:
         db.close()
-
 
     return Base.Answer(
         {
@@ -321,13 +317,11 @@ async def auid_check(deviceId: str, request: Request):
 """
 
 
-
-
-
-#TODO
+# TODO
 @configurations.put("/g/s/home/discover/content-modules")
 async def edit_discover_modules(request: Request):
     return Base.Answer()
+
 
 @configurations.get("/g/s/home/discover/content-modules")
 async def discover_modules(request: Request):
@@ -421,6 +415,7 @@ async def discover_modules(request: Request):
         }
     )
 
+
 @configurations.get("/g/s/topic/0/feed/community")
 async def feed_community(
     request: Request,
@@ -462,8 +457,8 @@ async def feed_community(
     finally:
         db.close()
 
-    
-#temp
+
+# temp
 @configurations.get("/g/s/topic/0/feed/topic")
 async def feed_topic(
     request: Request,
@@ -500,6 +495,7 @@ async def feed_topic(
     finally:
         db.close()
 
+
 @configurations.get("/g/s/topic/0/feed/story")
 async def feed_story(
     request: Request,
@@ -519,6 +515,7 @@ async def feed_story(
         },
         spent_time=timestamp() - t1,
     )
+
 
 @configurations.get("/g/s/topic/0/feed/banner-ads")
 async def banner(

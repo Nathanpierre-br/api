@@ -1,7 +1,3 @@
-
-
-
-
 class BlogType:
     Basic: int = 0
     Question: int = 3

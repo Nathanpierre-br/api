@@ -38,10 +38,6 @@ async def get_tz(request: Request) -> int:
         return 0
 
 
-
-
-
-
 async def settle_user_active_coins(db, uid: str) -> float:
     """
     Settles accumulated interaction time from WebSocket pings.

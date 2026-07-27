@@ -33,9 +33,12 @@ async def get_store_items(request: Request, ndcId: int = 0):
 
     async with await StoreService.create(_uid(request), ndcId) as svc:
         items = await svc.list_items(group_id, start, size)
-        storeSection=StoreItemType.SECTION_META.get("group_id", {}).get("objectType")
+        storeSection = StoreItemType.SECTION_META.get("group_id", {}).get("objectType")
 
-    return Base.Answer(build_store_items_response(items, storeSection), spent_time=timestamp() - t1)
+    return Base.Answer(
+        build_store_items_response(items, storeSection), spent_time=timestamp() - t1
+    )
+
 
 """
 
@@ -45,6 +48,7 @@ async def get_store_items(request: Request, ndcId: int = 0):
   "timestamp": 1785092732365
 }
 """
+
 
 @store.post("/g/s/avatar-frame/apply")
 @store.post("/x{ndcId}/s/avatar-frame/apply")
@@ -57,10 +61,10 @@ async def apply_avatar_frame(request: Request, ndcId: int = 0):
         apply_to_all = int(data.get("applyToAll", 0)) == 1
     except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
- 
+
     async with await StoreService.create(_uid(request), ndcId) as svc:
         ok = await svc.apply_avatar_frame(frame_id, apply_to_all)
- 
+
     if not ok:
         return Errors.InvalidRequest(timestamp() - t1)
     return Base.Answer(spent_time=timestamp() - t1)
@@ -97,7 +101,9 @@ async def store_purchase(request: Request, ndcId: int = 0):
     if not result.ok:
         if result.error_code == "invalid":
             return Errors.InvalidRequest(timestamp() - t1)
-        return Errors.Custom(result.error_code, result.error_message, spent_time=timestamp() - t1)
+        return Errors.Custom(
+            result.error_code, result.error_message, spent_time=timestamp() - t1
+        )
 
     return Base.Answer({"storeItem": result.store_item}, spent_time=timestamp() - t1)
 
@@ -108,7 +114,9 @@ async def store_purchase(request: Request, ndcId: int = 0):
 async def storesections(request: Request, ndcId: int = 0):
     t1 = timestamp()
     raw = request.query_params.get("storeSectionGroupIds", "")
-    wanted = [x.strip() for x in raw.split(",") if x.strip()] or list(StoreItemType.SECTION_META)
+    wanted = [x.strip() for x in raw.split(",") if x.strip()] or list(
+        StoreItemType.SECTION_META
+    )
 
     async with await StoreService.create(_uid(request), ndcId) as svc:
         section_list = await svc.sections(wanted)
@@ -140,9 +148,11 @@ async def recommend_items(request: Request, ndcId: int = 0):
 
     async with await StoreService.create(_uid(request), ndcId) as svc:
         items = await svc.recommend_items(group_id, object_id, size)
-        storeSection=StoreItemType.SECTION_META.get("group_id", {}).get("objectType")
+        storeSection = StoreItemType.SECTION_META.get("group_id", {}).get("objectType")
 
-    return Base.Answer(build_store_items_response(items, storeSection), spent_time=timestamp() - t1)
+    return Base.Answer(
+        build_store_items_response(items, storeSection), spent_time=timestamp() - t1
+    )
 
 
 @store.get("/x{ndcId}/s/avatar-frame")

@@ -16,11 +16,14 @@ def _restriction(
     availableDuration: int = 0,
 ) -> dict:
     return {
-        "restrictType": restrictType if restrictType is not None
+        "restrictType": restrictType
+        if restrictType is not None
         else (RestrictType.COIN if price else RestrictType.FREE),
         "restrictValue": price,
         "availableDuration": availableDuration if availableDuration != 0 else None,
-        "discountStatus": discountStatus if discountStatus is not None else DiscountStatus.OFF,
+        "discountStatus": discountStatus
+        if discountStatus is not None
+        else DiscountStatus.OFF,
         "discountValue": discountValue or 0,
     }
 
@@ -36,9 +39,16 @@ def _ndc_ids(obj: dict, ndcId: int | None = None) -> list:
     return obj.get("availableNdcIds") or []
 
 
-def _common_ref_fields(obj: dict, restriction: dict, created: str, modified: str, *,
-                       ndcId: int | None = None,
-                       activated_default: bool = False, new_default: bool = True) -> dict:
+def _common_ref_fields(
+    obj: dict,
+    restriction: dict,
+    created: str,
+    modified: str,
+    *,
+    ndcId: int | None = None,
+    activated_default: bool = False,
+    new_default: bool = True,
+) -> dict:
     return {
         "md5": obj.get("md5"),
         "status": obj.get("status", 0),
@@ -54,8 +64,13 @@ def _common_ref_fields(obj: dict, restriction: dict, created: str, modified: str
     }
 
 
-def _build_frame_ref(frame: dict, restriction: dict, created: str, modified: str,
-                     ndcId: int | None = None) -> dict:
+def _build_frame_ref(
+    frame: dict,
+    restriction: dict,
+    created: str,
+    modified: str,
+    ndcId: int | None = None,
+) -> dict:
     return {
         "frameId": frame["frameId"],
         "frameType": frame.get("frameType", 1),
@@ -67,8 +82,13 @@ def _build_frame_ref(frame: dict, restriction: dict, created: str, modified: str
     }
 
 
-def _build_bubble_ref(bubble: dict, restriction: dict, created: str, modified: str,
-                      ndcId: int | None = None) -> dict:
+def _build_bubble_ref(
+    bubble: dict,
+    restriction: dict,
+    created: str,
+    modified: str,
+    ndcId: int | None = None,
+) -> dict:
     return {
         "bubbleId": bubble["bubbleId"],
         "bubbleType": bubble.get("bubbleType", 1),
@@ -79,13 +99,16 @@ def _build_bubble_ref(bubble: dict, restriction: dict, created: str, modified: s
         "coverImage": bubble.get("coverImage"),
         "templateId": bubble.get("templateId"),
         "config": bubble.get("config", {}),
-        "deletable": bubble.get("deletable", True) if bubble.get("ownershipInfo") is not None else False,
+        "deletable": bubble.get("deletable", True)
+        if bubble.get("ownershipInfo") is not None
+        else False,
         **_common_ref_fields(bubble, restriction, created, modified, ndcId=ndcId),
     }
 
 
-def _build_sticker_ref(coll: dict, restriction: dict, created: str, modified: str,
-                       ndcId: int | None = None) -> dict:
+def _build_sticker_ref(
+    coll: dict, restriction: dict, created: str, modified: str, ndcId: int | None = None
+) -> dict:
     return {
         "collectionId": coll["collectionId"],
         "collectionType": coll.get("collectionType", 1),
@@ -103,8 +126,14 @@ def _build_sticker_ref(coll: dict, restriction: dict, created: str, modified: st
 
 
 class StoreItemSpec:
-    def __init__(self, *, id_field: str, ref_type: int, icon_field: str,
-                 build_ref_object: Callable[..., dict]):
+    def __init__(
+        self,
+        *,
+        id_field: str,
+        ref_type: int,
+        icon_field: str,
+        build_ref_object: Callable[..., dict],
+    ):
         self.id_field = id_field
         self.ref_type = ref_type
         self.icon_field = icon_field
@@ -136,14 +165,22 @@ SPECS: dict[str, StoreItemSpec] = {
 
 
 TYPE_TO_GROUP: dict[int, str] = {
-    meta["objectType"]: group_id for group_id, meta in StoreItemType.SECTION_META.items()
+    meta["objectType"]: group_id
+    for group_id, meta in StoreItemType.SECTION_META.items()
 }
 
 
-def build_store_item(spec: StoreItemSpec, obj: dict, price: int | None = None,
-                     ndcId: int | None = None, **restr) -> dict:
+def build_store_item(
+    spec: StoreItemSpec,
+    obj: dict,
+    price: int | None = None,
+    ndcId: int | None = None,
+    **restr,
+) -> dict:
     price = price or 0
-    restriction = _restriction(price=price, availableDuration=obj.get("availableDuration", 0), **restr)
+    restriction = _restriction(
+        price=price, availableDuration=obj.get("availableDuration", 0), **restr
+    )
     created, modified = _timestamps(obj)
     return {
         "refObjectId": obj[spec.id_field],
@@ -154,34 +191,89 @@ def build_store_item(spec: StoreItemSpec, obj: dict, price: int | None = None,
             "icon": obj.get(spec.icon_field),
         },
         "itemRestrictionInfo": restriction,
-        "refObject": spec.build_ref_object(obj, restriction, created, modified, ndcId=ndcId),
+        "refObject": spec.build_ref_object(
+            obj, restriction, created, modified, ndcId=ndcId
+        ),
     }
 
 
+def build_store_frame_item(
+    frame,
+    price=None,
+    restrictType=None,
+    discountStatus=None,
+    discountValue=None,
+    ndcId=None,
+):
+    return build_store_item(
+        SPECS["avatar-frame"],
+        frame,
+        price,
+        ndcId=ndcId,
+        restrictType=restrictType,
+        discountStatus=discountStatus,
+        discountValue=discountValue,
+    )
 
-def build_store_frame_item(frame, price=None, restrictType=None, discountStatus=None, discountValue=None, ndcId=None):
-    return build_store_item(SPECS["avatar-frame"], frame, price, ndcId=ndcId,
-                            restrictType=restrictType, discountStatus=discountStatus, discountValue=discountValue)
+
+def build_store_bubble_item(
+    bubble,
+    price=None,
+    restrictType=None,
+    discountStatus=None,
+    discountValue=None,
+    ndcId=None,
+):
+    return build_store_item(
+        SPECS["chat-bubble"],
+        bubble,
+        price,
+        ndcId=ndcId,
+        restrictType=restrictType,
+        discountStatus=discountStatus,
+        discountValue=discountValue,
+    )
 
 
-def build_store_bubble_item(bubble, price=None, restrictType=None, discountStatus=None, discountValue=None, ndcId=None):
-    return build_store_item(SPECS["chat-bubble"], bubble, price, ndcId=ndcId,
-                            restrictType=restrictType, discountStatus=discountStatus, discountValue=discountValue)
-
-
-def build_store_sticker_item(coll, price=None, restrictType=None, discountStatus=None, discountValue=None, ndcId=None):
-    return build_store_item(SPECS["sticker"], coll, price, ndcId=ndcId,
-                            restrictType=restrictType, discountStatus=discountStatus, discountValue=discountValue)
+def build_store_sticker_item(
+    coll,
+    price=None,
+    restrictType=None,
+    discountStatus=None,
+    discountValue=None,
+    ndcId=None,
+):
+    return build_store_item(
+        SPECS["sticker"],
+        coll,
+        price,
+        ndcId=ndcId,
+        restrictType=restrictType,
+        discountStatus=discountStatus,
+        discountValue=discountValue,
+    )
 
 
 def build_store_items_response(items: list, storeSection=None) -> dict:
     return {"storeItemList": items, "storeSection": storeSection}
 
 
-def build_avatar_frame_response(frame, price=None, restrictType=None, discountStatus=None, discountValue=None, ndcId=None):
+def build_avatar_frame_response(
+    frame,
+    price=None,
+    restrictType=None,
+    discountStatus=None,
+    discountValue=None,
+    ndcId=None,
+):
     price = price or 0
-    restriction = _restriction(price=price, restrictType=restrictType, discountStatus=discountStatus,
-                               discountValue=discountValue, availableDuration=frame.get("availableDuration", 0))
+    restriction = _restriction(
+        price=price,
+        restrictType=restrictType,
+        discountStatus=discountStatus,
+        discountValue=discountValue,
+        availableDuration=frame.get("availableDuration", 0),
+    )
     created, modified = _timestamps(frame)
     ref = _build_frame_ref(frame, restriction, created, modified, ndcId=ndcId)
     ref["description"] = frame.get("description", "")
@@ -193,7 +285,8 @@ def build_preview_item(group_id: str, doc: dict, ndcId: int | None = None):
     if spec is None:
         return None
     return build_store_item(
-        spec, doc,
+        spec,
+        doc,
         price=doc.get("price", 0),
         ndcId=ndcId,
         restrictType=doc.get("restrictType"),
@@ -225,7 +318,9 @@ def build_avatar_frame_icon(frame: dict) -> dict | None:
     ownership = frame.get("ownershipInfo") or {}
     return {
         "status": frame.get("status", 0),
-        "ownershipStatus": ownership.get("ownershipStatus", frame.get("ownershipStatus", 1)),
+        "ownershipStatus": ownership.get(
+            "ownershipStatus", frame.get("ownershipStatus", 1)
+        ),
         "version": frame.get("version", 1),
         "resourceUrl": frame.get("resourceUrl"),
         "name": frame.get("name"),
@@ -233,7 +328,6 @@ def build_avatar_frame_icon(frame: dict) -> dict | None:
         "frameType": frame.get("frameType", 1),
         "frameId": frame.get("frameId"),
     }
-
 
 
 async def get_ownership_map(db, uid: str, object_type: int, ids: list[str]) -> dict:

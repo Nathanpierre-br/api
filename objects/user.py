@@ -3,6 +3,7 @@ from typing import Union
 from .medialist import MediaList
 from helpers.store import build_avatar_frame_icon
 
+
 class User:
     @staticmethod
     def OwnSensetiveProfile(row):
@@ -228,7 +229,8 @@ class User:
             followingStatus = membershipStatus
 
         iconFrame = row.get("iconFrame")
-        if iconFrame is None: iconFrame = {}
+        if iconFrame is None:
+            iconFrame = {}
 
         return {
             "iconFrameId": iconFrame.get("frameId"),

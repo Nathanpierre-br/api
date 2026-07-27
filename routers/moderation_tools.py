@@ -14,7 +14,6 @@ moderation_tools = APIRouter()
 moderation_tools.route_class = CachableRoute
 
 
-
 async def check_rights(
     db, uid: str, ndcId: int = 0, no_curators: bool = False, only_gods: bool = False
 ) -> bool:
@@ -24,7 +23,7 @@ async def check_rights(
         return False
 
     role = user.get("role", 0)
-    
+
     if no_curators and role == UserRole.Curator:
         return False
 
@@ -79,7 +78,9 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
         return Errors.InvalidSession(timestamp() - t1)
 
     db = await Database().init()
-    if not await check_rights(db, request.state.session["uid"], ndcId, only_gods=(ndcId == 0)):
+    if not await check_rights(
+        db, request.state.session["uid"], ndcId, only_gods=(ndcId == 0)
+    ):
         db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
@@ -90,6 +91,7 @@ async def ban_user_toggle(request: Request, uid: str, ndcId: int = 0):
     await table.update_one({"id": uid}, {"$set": {"status": status}})
     db.close()
     return Base.Answer(spent_time=timestamp() - t1)
+
 
 @moderation_tools.post("/x{ndcId}/s/{object_type}/{object_id}/admin")
 @moderation_tools.post("/x{ndcId}/s/chat/{object_type}/{object_id}/admin")
@@ -104,7 +106,9 @@ async def admin_action(
         return Errors.InvalidSession(timestamp() - t1)
     data = await request.json()
     db = await Database().init()
-    if not await check_rights(db, request.state.session["uid"], ndcId, only_gods=(ndcId == 0)):
+    if not await check_rights(
+        db, request.state.session["uid"], ndcId, only_gods=(ndcId == 0)
+    ):
         db.close()
         return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
@@ -126,24 +130,24 @@ async def admin_action(
 
     if table_name == "Users":
         if operation == 18:
-            return Errors.UnimplementedPath() #it's banned user, idk why, but in app use this one
+            return (
+                Errors.UnimplementedPath()
+            )  # it's banned user, idk why, but in app use this one
             await table.update_one(
                 {"id": object_id},
-                {"$set": {"status": 9, "extensions.__disabledLevel__": 3}}
+                {"$set": {"status": 9, "extensions.__disabledLevel__": 3}},
             )
         elif operation == 19:
-            return Errors.UnimplementedPath() #it's 
+            return Errors.UnimplementedPath()  # it's
             await table.update_one(
                 {"id": object_id},
-                {"$set": {"status": 0, "extensions.__disabledLevel__": 0}}
+                {"$set": {"status": 0, "extensions.__disabledLevel__": 0}},
             )
         elif operation == 207:
-            if ndcId == 0: return Errors.InvalidRequest()
+            if ndcId == 0:
+                return Errors.InvalidRequest()
             titles = value.get("titles", []) if isinstance(value, dict) else []
-            await table.update_one(
-                {"id": object_id},
-                {"$set": {"titles": titles}}
-            )
+            await table.update_one({"id": object_id}, {"$set": {"titles": titles}})
         else:
             db.close()
             return Errors.UnimplementedPath()
@@ -183,9 +187,9 @@ async def send_notice(request: Request, ndcId: int = 0):
         target_uid = data["uid"]
         title = data["title"]
         content = data["content"]
-        penalty_type = data.get("penaltyType", 0)   # 0 = warning, 1 = strike
+        penalty_type = data.get("penaltyType", 0)  # 0 = warning, 1 = strike
         penalty_value = data.get("penaltyValue", 0)  # seconds for strike
-        notice_type = data.get("noticeType", 7)      # 4 = strike, 7 = warning
+        notice_type = data.get("noticeType", 7)  # 4 = strike, 7 = warning
         attached_object = data.get("attachedObject", {})
     except KeyError:
         db.close()
@@ -209,7 +213,7 @@ async def send_notice(request: Request, ndcId: int = 0):
     await table.insert_one(notice)
 
     if penalty_type == 1 and penalty_value > 0:
-        # TODO: make temp ban 
+        # TODO: make temp ban
         pass
 
     db.close()
@@ -220,20 +224,65 @@ async def send_notice(request: Request, ndcId: int = 0):
 @moderation_tools.get("/g/s/notice/message-template/{template_type}")
 async def get_notice_templates(request: Request, template_type: str, ndcId: int = 0):
     t1 = timestamp()
-    #can be anything i think, it's just template
+    # can be anything i think, it's just template
     STRIKE_TEMPLATES = [
-        {"id": "strike-1", "title": "Spam", "content": "Your content was removed for spam. Please follow community guidelines.", "messageType": 4},
-        {"id": "strike-2", "title": "Inappropriate content", "content": "Your content was removed for violating our community rules regarding inappropriate content.", "messageType": 4},
-        {"id": "strike-3", "title": "Harassment", "content": "Your content was removed for harassment or bullying of other members.", "messageType": 4},
-        {"id": "strike-4", "title": "NSFW content", "content": "Your content was removed for containing NSFW or adult material which is not allowed on this platform.", "messageType": 4},
-        {"id": "strike-5", "title": "Misinformation", "content": "Your content was removed for spreading misinformation or false information.", "messageType": 4},
+        {
+            "id": "strike-1",
+            "title": "Spam",
+            "content": "Your content was removed for spam. Please follow community guidelines.",
+            "messageType": 4,
+        },
+        {
+            "id": "strike-2",
+            "title": "Inappropriate content",
+            "content": "Your content was removed for violating our community rules regarding inappropriate content.",
+            "messageType": 4,
+        },
+        {
+            "id": "strike-3",
+            "title": "Harassment",
+            "content": "Your content was removed for harassment or bullying of other members.",
+            "messageType": 4,
+        },
+        {
+            "id": "strike-4",
+            "title": "NSFW content",
+            "content": "Your content was removed for containing NSFW or adult material which is not allowed on this platform.",
+            "messageType": 4,
+        },
+        {
+            "id": "strike-5",
+            "title": "Misinformation",
+            "content": "Your content was removed for spreading misinformation or false information.",
+            "messageType": 4,
+        },
     ]
 
     WARNING_TEMPLATES = [
-        {"id": "warn-1", "title": "Friendly reminder", "content": "This is a friendly reminder to please follow our community guidelines.", "messageType": 7},
-        {"id": "warn-2", "title": "Spam warning", "content": "Please avoid posting repetitive or promotional content in this community.", "messageType": 7},
-        {"id": "warn-3", "title": "Behavior warning", "content": "Your recent behavior was not in line with our community standards. Please be respectful to other members.", "messageType": 7},
-        {"id": "warn-4", "title": "Content warning", "content": "Please make sure your content follows our community rules before posting.", "messageType": 7},
+        {
+            "id": "warn-1",
+            "title": "Friendly reminder",
+            "content": "This is a friendly reminder to please follow our community guidelines.",
+            "messageType": 7,
+        },
+        {
+            "id": "warn-2",
+            "title": "Spam warning",
+            "content": "Please avoid posting repetitive or promotional content in this community.",
+            "messageType": 7,
+        },
+        {
+            "id": "warn-3",
+            "title": "Behavior warning",
+            "content": "Your recent behavior was not in line with our community standards. Please be respectful to other members.",
+            "messageType": 7,
+        },
+        {
+            "id": "warn-4",
+            "title": "Content warning",
+            "content": "Please make sure your content follows our community rules before posting.",
+            "messageType": 7,
+        },
     ]
 
     if template_type == "strike":

@@ -2,6 +2,7 @@ from .user import User
 from .medialist import MediaList
 from services.store import StoreService
 
+
 class Comments:
     @staticmethod
     async def Parent(
@@ -36,9 +37,7 @@ class Comments:
             "mediaList": MediaList.List(row.get("mediaList", [])),
             "votesSum": votesSum,
             "subcommentsPreview": [],  # subcomments preview
-            "author": User.GetUserInfo(
-                author, ndcId
-            ),
+            "author": User.GetUserInfo(author, ndcId),
             "content": row["content"],
             "extensions": {} | extenstions,
             "parentId": parentId,
@@ -81,9 +80,7 @@ class Comments:
             "parentNdcId": ndcId,
             "mediaList": MediaList.List(row.get("mediaList", [])),
             "votesSum": votesSum,
-            "author": User.GetUserInfo(
-                author, ndcId
-            ),
+            "author": User.GetUserInfo(author, ndcId),
             "content": row["content"],
             "extensions": {} | extenstions,
             "parentId": parentId,

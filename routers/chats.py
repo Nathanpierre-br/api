@@ -19,13 +19,13 @@ from helpers.tipping_limiter import check_and_increment_tipping_limit
 from helpers.decorators.bbnonsfw import bbnonsfw_manual_check
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import (
-	audio_length,
-	calculate_page_tokens,
-	detect_file_ext,
-	is_app_link,
-	is_hex_str,
-	is_valid_uuid4,
-	parse_page_token,
+    audio_length,
+    calculate_page_tokens,
+    detect_file_ext,
+    is_app_link,
+    is_hex_str,
+    is_valid_uuid4,
+    parse_page_token,
 )
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
@@ -43,54 +43,55 @@ chats.route_class = CachableRoute
 # chat search
 # /g/s/chat/thread/explore/search?q=Hello&size=25
 
+
 @chats.get("/g/s/chat/thread/explore/search")
 @chats.get("/x{ndcId}/s/chat/thread/explore/search")
 async def user_search(
-	request: Request,
-	q: str = "",
-	size: int = 25,
-	pageToken: str | None = None,
-	ndcId: int = 0,
+    request: Request,
+    q: str = "",
+    size: int = 25,
+    pageToken: str | None = None,
+    ndcId: int = 0,
 ):
-	t1 = timestamp()
-	size = size if 0 < size < 101 else 25
+    t1 = timestamp()
+    size = size if 0 < size < 101 else 25
 
-	start = parse_page_token(pageToken, 0)
+    start = parse_page_token(pageToken, 0)
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Chats")
-	query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
-	chats = [
-		item
-		async for item in table.find(query)
-		.skip(start)
-		.limit(size)
-		.sort("timestamp", DESCENDING)
-	]
-	threadList = [await Chat.Info(item["id"], db, ndcId=ndcId) for item in chats]
-	if len(chats) > 0:
-		answer = Base.Answer(
-			{
-				"threadListWrapper": {
-					"threadList": threadList,
-					"userInfoInThread": {
-						item["id"]: {"userProfileCount": 0, "userProfileList": []}
-						for item in chats
-					},
-					"paging": calculate_page_tokens(start, size, threadList),
-					"playlistInThreadList": {},
-				},
-				"communityInfoMapping": {},
-			},
-			spent_time=timestamp() - t1,
-		)
-		db.close()
-		return answer
-	else:
-		db.close()
-		return Base.Answer(
-			{"messageList": [], "paging": {}}, spent_time=timestamp() - t1
-		)
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", "Chats")
+    query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
+    chats = [
+        item
+        async for item in table.find(query)
+        .skip(start)
+        .limit(size)
+        .sort("timestamp", DESCENDING)
+    ]
+    threadList = [await Chat.Info(item["id"], db, ndcId=ndcId) for item in chats]
+    if len(chats) > 0:
+        answer = Base.Answer(
+            {
+                "threadListWrapper": {
+                    "threadList": threadList,
+                    "userInfoInThread": {
+                        item["id"]: {"userProfileCount": 0, "userProfileList": []}
+                        for item in chats
+                    },
+                    "paging": calculate_page_tokens(start, size, threadList),
+                    "playlistInThreadList": {},
+                },
+                "communityInfoMapping": {},
+            },
+            spent_time=timestamp() - t1,
+        )
+        db.close()
+        return answer
+    else:
+        db.close()
+        return Base.Answer(
+            {"messageList": [], "paging": {}}, spent_time=timestamp() - t1
+        )
 
 
 # get global recommended chats
@@ -100,100 +101,95 @@ async def user_search(
 @chats.get("/g/s/live-layer/public-chats")
 @chats.get("/x{ndcId}/s/live-layer/public-chats")
 async def get_recommended_chats(request: Request, ndcId: int = 0):
-	t1 = timestamp()
+    t1 = timestamp()
 
-	trigger_uid = request.state.session.get("uid")
-	con = await Database().init()
-	if ndcId == 0:
-		chatIds = [
-			"e92cde26-3067-457f-930a-0be3b99dc9b5",  # EN
-			"0f668f3a-c5f5-42e0-b552-58b270e7841c",  # RU
-			"670cebaa-7d52-40a1-bcc7-5524a15ea3ed",  # ES
-			"6036bac0-d6fa-4413-8244-56d0cc6fa7b6",  # AR
-		]
-		chats = [
-			await Chat.Info(
-				chatId,
-				trigger_uid=trigger_uid,
-				connection=con,
-			)
-			for chatId in chatIds
-		]
-		answer = {"threadList": [c for c in chats if c is not None]}
-	else:
-		answer = {"threadList": []}
-	con.close()
-	return Base.Answer(answer, spent_time=timestamp() - t1)
-
+    trigger_uid = request.state.session.get("uid")
+    con = await Database().init()
+    if ndcId == 0:
+        chatIds = [
+            "e92cde26-3067-457f-930a-0be3b99dc9b5",  # EN
+            "0f668f3a-c5f5-42e0-b552-58b270e7841c",  # RU
+            "670cebaa-7d52-40a1-bcc7-5524a15ea3ed",  # ES
+            "6036bac0-d6fa-4413-8244-56d0cc6fa7b6",  # AR
+        ]
+        chats = [
+            await Chat.Info(
+                chatId,
+                trigger_uid=trigger_uid,
+                connection=con,
+            )
+            for chatId in chatIds
+        ]
+        answer = {"threadList": [c for c in chats if c is not None]}
+    else:
+        answer = {"threadList": []}
+    con.close()
+    return Base.Answer(answer, spent_time=timestamp() - t1)
 
 
 @chats.get("/g/s/chat/thread/explore/categories")
-@chats.get("/x{ndcId}/s/chat/thread/explore/categories")#?need
+@chats.get("/x{ndcId}/s/chat/thread/explore/categories")  # ?need
 async def get_explore_chats(
-	request: Request,
-	ndcId: int = 0,
-	threadPreviewSize: int = 20,
-	language: int = "en",
-	start: int = 0,
-	size: int = 4,
-	pageToken: str | None = None,
-	):
-	t1 = timestamp()
+    request: Request,
+    ndcId: int = 0,
+    threadPreviewSize: int = 20,
+    language: int = "en",
+    start: int = 0,
+    size: int = 4,
+    pageToken: str | None = None,
+):
+    t1 = timestamp()
 
-	trigger_uid = request.state.session.get("uid")
-	#con = await Database().init()
-	answer = {"threadList": []}
-	
-	#con.close()
-	return Base.Answer(answer, spent_time=timestamp() - t1)
+    trigger_uid = request.state.session.get("uid")
+    # con = await Database().init()
+    answer = {"threadList": []}
+
+    # con.close()
+    return Base.Answer(answer, spent_time=timestamp() - t1)
 
 
 @chats.get("/x{ndcId}/s/chat/thread/search")
 @chats.get("/g/s/chat/thread/search")
 async def chat_search(
-	request: Request,
-	ndcId: int = 0,
-	q: str = "",
-	action: int = 0,
-	start: int = 0,
-	size: int = 25,
-	pageToken: str | None = None,
+    request: Request,
+    ndcId: int = 0,
+    q: str = "",
+    action: int = 0,
+    start: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
 ):
-	t1 = timestamp()
+    t1 = timestamp()
 
-	if pageToken:
-		start = parse_page_token(pageToken, start)
-	size = size if 0 < size < 101 else 25
-	uid = request.state.session["uid"]
+    if pageToken:
+        start = parse_page_token(pageToken, start)
+    size = size if 0 < size < 101 else 25
+    uid = request.state.session["uid"]
 
-	db = await Database().init()
-	try:
-		table = db.get(f"x{ndcId}", "Chats")
-		query = {"memberList": uid}
-		if q:
-			query["title"] = {"$regex": regex_escape(q), "$options": "i"}
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "Chats")
+        query = {"memberList": uid}
+        if q:
+            query["title"] = {"$regex": regex_escape(q), "$options": "i"}
 
-		threadCount = await table.count_documents(query)
-		cursor = table.find(query).skip(start).limit(size)
+        threadCount = await table.count_documents(query)
+        cursor = table.find(query).skip(start).limit(size)
 
-		threadList = [
-			await Chat.Info(item["id"], db, trigger_uid=uid, ndcId=ndcId)
-			async for item in cursor
-		]
-	finally:
-		db.close()
+        threadList = [
+            await Chat.Info(item["id"], db, trigger_uid=uid, ndcId=ndcId)
+            async for item in cursor
+        ]
+    finally:
+        db.close()
 
-	result = {
-		"threadList": threadList,
-		"communityInfoMapping": {},
-		"threadCount": threadCount,
-		"paging": calculate_page_tokens(start, size, threadList),
-	}
-	return Base.Answer(result, spent_time=timestamp() - t1)
-
-
-
-
+    result = {
+        "threadList": threadList,
+        "communityInfoMapping": {},
+        "threadCount": threadCount,
+        "paging": calculate_page_tokens(start, size, threadList),
+    }
+    return Base.Answer(result, spent_time=timestamp() - t1)
 
 
 # get chat info
@@ -203,16 +199,16 @@ async def chat_search(
 @chats.get("/g/s/chat/thread/{chatId}")
 @chats.get("/x{ndcId}/s/chat/thread/{chatId}")
 async def get_chat_info(chatId: str, request: Request, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	trigger_uid = request.state.session["uid"]
+    trigger_uid = request.state.session["uid"]
 
-	return Base.Answer(
-		{"thread": await Chat.Info(chatId, trigger_uid=trigger_uid, ndcId=ndcId)},
-		spent_time=timestamp() - t1,
-	)
+    return Base.Answer(
+        {"thread": await Chat.Info(chatId, trigger_uid=trigger_uid, ndcId=ndcId)},
+        spent_time=timestamp() - t1,
+    )
 
 
 # vvchat permission precheck
@@ -220,84 +216,85 @@ async def get_chat_info(chatId: str, request: Request, ndcId: int = 0):
 @chats.post("/g/s/chat/thread/{chatId}/vvchat-permission")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/vvchat-permission")
 async def vvchat_permission(request: Request, chatId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	trigger_uid = request.state.session["uid"]
-	payload = await request.json()
-	vv_chat_join_type = payload.get("vvChatJoinType", 1)
-	if not isinstance(vv_chat_join_type, int):
-		return Errors.InvalidRequest(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+    payload = await request.json()
+    vv_chat_join_type = payload.get("vvChatJoinType", 1)
+    if not isinstance(vv_chat_join_type, int):
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Chats")
-	chat_info = await table.find_one({"id": chatId})
-	if not chat_info:
-		db.close()
-		return Errors.DataNotExist(timestamp() - t1)
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", "Chats")
+    chat_info = await table.find_one({"id": chatId})
+    if not chat_info:
+        db.close()
+        return Errors.DataNotExist(timestamp() - t1)
 
-	# AltAmino client only needs a successful ack for this request.
-	response = {
-		"threadId": chatId,
-		"ndcId": ndcId,
-		"uid": trigger_uid,
-		"vvChatJoinType": vv_chat_join_type,
-	}
-	db.close()
-	return Base.Answer(response, spent_time=timestamp() - t1)
-
+    # AltAmino client only needs a successful ack for this request.
+    response = {
+        "threadId": chatId,
+        "ndcId": ndcId,
+        "uid": trigger_uid,
+        "vvChatJoinType": vv_chat_join_type,
+    }
+    db.close()
+    return Base.Answer(response, spent_time=timestamp() - t1)
 
 
 async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str):
 
-	bubble_id = data.get("bubbleId")
-	chatId = data.get("threadId")
-	apply_to_all = int(data.get("applyToAll", 0)) == 1
+    bubble_id = data.get("bubbleId")
+    chatId = data.get("threadId")
+    apply_to_all = int(data.get("applyToAll", 0)) == 1
 
-	if (not chatId and not apply_to_all):
-		return Errors.InvalidRequest(timestamp() - t1)
+    if not chatId and not apply_to_all:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	db = await Database().init()
-	try:
-		if bubble_id:
-			owned = db.get(table="UserStoreItems")
-			ownership = await owned.find_one({
-				"uid": trigger_uid,
-				"objectType": StoreItemType.ChatBubble,
-				"objectId": bubble_id,
-			})
-			if not ownership:
-				return Errors.NotEnoughRights(timestamp() - t1)
-		else:
-			bubble_id = "85045ed8-b05b-40de-907e-ec886889d086" #defaultBubbleId
+    db = await Database().init()
+    try:
+        if bubble_id:
+            owned = db.get(table="UserStoreItems")
+            ownership = await owned.find_one(
+                {
+                    "uid": trigger_uid,
+                    "objectType": StoreItemType.ChatBubble,
+                    "objectId": bubble_id,
+                }
+            )
+            if not ownership:
+                return Errors.NotEnoughRights(timestamp() - t1)
+        else:
+            bubble_id = "85045ed8-b05b-40de-907e-ec886889d086"  # defaultBubbleId
 
-		table = db.get(f"x{ndcId}", "Users")
-		user = await table.find_one({"id": trigger_uid})
-		if user is None:
-			return Errors.AccountNotExist(timestamp() - t1)
+        table = db.get(f"x{ndcId}", "Users")
+        user = await table.find_one({"id": trigger_uid})
+        if user is None:
+            return Errors.AccountNotExist(timestamp() - t1)
 
-		if apply_to_all:
-			await table.update_one(
-				{"id": trigger_uid},
-				{"$set": {"bubbleId": bubble_id, "chatBubbles": {}}},
-			)
-		else:
-			await table.update_one(
-				{"id": trigger_uid},
-				{"$set": {f"chatBubbles.{chatId}": bubble_id}},
-			)
+        if apply_to_all:
+            await table.update_one(
+                {"id": trigger_uid},
+                {"$set": {"bubbleId": bubble_id, "chatBubbles": {}}},
+            )
+        else:
+            await table.update_one(
+                {"id": trigger_uid},
+                {"$set": {f"chatBubbles.{chatId}": bubble_id}},
+            )
 
-		"""
+        """
 		await owned.update_one(
 			{"_id": ownership["_id"]},
 			{"$set": {"isActivated": True}},
 		)
 		"""
-	finally:
-		db.close()
+    finally:
+        db.close()
 
-	return Base.Answer(spent_time=timestamp() - t1)
+    return Base.Answer(spent_time=timestamp() - t1)
 
 
 # edit chat
@@ -307,66 +304,66 @@ async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str)
 @chats.post("/g/s/chat/thread/{chatId}")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}")
 async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	data = await request.json()
-	print(f"editing data for chat {chatId}:", data)
-	trigger_uid = request.state.session["uid"]
-	if chatId == "apply-bubble":
-		return await chat_apply_bubble(t1, ndcId, data, trigger_uid)
+    data = await request.json()
+    print(f"editing data for chat {chatId}:", data)
+    trigger_uid = request.state.session["uid"]
+    if chatId == "apply-bubble":
+        return await chat_apply_bubble(t1, ndcId, data, trigger_uid)
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Chats")
-	chat_info = await table.find_one({"id": chatId})
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", "Chats")
+    chat_info = await table.find_one({"id": chatId})
 
-	if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
-		"cohostsIds", []
-	):
-		ext = data.get("extensions", {})
-		bg = ext.get("bm")
-		if isinstance(bg, list):
-			bg = bg[1]
-		# TODO: verify image url
+    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
+        "cohostsIds", []
+    ):
+        ext = data.get("extensions", {})
+        bg = ext.get("bm")
+        if isinstance(bg, list):
+            bg = bg[1]
+        # TODO: verify image url
 
-		update_chat = {}
-		if data.get("content"):
-			update_chat.update({"description": data["content"]})
-		if data.get("title"):
-			update_chat.update({"title": data["title"]})
-		if data.get("icon"):
-			update_chat.update({"icon": data["icon"]})
-		if bg:
-			update_chat.update({"background": bg})
+        update_chat = {}
+        if data.get("content"):
+            update_chat.update({"description": data["content"]})
+        if data.get("title"):
+            update_chat.update({"title": data["title"]})
+        if data.get("icon"):
+            update_chat.update({"icon": data["icon"]})
+        if bg:
+            update_chat.update({"background": bg})
 
-		update_chat.update(
-			{
-				"pinAnnouncement": ext.get("pinAnnouncement", False),
-				"announcement": ext.get("announcement"),
-			}
-		)
+        update_chat.update(
+            {
+                "pinAnnouncement": ext.get("pinAnnouncement", False),
+                "announcement": ext.get("announcement"),
+            }
+        )
 
-		print(update_chat)
+        print(update_chat)
 
-		if len(update_chat) > 1:
-			await table.update_one({"id": chatId}, {"$set": update_chat})
+        if len(update_chat) > 1:
+            await table.update_one({"id": chatId}, {"$set": update_chat})
 
-		answer = Base.Answer(
-			{
-				"thread": await Chat.Info(
-					chatId, trigger_uid=trigger_uid, connection=db, ndcId=ndcId
-				)
-			},
-			spent_time=timestamp() - t1,
-		)
+        answer = Base.Answer(
+            {
+                "thread": await Chat.Info(
+                    chatId, trigger_uid=trigger_uid, connection=db, ndcId=ndcId
+                )
+            },
+            spent_time=timestamp() - t1,
+        )
 
-		db.close()
-		return answer
+        db.close()
+        return answer
 
-	else:
-		db.close()
-		return Errors.NotEnoughRights(timestamp() - t1)
+    else:
+        db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
 
 
 # set background
@@ -374,65 +371,65 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
 @chats.post("/g/s/chat/thread/{chatId}/member/{uid}/background")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/{uid}/background")
 async def edit_background_chat(chatId: str, request: Request, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	data = await request.json()
-	trigger_uid = request.state.session["uid"]
+    data = await request.json()
+    trigger_uid = request.state.session["uid"]
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Chats")
-	chat_info = await table.find_one({"id": chatId})
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", "Chats")
+    chat_info = await table.find_one({"id": chatId})
 
-	if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
-		"cohostsIds", []
-	):
-		bg = None
+    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
+        "cohostsIds", []
+    ):
+        bg = None
 
-		if len(data.get("media", [])) > 2:
-			bg = data["media"][1]
-			if not is_app_link(bg):
-				return Errors.InvalidMediaContent()
+        if len(data.get("media", [])) > 2:
+            bg = data["media"][1]
+            if not is_app_link(bg):
+                return Errors.InvalidMediaContent()
 
-		elif data.get("mediaUploadValue"):
-			value = data["mediaUploadValue"]
+        elif data.get("mediaUploadValue"):
+            value = data["mediaUploadValue"]
 
-			s3 = resource(
-				service_name=Config.S3_SERVICE_NAME,
-				aws_access_key_id=Config.S3_ACCESS_KEY,
-				aws_secret_access_key=Config.S3_SECRET_ACCESS_KEY,
-				endpoint_url=Config.S3_ENDPOINT_URL,
-			)
-			image_bytes = b64decode(value)
-			filetype = detect_file_ext(image_bytes[:128])
-			if filetype is None:
-				return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
-			filename = (
-				Config.S3_IMAGES_FOLDER
-				+ "".join([choice(ascii_letters + digits) for _ in range(64)])
-				+ filetype
-			)
-			body = ImageTools.compress(b64decode(value), filetype[1:])
-			s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
-			bg = Config.MEDIA_BASE_URL + filename
+            s3 = resource(
+                service_name=Config.S3_SERVICE_NAME,
+                aws_access_key_id=Config.S3_ACCESS_KEY,
+                aws_secret_access_key=Config.S3_SECRET_ACCESS_KEY,
+                endpoint_url=Config.S3_ENDPOINT_URL,
+            )
+            image_bytes = b64decode(value)
+            filetype = detect_file_ext(image_bytes[:128])
+            if filetype is None:
+                return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+            filename = (
+                Config.S3_IMAGES_FOLDER
+                + "".join([choice(ascii_letters + digits) for _ in range(64)])
+                + filetype
+            )
+            body = ImageTools.compress(b64decode(value), filetype[1:])
+            s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
+            bg = Config.MEDIA_BASE_URL + filename
 
-		if bg:
-			await table.update_one({"id": chatId}, {"$set": {"background": bg}})
+        if bg:
+            await table.update_one({"id": chatId}, {"$set": {"background": bg}})
 
-		answer = Base.Answer(
-			{
-				"thread": await Chat.Info(
-					chatId, trigger_uid=trigger_uid, connection=db, ndcId=ndcId
-				)
-			},
-			spent_time=timestamp() - t1,
-		)
+        answer = Base.Answer(
+            {
+                "thread": await Chat.Info(
+                    chatId, trigger_uid=trigger_uid, connection=db, ndcId=ndcId
+                )
+            },
+            spent_time=timestamp() - t1,
+        )
 
-		db.close()
-		return answer
+        db.close()
+        return answer
 
-	return Errors.NotEnoughRights()
+    return Errors.NotEnoughRights()
 
 
 # delete chat
@@ -442,23 +439,25 @@ async def edit_background_chat(chatId: str, request: Request, ndcId: int = 0):
 @chats.delete("/g/s/chat/thread/{chatId}")
 @chats.delete("/x{ndcId}/s/chat/thread/{chatId}")
 async def delete_chat(chatId: str, request: Request, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	trigger_uid = request.state.session["uid"]
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Chats")
-	chat_info = await table.find_one({"id": chatId})
-	sensitive_table = db.get(table="Users")
-	user = await sensitive_table.find_one({"id": trigger_uid})
-	if chat_info["hostId"] == trigger_uid or (user and UserRole.is_global_staff(user.get("role", 0))):
-		await table.delete_one({"id": chatId})
-		db.close()
-		return Base.Answer()
-	else:
-		db.close()
-		return Errors.NotEnoughRights(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", "Chats")
+    chat_info = await table.find_one({"id": chatId})
+    sensitive_table = db.get(table="Users")
+    user = await sensitive_table.find_one({"id": trigger_uid})
+    if chat_info["hostId"] == trigger_uid or (
+        user and UserRole.is_global_staff(user.get("role", 0))
+    ):
+        await table.delete_one({"id": chatId})
+        db.close()
+        return Base.Answer()
+    else:
+        db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
 
 
 # if chat exists + where user is
@@ -467,107 +466,107 @@ async def delete_chat(chatId: str, request: Request, ndcId: int = 0):
 @chats.get("/g/s/chat/thread")
 @chats.get("/x{ndcId}/s/chat/thread")
 async def if_chat_exists(
-	request: Request,
-	type: str,
-	q: str | None = None,
-	size: int = 25,
-	start: int = 0,
-	ndcId: int = 0,
+    request: Request,
+    type: str,
+    q: str | None = None,
+    size: int = 25,
+    start: int = 0,
+    ndcId: int = 0,
 ):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	uid = request.state.session["uid"]
-	if type == "exist-single" and q:
-		db = await Database().init()
-		table = db.get(f"x{ndcId}", "Chats")
-		query = {
-			"chatType": 0,
-			"$or": [
-				{"$and": [{"memberList": uid}, {"invitedList": q}]},
-				{"$and": [{"memberList": q}, {"invitedList": uid}]},
-				{"memberList": [q, uid]},
-			],
-		}
-		req = await table.find_one(query)
-		if req is not None:
-			r = Base.Answer(
-				{
-					"threadList": [
-						await Chat.Info(req["id"], db, trigger_uid=uid, ndcId=ndcId)
-					]
-				}
-			)
+    uid = request.state.session["uid"]
+    if type == "exist-single" and q:
+        db = await Database().init()
+        table = db.get(f"x{ndcId}", "Chats")
+        query = {
+            "chatType": 0,
+            "$or": [
+                {"$and": [{"memberList": uid}, {"invitedList": q}]},
+                {"$and": [{"memberList": q}, {"invitedList": uid}]},
+                {"memberList": [q, uid]},
+            ],
+        }
+        req = await table.find_one(query)
+        if req is not None:
+            r = Base.Answer(
+                {
+                    "threadList": [
+                        await Chat.Info(req["id"], db, trigger_uid=uid, ndcId=ndcId)
+                    ]
+                }
+            )
 
-			db.close()
-			return r
-		else:
-			return Errors.MythicData(timestamp() - t1)
-	elif type == "exist-multi":
-		return Base.Answer(
-			{"threadList": [], "playlistInThreadList": {}}, spent_time=timestamp() - t1
-		)
-	elif type == "joined-me" or (start and size):
-		size = size if 0 < size < 101 else 25
+            db.close()
+            return r
+        else:
+            return Errors.MythicData(timestamp() - t1)
+    elif type == "exist-multi":
+        return Base.Answer(
+            {"threadList": [], "playlistInThreadList": {}}, spent_time=timestamp() - t1
+        )
+    elif type == "joined-me" or (start and size):
+        size = size if 0 < size < 101 else 25
 
-		db = await Database().init()
-		table = db.get(f"x{ndcId}", "Chats")
-		joined = await table.find({"memberList": uid}).distinct("id") or []
-		invited = await table.find({"invitedList": uid}).distinct("id") or []
-		row = (joined + invited)[start : start + size]
+        db = await Database().init()
+        table = db.get(f"x{ndcId}", "Chats")
+        joined = await table.find({"memberList": uid}).distinct("id") or []
+        invited = await table.find({"invitedList": uid}).distinct("id") or []
+        row = (joined + invited)[start : start + size]
 
-		info = Base.Answer(
-			{
-				"threadList": [
-					await Chat.Info(chatId, db, trigger_uid=uid, ndcId=ndcId)
-					for chatId in row
-				]
-			},
-			spent_time=timestamp() - t1,
-		)
+        info = Base.Answer(
+            {
+                "threadList": [
+                    await Chat.Info(chatId, db, trigger_uid=uid, ndcId=ndcId)
+                    for chatId in row
+                ]
+            },
+            spent_time=timestamp() - t1,
+        )
 
-		db.close()
-		return info
-	elif type == "public-all":
-		size = size if 0 < size < 101 else 25
+        db.close()
+        return info
+    elif type == "public-all":
+        size = size if 0 < size < 101 else 25
 
-		db = await Database().init()
-		table = db.get(f"x{ndcId}", "Chats")
-		items = [
-			await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
-			async for item in table.find({"chatType": 2})
-			.skip(start)
-			.limit(size)
-			.sort("lastMessageTimestamp", DESCENDING)
-		]
+        db = await Database().init()
+        table = db.get(f"x{ndcId}", "Chats")
+        items = [
+            await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
+            async for item in table.find({"chatType": 2})
+            .skip(start)
+            .limit(size)
+            .sort("lastMessageTimestamp", DESCENDING)
+        ]
 
-		db.close()
-		return Base.Answer(
-			{"threadList": items},
-			spent_time=timestamp() - t1,
-		)
-	elif type == "public-keyword":
-		size = size if 0 < size < 101 else 25
+        db.close()
+        return Base.Answer(
+            {"threadList": items},
+            spent_time=timestamp() - t1,
+        )
+    elif type == "public-keyword":
+        size = size if 0 < size < 101 else 25
 
-		db = await Database().init()
-		table = db.get(f"x{ndcId}", "Chats")
-		query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
-		items = [
-			await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
-			async for item in table.find(query)
-			.skip(start)
-			.limit(size)
-			.sort("timestamp", DESCENDING)
-		]
+        db = await Database().init()
+        table = db.get(f"x{ndcId}", "Chats")
+        query = {"chatType": 2, "title": {"$regex": regex_escape(q), "$options": "i"}}
+        items = [
+            await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
+            async for item in table.find(query)
+            .skip(start)
+            .limit(size)
+            .sort("timestamp", DESCENDING)
+        ]
 
-		db.close()
-		return Base.Answer(
-			{"threadList": items},
-			spent_time=timestamp() - t1,
-		)
-	else:
-		return Errors.InvalidRequest(timestamp() - t1)
+        db.close()
+        return Base.Answer(
+            {"threadList": items},
+            spent_time=timestamp() - t1,
+        )
+    else:
+        return Errors.InvalidRequest(timestamp() - t1)
 
 
 # create chat
@@ -578,193 +577,194 @@ async def if_chat_exists(
 @chats.post("/x{ndcId}/s/chat/thread")
 @turtlelimiter(limit=1, period=TurtleTime.minute, tag="create-chat")
 async def create_chat(request: Request, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	data = await request.json()
-	trigger_uid = request.state.session["uid"]
-	if data["type"] == ChatType.Private and (
-		data.get("inviteeUids", []) == [] or len(data.get("inviteeUids", [])) != 1
-	):
-		return Errors.InvalidRequest(timestamp() - t1)
+    data = await request.json()
+    trigger_uid = request.state.session["uid"]
+    if data["type"] == ChatType.Private and (
+        data.get("inviteeUids", []) == [] or len(data.get("inviteeUids", [])) != 1
+    ):
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	if data["type"] == ChatType.PrivateGroup and data.get("inviteeUids", []) == []:
-		return Errors.InvalidRequest(timestamp() - t1)
+    if data["type"] == ChatType.PrivateGroup and data.get("inviteeUids", []) == []:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Chats")
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", "Chats")
 
-	if data["type"] == ChatType.Private:
-		query = {
-			"chatType": ChatType.Private,
-			"$or": [
-				{"memberList": {"$all": [trigger_uid] + data["inviteeUids"]}},
-				{"invitedList": {"$all": [trigger_uid] + data["inviteeUids"]}},
-			],
-		}
-		req = await table.find_one(query)
-	else:
-		req = None
+    if data["type"] == ChatType.Private:
+        query = {
+            "chatType": ChatType.Private,
+            "$or": [
+                {"memberList": {"$all": [trigger_uid] + data["inviteeUids"]}},
+                {"invitedList": {"$all": [trigger_uid] + data["inviteeUids"]}},
+            ],
+        }
+        req = await table.find_one(query)
+    else:
+        req = None
 
-	if req is not None:
-		chatId = req["id"]
-		chatObj = req
-	else:
-		chatId = str(uuid4())
-		if data["type"] == ChatType.Public:
-			bm = data.get("extensions", {}).get("bm") or [None, None]
-			bg = bm[1] if len(bm) > 1 else None
-			chatObj = ModelFabric.Construct(
-				Community.Chats,
-				chatType=data["type"],
-				id=chatId,
-				hostId=trigger_uid,
-				invitedList=data.get("inviteeUids", []),
-				memberList=[trigger_uid],
-				background=(
-					bg
-					if isinstance(bg, str)
-					else "https://media.altamino.top/default-chat-room-background/10_00.png"
-				),
-				title=data.get("title", "Unnamed chat"),
-				description=data.get("content", ""),
-				icon=data.get("icon"),
-			)
-		else:
-			chatObj = ModelFabric.Construct(
-				Community.Chats,
-				chatType=data["type"],
-				id=chatId,
-				hostId=trigger_uid,
-				invitedList=data["inviteeUids"],
-				memberList=[trigger_uid],
-			)
-	await table.insert_one(chatObj)
+    if req is not None:
+        chatId = req["id"]
+        chatObj = req
+    else:
+        chatId = str(uuid4())
+        if data["type"] == ChatType.Public:
+            bm = data.get("extensions", {}).get("bm") or [None, None]
+            bg = bm[1] if len(bm) > 1 else None
+            chatObj = ModelFabric.Construct(
+                Community.Chats,
+                chatType=data["type"],
+                id=chatId,
+                hostId=trigger_uid,
+                invitedList=data.get("inviteeUids", []),
+                memberList=[trigger_uid],
+                background=(
+                    bg
+                    if isinstance(bg, str)
+                    else "https://media.altamino.top/default-chat-room-background/10_00.png"
+                ),
+                title=data.get("title", "Unnamed chat"),
+                description=data.get("content", ""),
+                icon=data.get("icon"),
+            )
+        else:
+            chatObj = ModelFabric.Construct(
+                Community.Chats,
+                chatType=data["type"],
+                id=chatId,
+                hostId=trigger_uid,
+                invitedList=data["inviteeUids"],
+                memberList=[trigger_uid],
+            )
+    await table.insert_one(chatObj)
 
-	lastMsgId = str(uuid4())
-	messages = [
-		ModelFabric.Construct(
-			Community.Message,
-			messageId=lastMsgId,
-			authorId=trigger_uid,
-			messageType=103,
-		)
-	]
-	if data.get("initialMessageContent"):
-		lastMsgId = str(uuid4())
-		messages.append(
-			ModelFabric.Construct(
-				Community.Message,
-				messageId=lastMsgId,
-				authorId=trigger_uid,
-				messageType=0,
-				content=data["initialMessageContent"],
-			)
-		)
+    lastMsgId = str(uuid4())
+    messages = [
+        ModelFabric.Construct(
+            Community.Message,
+            messageId=lastMsgId,
+            authorId=trigger_uid,
+            messageType=103,
+        )
+    ]
+    if data.get("initialMessageContent"):
+        lastMsgId = str(uuid4())
+        messages.append(
+            ModelFabric.Construct(
+                Community.Message,
+                messageId=lastMsgId,
+                authorId=trigger_uid,
+                messageType=0,
+                content=data["initialMessageContent"],
+            )
+        )
 
-	xndc_users = db.get(f"x{ndcId}", "Users")
-	history = db.get(f"x{ndcId}", f"_Chat:{chatId}")
-	await history.insert_many(messages)
-	await table.update_one(
-		{"id": chatId},
-		{
-			"$set": {
-				"lastMessageId": lastMsgId,
-				f"lastReadedList.{trigger_uid}": messages[-1]["createdTime"],
-			}
-		},
-	)
+    xndc_users = db.get(f"x{ndcId}", "Users")
+    history = db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    await history.insert_many(messages)
+    await table.update_one(
+        {"id": chatId},
+        {
+            "$set": {
+                "lastMessageId": lastMsgId,
+                f"lastReadedList.{trigger_uid}": messages[-1]["createdTime"],
+            }
+        },
+    )
 
-	chatInfo_obj = await Chat.Info(
-		chatId, db, trigger_uid=trigger_uid, xndc_users=xndc_users, ndcId=ndcId
-	)
+    chatInfo_obj = await Chat.Info(
+        chatId, db, trigger_uid=trigger_uid, xndc_users=xndc_users, ndcId=ndcId
+    )
 
+    messages_obj = []
 
-	messages_obj = []
+    for message in messages:
+        user = await xndc_users.find_one({"id": message["authorId"]}) or {}
 
-	for message in messages:
-		user = await xndc_users.find_one({"id": message["authorId"]}) or {}
+        globalBubbleId = user.get("bubbleId")
+        chatBubbleId = user.get("chatBubbles", {}).get(chatId)
 
-		globalBubbleId = user.get("bubbleId")
-		chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+        bubbleId = chatBubbleId or globalBubbleId
+        bubbleVersion = None
 
-		bubbleId = chatBubbleId or globalBubbleId
-		bubbleVersion = None
+        if bubbleId:
+            bubbles_table = db.get(table="ChatBubbles")
+            bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+            bubbleVersion = bubble.get("version", 1)
 
-		if bubbleId:
-			bubbles_table = db.get(table="ChatBubbles")
-			bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
-			bubbleVersion = bubble.get("version", 1)
+        messages_obj.append(
+            await Chat.LongMessage(
+                message,
+                chatId,
+                xndc_users,
+                history_table=table,
+                ndcId=ndcId,
+                chatBubbleVersion=bubbleVersion,
+                chatBubbleId=bubbleId,
+            )
+        )
 
-		messages_obj.append(await Chat.LongMessage(
-					message, chatId, xndc_users, history_table=table, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
-				))
+    # -----
 
+    users = db.get(f"x{ndcId}", "Users")
+    g_users = db.get(table="Users")
+    row2 = await users.find_one({"id": trigger_uid})
 
+    if row2 is None:
+        return Errors.AccountNotExist(timestamp() - t1)
 
+    global_row = await g_users.find_one({"id": trigger_uid})
 
-	#-----
+    if global_row:
+        if not row2.get("tagList"):
+            global_tag_list = global_row.get("tagList")
+            if global_tag_list:
+                row2["tagList"] = global_tag_list
 
-	users = db.get(f"x{ndcId}", "Users")
-	g_users = db.get(table="Users")
-	row2 = await users.find_one({"id": trigger_uid})
+        if "isTeamMember" in global_row:
+            row2["isTeamMember"] = global_row["isTeamMember"]
 
-	if row2 is None:
-		return Errors.AccountNotExist(timestamp() - t1)
+        if "isVerified" in global_row:
+            row2["isVerified"] = global_row["isVerified"]
+        if global_row.get("status", 0) in [9, 10]:
+            row2["status"] = global_row["status"]
+        if global_row.get("extensions", {}).get("__disabledLevel__"):
+            row2["extensions"]["__disabledLevel__"] = global_row["extensions"][
+                "__disabledLevel__"
+            ]
 
-	global_row = await g_users.find_one({"id": trigger_uid})
+        if ndcId == 0:
+            row2 = global_row | row2
 
-	if global_row:
-		if not row2.get("tagList"):
-			global_tag_list = global_row.get("tagList")
-			if global_tag_list:
-				row2["tagList"] = global_tag_list
+    async with await StoreService.create(trigger_uid, ndcId) as svc:
+        row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
 
-		if "isTeamMember" in global_row:
-			row2["isTeamMember"] = global_row["isTeamMember"]
+    inviter = User.GetUserInfo(
+        row2, triggerUserId=trigger_uid, extensions=row2.get("extensions"), ndcId=ndcId
+    )
 
-		if "isVerified" in global_row:
-			row2["isVerified"] = global_row["isVerified"]
-		if global_row.get("status", 0) in [9, 10]:
-			row2["status"] = global_row["status"]
-		if global_row.get("extensions", {}).get("__disabledLevel__"):
-			row2["extensions"]["__disabledLevel__"] = global_row["extensions"]["__disabledLevel__"]
+    if data.get("inviteeUids", []):
+        asyncio.get_event_loop().create_task(
+            send_admin_ws(
+                {
+                    "ndcId": ndcId,
+                    "threadId": chatId,
+                    "inviter": inviter,
+                    "threadType": data["type"],
+                },
+                data["inviteeUids"],
+                ApiBroadcastType.InviteChatPush,
+            )
+        )
 
-		if ndcId == 0:
-			row2 = global_row | row2
-
-	async with await StoreService.create(trigger_uid, ndcId) as svc:
-		row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
-
-	inviter = User.GetUserInfo(row2, triggerUserId=trigger_uid, extensions=row2.get("extensions"), ndcId=ndcId)
-
-
-
-
-	if data.get("inviteeUids", []):
-		asyncio.get_event_loop().create_task(send_admin_ws(
-			{
-				"ndcId": ndcId,
-				"threadId": chatId,
-				"inviter": inviter,
-				"threadType": data["type"]
-			},
-			data["inviteeUids"],
-			ApiBroadcastType.InviteChatPush
-		))
-
-
-
-
-
-
-
-	db.close()
-	return Base.Answer(
-		{"thread": chatInfo_obj, "messageList": messages_obj},
-		spent_time=timestamp() - t1,
-	)
+    db.close()
+    return Base.Answer(
+        {"thread": chatInfo_obj, "messageList": messages_obj},
+        spent_time=timestamp() - t1,
+    )
 
 
 # get chat history
@@ -774,60 +774,68 @@ async def create_chat(request: Request, ndcId: int = 0):
 @chats.get("/g/s/chat/thread/{chatId}/message")
 @chats.get("/x{ndcId}/s/chat/thread/{chatId}/message")
 async def get_chat_messages(
-	request: Request, chatId: str, size: int = 25, pageToken: str = None, ndcId: int = 0
+    request: Request, chatId: str, size: int = 25, pageToken: str = None, ndcId: int = 0
 ):
-	t1 = timestamp()
+    t1 = timestamp()
 
-	size = size if 0 < size < 101 else 25
+    size = size if 0 < size < 101 else 25
 
-	# parse page token
-	start = parse_page_token(pageToken, 0)
+    # parse page token
+    start = parse_page_token(pageToken, 0)
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
-	messages = [
-		item
-		async for item in table.find()
-		.skip(start)
-		.limit(size)
-		.sort("timestamp", DESCENDING)
-	]
-	xndc_users = db.get(f"x{ndcId}", "Users")
-	messageList = []
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    messages = [
+        item
+        async for item in table.find()
+        .skip(start)
+        .limit(size)
+        .sort("timestamp", DESCENDING)
+    ]
+    xndc_users = db.get(f"x{ndcId}", "Users")
+    messageList = []
 
-	for message in messages:
-		user = await xndc_users.find_one({"id": message["authorId"]}) or {}
+    for message in messages:
+        user = await xndc_users.find_one({"id": message["authorId"]}) or {}
 
-		globalBubbleId = user.get("bubbleId")
-		chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+        globalBubbleId = user.get("bubbleId")
+        chatBubbleId = user.get("chatBubbles", {}).get(chatId)
 
-		bubbleId = chatBubbleId or globalBubbleId
-		bubbleVersion = None
+        bubbleId = chatBubbleId or globalBubbleId
+        bubbleVersion = None
 
-		if bubbleId:
-			bubbles_table = db.get(table="ChatBubbles")
-			bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
-			bubbleVersion = bubble.get("version", 1)
+        if bubbleId:
+            bubbles_table = db.get(table="ChatBubbles")
+            bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+            bubbleVersion = bubble.get("version", 1)
 
-		messageList.append(await Chat.LongMessage(
-					message, chatId, xndc_users, history_table=table, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
-				))
-		
-	if len(messages) > 0:
-		answer = Base.Answer(
-			{
-				"messageList": messageList,
-				"paging": calculate_page_tokens(start, size, messageList),
-			},
-			spent_time=timestamp() - t1,
-		)
-		db.close()
-		return answer
-	else:
-		db.close()
-		return Base.Answer(
-			{"messageList": [], "paging": {}}, spent_time=timestamp() - t1
-		)
+        messageList.append(
+            await Chat.LongMessage(
+                message,
+                chatId,
+                xndc_users,
+                history_table=table,
+                ndcId=ndcId,
+                chatBubbleVersion=bubbleVersion,
+                chatBubbleId=bubbleId,
+            )
+        )
+
+    if len(messages) > 0:
+        answer = Base.Answer(
+            {
+                "messageList": messageList,
+                "paging": calculate_page_tokens(start, size, messageList),
+            },
+            spent_time=timestamp() - t1,
+        )
+        db.close()
+        return answer
+    else:
+        db.close()
+        return Base.Answer(
+            {"messageList": [], "paging": {}}, spent_time=timestamp() - t1
+        )
 
 
 # send message
@@ -838,126 +846,126 @@ async def get_chat_messages(
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/message")
 @turtlelimiter(limit=3, period=TurtleTime.second, tag="send-message")
 async def send_message(request: Request, chatId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	data = await request.json()
-	trigger_uid = request.state.session["uid"]
+    data = await request.json()
+    trigger_uid = request.state.session["uid"]
 
-	try:
-		if (
-			(
-				# [info] types in messagetypes.json
-				data["type"] not in [0, 2, 3]
-			)
-			or (
-				data.get("mediaType")
-				and data["mediaType"] != 113
-				and (not data.get("mediaUploadValue"))
-			)
-			or (
-				data.get("mediaType", 0) == 103
-				and (
-					not data.get("mediaUploadValue", "").startswith("ytv://")
-					or data["type"] != 0
-				)
-			)
-			or (data.get("mediaType", 0) == 110 and data["type"] != 2)
-			or (data["type"] != 0 and data.get("content") is not None)
-			or (
-				data["type"] == 3
-				and (
-					not isinstance(data.get("stickerId"), str)
-					or not data["stickerId"].startswith("e/")
-				)
-			)
-			or (
-				data["type"] == 0
-				and data.get("mediaType", 0) == 0
-				and not isinstance(data.get("content"), str)
-			)
-		):
-			raise Exception()
-	except Exception:
-		return Errors.InvalidMessage(timestamp() - t1)
+    try:
+        if (
+            (
+                # [info] types in messagetypes.json
+                data["type"] not in [0, 2, 3]
+            )
+            or (
+                data.get("mediaType")
+                and data["mediaType"] != 113
+                and (not data.get("mediaUploadValue"))
+            )
+            or (
+                data.get("mediaType", 0) == 103
+                and (
+                    not data.get("mediaUploadValue", "").startswith("ytv://")
+                    or data["type"] != 0
+                )
+            )
+            or (data.get("mediaType", 0) == 110 and data["type"] != 2)
+            or (data["type"] != 0 and data.get("content") is not None)
+            or (
+                data["type"] == 3
+                and (
+                    not isinstance(data.get("stickerId"), str)
+                    or not data["stickerId"].startswith("e/")
+                )
+            )
+            or (
+                data["type"] == 0
+                and data.get("mediaType", 0) == 0
+                and not isinstance(data.get("content"), str)
+            )
+        ):
+            raise Exception()
+    except Exception:
+        return Errors.InvalidMessage(timestamp() - t1)
 
-	db = await Database().init()
-	chat = db.get(f"x{ndcId}", "Chats")
-	chat_info = await chat.find_one({"id": chatId})
+    db = await Database().init()
+    chat = db.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
 
-	staff = [chat_info["hostId"]] + chat_info.get("cohostsIds", [])
-	if chat_info["isViewMode"] and trigger_uid not in staff:
-		db.close()
-		return Errors.ViewModeEnabled(timestamp() - t1)
+    staff = [chat_info["hostId"]] + chat_info.get("cohostsIds", [])
+    if chat_info["isViewMode"] and trigger_uid not in staff:
+        db.close()
+        return Errors.ViewModeEnabled(timestamp() - t1)
 
-	if trigger_uid not in chat_info["memberList"]:
-		db.close()
-		return Errors.UserNotJoined(timestamp() - t1)
+    if trigger_uid not in chat_info["memberList"]:
+        db.close()
+        return Errors.UserNotJoined(timestamp() - t1)
 
-	if data.get("content"):
-		if len(data["content"]) > Config.MAX_TEXT_SIZE:
-			db.close()
-			return Errors.BigMessage(timestamp() - t1)
+    if data.get("content"):
+        if len(data["content"]) > Config.MAX_TEXT_SIZE:
+            db.close()
+            return Errors.BigMessage(timestamp() - t1)
 
-	extensions = data.get("extensions", {})
+    extensions = data.get("extensions", {})
 
-	if data.get("mediaUploadValue"):
-		try:
-			if len(data.get("mediaUploadValue")) > Config.MAX_FILE_SIZE:
-				db.close()
-				return Errors.BigMediaContent(timestamp() - t1)
-			s3 = resource(
-				service_name=Config.S3_SERVICE_NAME,
-				aws_access_key_id=Config.S3_ACCESS_KEY,
-				aws_secret_access_key=Config.S3_SECRET_ACCESS_KEY,
-				endpoint_url=Config.S3_ENDPOINT_URL,
-			)
-			if data["mediaType"] == 100:
-				image_bytes = b64decode(data["mediaUploadValue"])
-				filetype = detect_file_ext(image_bytes)
-				if filetype is None:
-					return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+    if data.get("mediaUploadValue"):
+        try:
+            if len(data.get("mediaUploadValue")) > Config.MAX_FILE_SIZE:
+                db.close()
+                return Errors.BigMediaContent(timestamp() - t1)
+            s3 = resource(
+                service_name=Config.S3_SERVICE_NAME,
+                aws_access_key_id=Config.S3_ACCESS_KEY,
+                aws_secret_access_key=Config.S3_SECRET_ACCESS_KEY,
+                endpoint_url=Config.S3_ENDPOINT_URL,
+            )
+            if data["mediaType"] == 100:
+                image_bytes = b64decode(data["mediaUploadValue"])
+                filetype = detect_file_ext(image_bytes)
+                if filetype is None:
+                    return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
 
-				if await bbnonsfw_manual_check(image_bytes):
-					return Errors.NSFWContent(spent_time=timestamp() - t1)
+                if await bbnonsfw_manual_check(image_bytes):
+                    return Errors.NSFWContent(spent_time=timestamp() - t1)
 
-				filename = (
-					Config.S3_IMAGES_FOLDER
-					+ "".join([choice(ascii_letters + digits) for _ in range(64)])
-					+ filetype
-				)
-				body = ImageTools.compress(
-					b64decode(data["mediaUploadValue"]), filetype[1:]
-				)
-				s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
-				mediaLink = Config.MEDIA_BASE_URL + filename
-			elif data["mediaType"] == 110:
-				audio_bytes = b64decode(data["mediaUploadValue"])
-				filename = (
-					Config.S3_VOICES_FOLDER
-					+ "".join([choice(ascii_letters + digits) for _ in range(64)])
-					+ ".aac"
-				)
-				extensions = extensions | {"duration": audio_length(audio_bytes)}
-				s3.Bucket(Config.S3_BUCKET_NAME).put_object(
-					Key=filename, Body=audio_bytes
-				)
-				mediaLink = Config.MEDIA_BASE_URL + filename
-			elif data["mediaType"] == 103:
-				mediaLink = data.get("mediaUploadValue", "ytv://dQw4w9WgXcQ")
-			else:
-				mediaLink = None
-		except Exception as e:
-			print(e)
-			db.close()
-			return Errors.InvalidMessage(timestamp() - t1)
-	else:
-		mediaLink = None
+                filename = (
+                    Config.S3_IMAGES_FOLDER
+                    + "".join([choice(ascii_letters + digits) for _ in range(64)])
+                    + filetype
+                )
+                body = ImageTools.compress(
+                    b64decode(data["mediaUploadValue"]), filetype[1:]
+                )
+                s3.Bucket(Config.S3_BUCKET_NAME).put_object(Key=filename, Body=body)
+                mediaLink = Config.MEDIA_BASE_URL + filename
+            elif data["mediaType"] == 110:
+                audio_bytes = b64decode(data["mediaUploadValue"])
+                filename = (
+                    Config.S3_VOICES_FOLDER
+                    + "".join([choice(ascii_letters + digits) for _ in range(64)])
+                    + ".aac"
+                )
+                extensions = extensions | {"duration": audio_length(audio_bytes)}
+                s3.Bucket(Config.S3_BUCKET_NAME).put_object(
+                    Key=filename, Body=audio_bytes
+                )
+                mediaLink = Config.MEDIA_BASE_URL + filename
+            elif data["mediaType"] == 103:
+                mediaLink = data.get("mediaUploadValue", "ytv://dQw4w9WgXcQ")
+            else:
+                mediaLink = None
+        except Exception as e:
+            print(e)
+            db.close()
+            return Errors.InvalidMessage(timestamp() - t1)
+    else:
+        mediaLink = None
 
-	# link snippet
-	# it's bugged so for now we ignore it
-	"""
+    # link snippet
+    # it's bugged so for now we ignore it
+    """
 	if (
 		data.get("extensions", {}).get("linkSnippetList")
 		and len(data["extensions"]["linkSnippetList"]) >= 1
@@ -994,96 +1002,102 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 			}
 		]
 	"""
-	if data.get("replyMessageId"):
-		extensions.update({"replyMessageId": data["replyMessageId"]})
+    if data.get("replyMessageId"):
+        extensions.update({"replyMessageId": data["replyMessageId"]})
 
-	if data.get("stickerId"):
-		if data["stickerId"][2:].isdigit() or is_hex_str(
-			data["stickerId"][2:], limited_to=8
-		):
-			extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
-			data["mediaType"] = 113
-			mediaLink = f"ndcsticker://{data['stickerId']}"
-		elif is_valid_uuid4(data["stickerId"]):
-			# should be a custom sticker, but since we dont implemented it still...
-			# [NOTE]: please implement it normally
-			extensions.update(Chat.InternalSticker(data["stickerId"]))
-			data["mediaType"] = 113
-			mediaLink = f"ndcsticker://{data['stickerId']}"
-		else:
-			print("invalid stickerId:", data["stickerId"])
-			return Errors.InvalidRequest(spent_time=timestamp() - t1)
+    if data.get("stickerId"):
+        if data["stickerId"][2:].isdigit() or is_hex_str(
+            data["stickerId"][2:], limited_to=8
+        ):
+            extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
+            data["mediaType"] = 113
+            mediaLink = f"ndcsticker://{data['stickerId']}"
+        elif is_valid_uuid4(data["stickerId"]):
+            # should be a custom sticker, but since we dont implemented it still...
+            # [NOTE]: please implement it normally
+            extensions.update(Chat.InternalSticker(data["stickerId"]))
+            data["mediaType"] = 113
+            mediaLink = f"ndcsticker://{data['stickerId']}"
+        else:
+            print("invalid stickerId:", data["stickerId"])
+            return Errors.InvalidRequest(spent_time=timestamp() - t1)
 
-	messageId = str(uuid4())
-	xndc_users = db.get(f"x{ndcId}", "Users")
-	table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
-	message = ModelFabric.Construct(
-		Community.Message,
-		messageId=messageId,
-		authorId=trigger_uid,
-		messageType=data["type"],
-		clientRefId=data.get("clientRefId", 0),
-		content=data.get("content"),
-		extensions=extensions,
-		mediaType=data.get("mediaType", 0),
-		mediaValue=mediaLink,
-	)
-	await table.insert_one(message)
-	await chat.update_one(
-		{"id": chatId},
-		{
-			"$set": {
-				"lastMessageId": messageId,
-				"lastMessageTimestamp": message["timestamp"],
-				f"lastReadedList.{trigger_uid}": message["createdTime"],
-			}
-		},
-	)
+    messageId = str(uuid4())
+    xndc_users = db.get(f"x{ndcId}", "Users")
+    table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    message = ModelFabric.Construct(
+        Community.Message,
+        messageId=messageId,
+        authorId=trigger_uid,
+        messageType=data["type"],
+        clientRefId=data.get("clientRefId", 0),
+        content=data.get("content"),
+        extensions=extensions,
+        mediaType=data.get("mediaType", 0),
+        mediaValue=mediaLink,
+    )
+    await table.insert_one(message)
+    await chat.update_one(
+        {"id": chatId},
+        {
+            "$set": {
+                "lastMessageId": messageId,
+                "lastMessageTimestamp": message["timestamp"],
+                f"lastReadedList.{trigger_uid}": message["createdTime"],
+            }
+        },
+    )
 
+    user_table = db.get(f"x{ndcId}", "Users")
+    user = await user_table.find_one({"id": trigger_uid}) or {}
 
-	user_table = db.get(f"x{ndcId}", "Users")
-	user = await user_table.find_one({"id": trigger_uid}) or {}
+    globalBubbleId = user.get("bubbleId")
+    chatBubbleId = user.get("chatBubbles", {}).get(chatId)
 
-	globalBubbleId = user.get("bubbleId")
-	chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+    bubbleId = chatBubbleId or globalBubbleId
+    bubbleVersion = None
 
-	bubbleId = chatBubbleId or globalBubbleId
-	bubbleVersion = None
+    if bubbleId:
+        bubbles_table = db.get(table="ChatBubbles")
+        bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+        bubbleVersion = bubble.get("version", 1)
+    messageObj = await Chat.LongMessage(
+        message,
+        chatId,
+        xndc_users,
+        ndcId=ndcId,
+        chatBubbleId=bubbleId,
+        chatBubbleVersion=bubbleVersion,
+    )
+    answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
 
-	if bubbleId:
-		bubbles_table = db.get(table="ChatBubbles")
-		bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
-		bubbleVersion = bubble.get("version", 1)
-	messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId, chatBubbleId=bubbleId, chatBubbleVersion=bubbleVersion)
-	answer = Base.Answer({"message": messageObj}, spent_time=timestamp() - t1)
+    ws_send_obj = {
+        "t": 1000,
+        "o": {
+            "ndcId": ndcId,
+            "chatMessage": messageObj,
+            "alertOption": 1,
+            "membershipStatus": 1,
+        },
+    }
+    target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+    asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
+    asyncio.get_event_loop().create_task(
+        send_admin_ws(
+            {
+                "ndcId": ndcId,
+                "threadId": chatId,
+                "messageType": data["type"],
+                "content": data.get("content"),
+                "author": messageObj["author"],
+            },
+            target,  # TODO notifications off
+            ApiBroadcastType.ChatMessagePush,
+        )
+    )
 
-	ws_send_obj = {
-		"t": 1000,
-		"o": {
-			"ndcId": ndcId,
-			"chatMessage": messageObj,
-			"alertOption": 1,
-			"membershipStatus": 1,
-		},
-	}
-	target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-	asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
-	asyncio.get_event_loop().create_task(send_admin_ws(
-		{
-			"ndcId": ndcId,
-			"threadId": chatId,
-			"messageType": data["type"],
-			"content": data.get("content"),
-			"author": messageObj["author"],
-		},
-		target, #TODO notifications off
-		ApiBroadcastType.ChatMessagePush
-	))
-
-	
-
-	db.close()
-	return answer
+    db.close()
+    return answer
 
 
 # get message
@@ -1093,54 +1107,60 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 @chats.get("/g/s/chat/thread/{chatId}/message/{messageId}")
 @chats.get("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}")
 async def get_message(request: Request, chatId: str, messageId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	trigger_uid = request.state.session["uid"]
+    trigger_uid = request.state.session["uid"]
 
-	db = await Database().init()
-	chat_table = db.get(f"x{ndcId}", "Chats")
-	chat_info = await chat_table.find_one({"id": chatId})
+    db = await Database().init()
+    chat_table = db.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one({"id": chatId})
 
-	if not chat_info:
-		db.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    if not chat_info:
+        db.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-	if chat_info.get("chatType") != 2:
-		if trigger_uid not in chat_info.get("memberList", []):
-			db.close()
-			return Errors.NotEnoughRights(spent_time=timestamp() - t1)
+    if chat_info.get("chatType") != 2:
+        if trigger_uid not in chat_info.get("memberList", []):
+            db.close()
+            return Errors.NotEnoughRights(spent_time=timestamp() - t1)
 
-	message_table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
-	message_data = await message_table.find_one({"messageId": messageId})
+    message_table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    message_data = await message_table.find_one({"messageId": messageId})
 
-	if not message_data:
-		db.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    if not message_data:
+        db.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-	xndc_users = db.get(f"x{ndcId}", "Users")
+    xndc_users = db.get(f"x{ndcId}", "Users")
 
-	user = await xndc_users.find_one({"id": message_data["authorId"]}) or {}
+    user = await xndc_users.find_one({"id": message_data["authorId"]}) or {}
 
-	globalBubbleId = user.get("bubbleId")
-	chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+    globalBubbleId = user.get("bubbleId")
+    chatBubbleId = user.get("chatBubbles", {}).get(chatId)
 
-	bubbleId = chatBubbleId or globalBubbleId
-	bubbleVersion = None
+    bubbleId = chatBubbleId or globalBubbleId
+    bubbleVersion = None
 
-	if bubbleId:
-		bubbles_table = db.get(table="ChatBubbles")
-		bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
-		bubbleVersion = bubble.get("version", 1)
+    if bubbleId:
+        bubbles_table = db.get(table="ChatBubbles")
+        bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+        bubbleVersion = bubble.get("version", 1)
 
-	message_obj = await Chat.LongMessage(
-				message_data, chatId, xndc_users, history_table=message_table, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
-			)
+    message_obj = await Chat.LongMessage(
+        message_data,
+        chatId,
+        xndc_users,
+        history_table=message_table,
+        ndcId=ndcId,
+        chatBubbleVersion=bubbleVersion,
+        chatBubbleId=bubbleId,
+    )
 
-	answer = Base.Answer({"message": message_obj}, spent_time=timestamp() - t1)
-	db.close()
-	return answer
+    answer = Base.Answer({"message": message_obj}, spent_time=timestamp() - t1)
+    db.close()
+    return answer
 
 
 # delete message
@@ -1148,40 +1168,56 @@ async def get_message(request: Request, chatId: str, messageId: str, ndcId: int 
 
 
 @chats.delete("/g/s/chat/thread/{chatId}/message/{messageId}")
+@chats.delete("/g/s/chat/thread/{chatId}/message/{messageId}/{admin}")
 @chats.delete("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}")
-async def delete_message(request: Request, chatId: str, messageId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+@chats.delete("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}/{admin}")
+async def delete_message(
+    request: Request, chatId: str, messageId: str, ndcId: int = 0, admin: str = ""
+):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	trigger_uid = request.state.session["uid"]
-	work = False
+    trigger_uid = request.state.session["uid"]
+    work = False
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
-	original_message = await table.find_one({"messageId": messageId})
-	if original_message["authorId"] != trigger_uid:
-		chat = db.get(f"x{ndcId}", "Chats")
-		chat_info = await chat.find_one({"id": chatId})
-		if (
-			trigger_uid not in chat_info.get("cohostsIds", [])
-			and trigger_uid != chat_info["hostId"]
-		):
-			return Errors.InvalidRequest(timestamp() - t1)
-		else:
-			work = True
-		if chat_info["chatType"] == 0 or chat_info["chatType"] == 1:
-			work = True
-	else:
-		work = True
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
+    original_message = await table.find_one({"messageId": messageId})
+    if admin.lower() == "admin":  # note: looks stupid
+        xndc_users = db.get(f"x{ndcId}", "Users")
 
-	if work:
-		await table.update_one(
-			{"messageId": messageId}, {"$set": {"content": None, "messageType": 100}}
-		)
+        user = await xndc_users.find_one({"id": trigger_uid})
+        if user and user.get("role", 0) in [100, 101, 102, 250, 251, 555]:
+            await table.delete_one(
+                {"messageId": messageId}
+            )  # todo: maybe somehow save them?
 
-	db.close()
-	return Base.Answer(spent_time=timestamp() - t1)
+            db.close()
+            return Base.Answer(spent_time=timestamp() - t1)
+
+    if original_message["authorId"] != trigger_uid:
+        chat = db.get(f"x{ndcId}", "Chats")
+        chat_info = await chat.find_one({"id": chatId})
+        if (
+            trigger_uid not in chat_info.get("cohostsIds", [])
+            and trigger_uid != chat_info["hostId"]
+        ):
+            return Errors.InvalidRequest(timestamp() - t1)
+        else:
+            work = True
+        if chat_info["chatType"] == 0 or chat_info["chatType"] == 1:
+            work = True
+    else:
+        work = True
+
+    if work:
+        await table.update_one(
+            {"messageId": messageId}, {"$set": {"content": None, "messageType": 100}}
+        )
+
+    db.close()
+    return Base.Answer(spent_time=timestamp() - t1)
 
 
 # update message
@@ -1197,173 +1233,169 @@ async def delete_message(request: Request, chatId: str, messageId: str, ndcId: i
 @chats.get("/g/s/chat/thread/{chatId}/member")
 @chats.get("/x{ndcId}/s/chat/thread/{chatId}/member")
 async def get_chat_members(
-	request: Request,
-	chatId: str,
-	type: str = "default",
-	start: int = 0,
-	size: int = 25,
-	ndcId: int = 0,
-	q: str = "",
-	pageToken: str | None = None,
+    request: Request,
+    chatId: str,
+    type: str = "default",
+    start: int = 0,
+    size: int = 25,
+    ndcId: int = 0,
+    q: str = "",
+    pageToken: str | None = None,
 ):
-	t1 = timestamp()
+    t1 = timestamp()
 
-	if type not in ["default", "co-host", "at", "organizer-transfer-candidates"]:
-		return Errors.InvalidRequest(timestamp() - t1)
+    if type not in ["default", "co-host", "at", "organizer-transfer-candidates"]:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	connection = await Database().init()
-	chat_table = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat_table.find_one({"id": chatId})
+    connection = await Database().init()
+    chat_table = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one({"id": chatId})
 
-	if not chat_info:
-		connection.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    if not chat_info:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-	xndc_users = connection.get(f"x{ndcId}", "Users")
+    xndc_users = connection.get(f"x{ndcId}", "Users")
 
-	if pageToken:
-		start = parse_page_token(pageToken, start)
+    if pageToken:
+        start = parse_page_token(pageToken, start)
 
-	if type == "default":
-		chat_info = await chat_table.find_one(
-			{"id": chatId}, {"memberList": 1, "invitedList": 1}
-		)
-		if not chat_info:
-			connection.close()
-			return Errors.DataNotExist(spent_time=timestamp() - t1)
+    if type == "default":
+        chat_info = await chat_table.find_one(
+            {"id": chatId}, {"memberList": 1, "invitedList": 1}
+        )
+        if not chat_info:
+            connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-		members_in_chat = chat_info.get("memberList", [])
-		invited_in_chat = chat_info.get("invitedList", [])
-		all_ids = members_in_chat + invited_in_chat
-		target_ids = all_ids[start : start + size]
+        members_in_chat = chat_info.get("memberList", [])
+        invited_in_chat = chat_info.get("invitedList", [])
+        all_ids = members_in_chat + invited_in_chat
+        target_ids = all_ids[start : start + size]
 
-		users_data = {
-			u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
-		}
+        users_data = {
+            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
+        }
 
-		member_list = []
-		for uid in target_ids:
-			if uid in users_data:
-				udata =users_data[uid]
-				async with await StoreService.create(uid, ndcId) as svc:
-					udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+        member_list = []
+        for uid in target_ids:
+            if uid in users_data:
+                udata = users_data[uid]
+                async with await StoreService.create(uid, ndcId) as svc:
+                    udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
 
-				member_list.append(
-					User.GetUserInfo(
-						udata,
-						membershipStatus=(1 if uid in members_in_chat else 2),
-						ndcId=ndcId,
-					)
-				)
+                member_list.append(
+                    User.GetUserInfo(
+                        udata,
+                        membershipStatus=(1 if uid in members_in_chat else 2),
+                        ndcId=ndcId,
+                    )
+                )
 
+    elif type == "at":
+        chat_info = await chat_table.find_one({"id": chatId}, {"memberList": 1})
+        if not chat_info:
+            connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-	elif type == "at":
-		chat_info = await chat_table.find_one({"id": chatId}, {"memberList": 1})
-		if not chat_info:
-			connection.close()
-			return Errors.DataNotExist(spent_time=timestamp() - t1)
+        members_in_chat = chat_info.get("memberList", [])
+        query = {"id": {"$in": members_in_chat}}
+        if q:
+            query["nickname"] = {"$regex": f"^{regex_escape(q)}", "$options": "i"}
 
-		members_in_chat = chat_info.get("memberList", [])
-		query = {"id": {"$in": members_in_chat}}
-		if q:
-			query["nickname"] = {"$regex": f"^{regex_escape(q)}", "$options": "i"}
+        member_list = []
+        async for u in xndc_users.find(query).skip(start).limit(size):
+            async with await StoreService.create(u["id"], ndcId) as svc:
+                u["iconFrame"] = await svc.frame_icon(u.get("frameId"))
 
+            member_list.append(User.GetUserInfo(u, membershipStatus=1, ndcId=ndcId))
 
-		member_list = []
-		async for u in xndc_users.find(query).skip(start).limit(size):
-			async with await StoreService.create(u["id"], ndcId) as svc:
-				u["iconFrame"] = await svc.frame_icon(u.get("frameId"))
+    elif type == "co-host":
+        chat_info = await chat_table.find_one(
+            {"id": chatId}, {"memberList": 1, "cohostsIds": 1}
+        )
+        if not chat_info:
+            connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-			member_list.append(
-				User.GetUserInfo(u, membershipStatus=1, ndcId=ndcId)
-			)
+        members_in_chat = chat_info.get("memberList", [])
+        cohosts_in_chat = chat_info.get("cohostsIds", [])
 
-	elif type == "co-host":
-		chat_info = await chat_table.find_one(
-			{"id": chatId}, {"memberList": 1, "cohostsIds": 1}
-		)
-		if not chat_info:
-			connection.close()
-			return Errors.DataNotExist(spent_time=timestamp() - t1)
+        temp_ids = []
+        seen_ids = set()
+        for uid in members_in_chat + cohosts_in_chat:
+            if uid not in seen_ids:
+                temp_ids.append(uid)
+                seen_ids.add(uid)
 
-		members_in_chat = chat_info.get("memberList", [])
-		cohosts_in_chat = chat_info.get("cohostsIds", [])
+        target_ids = [
+            uid
+            for uid in temp_ids
+            if not (uid in members_in_chat and uid in cohosts_in_chat)
+        ][start : start + size]
 
-		temp_ids = []
-		seen_ids = set()
-		for uid in members_in_chat + cohosts_in_chat:
-			if uid not in seen_ids:
-				temp_ids.append(uid)
-				seen_ids.add(uid)
+        users_data = {
+            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
+        }
+        member_list = []
 
-		target_ids = [
-			uid
-			for uid in temp_ids
-			if not (uid in members_in_chat and uid in cohosts_in_chat)
-		][start : start + size]
+        for uid in target_ids:
+            if uid in users_data:
+                udata = users_data[uid]
+                async with await StoreService.create(uid, ndcId) as svc:
+                    udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
 
-		users_data = {
-			u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
-		}
-		member_list = []
+                member_list.append(
+                    User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId)
+                )
 
-		for uid in target_ids:
-			if uid in users_data:
-				udata = users_data[uid]
-				async with await StoreService.create(uid, ndcId) as svc:
-					udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
-					
-				member_list.append(
-					User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId)
-				)
-				
-	elif type == "organizer-transfer-candidates":
-		chat_info = await chat_table.find_one(
-			{"id": chatId}, {"memberList": 1, "cohostsIds": 1, "hostId": 1}
-		)
-		if not chat_info:
-			connection.close()
-			return Errors.DataNotExist(spent_time=timestamp() - t1)
+    elif type == "organizer-transfer-candidates":
+        chat_info = await chat_table.find_one(
+            {"id": chatId}, {"memberList": 1, "cohostsIds": 1, "hostId": 1}
+        )
+        if not chat_info:
+            connection.close()
+            return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-		members_in_chat = chat_info.get("memberList", [])
-		cohosts_in_chat = chat_info.get("cohostsIds", [])
-		all_ids = members_in_chat + cohosts_in_chat
-		target_ids = all_ids[start:start + size]
+        members_in_chat = chat_info.get("memberList", [])
+        cohosts_in_chat = chat_info.get("cohostsIds", [])
+        all_ids = members_in_chat + cohosts_in_chat
+        target_ids = all_ids[start : start + size]
 
-		users_data = {
-			u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
-		}
+        users_data = {
+            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
+        }
 
-		member_list = []
-		_temp = set()
-		for uid in target_ids:
-			if uid not in users_data or uid == chat_info.get("hostId") or uid in _temp:
-				continue
-			udata = users_data[uid]
-			async with await StoreService.create(uid, ndcId) as svc:
-				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
-			user = User.GetUserInfo(
-				udata,
-				membershipStatus=(1 if uid in members_in_chat else 2),
-				ndcId=ndcId,
-			)
-			user["isAvailableCandidate"] = True
-			member_list.append(user)
-			_temp.add(uid)
+        member_list = []
+        _temp = set()
+        for uid in target_ids:
+            if uid not in users_data or uid == chat_info.get("hostId") or uid in _temp:
+                continue
+            udata = users_data[uid]
+            async with await StoreService.create(uid, ndcId) as svc:
+                udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+            user = User.GetUserInfo(
+                udata,
+                membershipStatus=(1 if uid in members_in_chat else 2),
+                ndcId=ndcId,
+            )
+            user["isAvailableCandidate"] = True
+            member_list.append(user)
+            _temp.add(uid)
 
-	else:
-		connection.close()
-		return Errors.InvalidRequest(timestamp() - t1)
+    else:
+        connection.close()
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	answer = Base.Answer(
-		{
-			"memberList": member_list,
-			"paging": calculate_page_tokens(start, size, member_list),
-		},
-		spent_time=timestamp() - t1,
-	)
-	connection.close()
-	return answer
+    answer = Base.Answer(
+        {
+            "memberList": member_list,
+            "paging": calculate_page_tokens(start, size, member_list),
+        },
+        spent_time=timestamp() - t1,
+    )
+    connection.close()
+    return answer
 
 
 # get cohosts
@@ -1373,59 +1405,59 @@ async def get_chat_members(
 @chats.get("/g/s/chat/thread/{chatId}/co-host")
 @chats.get("/x{ndcId}/s/chat/thread/{chatId}/co-host")
 async def get_chat_cohosts(
-	request: Request,
-	chatId: str,
-	start: int = 0,
-	size: int = 25,
-	pageToken: str | None = None,
-	ndcId: int = 0,
+    request: Request,
+    chatId: str,
+    start: int = 0,
+    size: int = 25,
+    pageToken: str | None = None,
+    ndcId: int = 0,
 ):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	size = size if 0 < size < 101 else 25
-	start = parse_page_token(pageToken, start)
-	trigger_uid = request.state.session["uid"]
+    size = size if 0 < size < 101 else 25
+    start = parse_page_token(pageToken, start)
+    trigger_uid = request.state.session["uid"]
 
-	connection = await Database().init()
-	chat_table = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat_table.find_one(
-		{"id": chatId}, {"cohostsIds": 1, "hostId": 1}
-	)
+    connection = await Database().init()
+    chat_table = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one(
+        {"id": chatId}, {"cohostsIds": 1, "hostId": 1}
+    )
 
-	if not chat_info:
-		connection.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    if not chat_info:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-	if trigger_uid != chat_info["hostId"]:
-		connection.close()
-		return Errors.NotEnoughRights(timestamp() - t1)
+    if trigger_uid != chat_info["hostId"]:
+        connection.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
 
-	cohosts_ids_all = chat_info.get("cohostsIds", [])
-	cohosts_ids_sliced = cohosts_ids_all[start : start + size]
-	xndc_users = connection.get(f"x{ndcId}", "Users")
+    cohosts_ids_all = chat_info.get("cohostsIds", [])
+    cohosts_ids_sliced = cohosts_ids_all[start : start + size]
+    xndc_users = connection.get(f"x{ndcId}", "Users")
 
-	users_data = {
-		u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts_ids_sliced}})
-	}
-	user_list = []
-	for uid in cohosts_ids_sliced:
-		udata = users_data[uid]
-		if uid in users_data:
-			async with await StoreService.create(uid, ndcId) as svc:
-				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
-			user_list.append(User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId))
+    users_data = {
+        u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts_ids_sliced}})
+    }
+    user_list = []
+    for uid in cohosts_ids_sliced:
+        udata = users_data[uid]
+        if uid in users_data:
+            async with await StoreService.create(uid, ndcId) as svc:
+                udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+            user_list.append(User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId))
 
-	answer = Base.Answer(
-		{
-			"userProfileList": user_list,
-			"paging": calculate_page_tokens(start, size, user_list),
-		},
-		spent_time=timestamp() - t1,
-	)
-	connection.close()
-	return answer
+    answer = Base.Answer(
+        {
+            "userProfileList": user_list,
+            "paging": calculate_page_tokens(start, size, user_list),
+        },
+        spent_time=timestamp() - t1,
+    )
+    connection.close()
+    return answer
 
 
 # set cohosts
@@ -1435,54 +1467,55 @@ async def get_chat_cohosts(
 @chats.post("/g/s/chat/thread/{chatId}/co-host")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/co-host")
 async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	data = await request.json()
-	trigger_uid = request.state.session["uid"]
-	new_cohosts = data.get("uidList", [])
+    data = await request.json()
+    trigger_uid = request.state.session["uid"]
+    new_cohosts = data.get("uidList", [])
 
-	connection = await Database().init()
-	chat = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat.find_one({"id": chatId})
-	if not chat_info:
-		connection.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
+    if not chat_info:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
+    if trigger_uid != chat_info["hostId"]:
+        sensitive_table = connection.get(table="Users")
 
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
 
-	if trigger_uid != chat_info["hostId"]:
-		sensitive_table = connection.get(table="Users")
-		user = await sensitive_table.find_one({"id": trigger_uid})
-		if not user or not UserRole.is_global_staff(user.get("role", 0)):
-			connection.close()
-			return Errors.NotEnoughRights(timestamp() - t1)
+    await chat.update_one(
+        {"id": chatId}, {"$push": {"cohostsIds": {"$each": new_cohosts}}}
+    )
 
-	await chat.update_one(
-		{"id": chatId}, {"$push": {"cohostsIds": {"$each": new_cohosts}}}
-	)
+    xndc_users = connection.get(f"x{ndcId}", "Users")
+    users_data = {
+        u["id"]: u async for u in xndc_users.find({"id": {"$in": new_cohosts}})
+    }
 
-	xndc_users = connection.get(f"x{ndcId}", "Users")
-	users_data = {
-		u["id"]: u async for u in xndc_users.find({"id": {"$in": new_cohosts}})
-	}
+    user_profile_list = []
+    for uid in new_cohosts:
+        udata = users_data[uid]
+        if uid in users_data:
+            async with await StoreService.create(uid, ndcId) as svc:
+                udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+            user_profile_list.append(
+                User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId)
+            )
 
-	user_profile_list = []
-	for uid in new_cohosts:
-		udata = users_data[uid]
-		if uid in users_data:
-			async with await StoreService.create(uid, ndcId) as svc:
-				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
-			user_profile_list.append(User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId))	
+    answer = Base.Answer(
+        {"userProfileList": user_profile_list, "paging": {}},
+        spent_time=timestamp() - t1,
+    )
 
-	answer = Base.Answer(
-		{"userProfileList": user_profile_list, "paging": {}},
-		spent_time=timestamp() - t1,
-	)
-
-	connection.close()
-	return answer
+    connection.close()
+    return answer
 
 
 # remove cohost
@@ -1492,202 +1525,221 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
 @chats.delete("/g/s/chat/thread/{chatId}/co-host/{uid}")
 @chats.delete("/x{ndcId}/s/chat/thread/{chatId}/co-host/{uid}")
 async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	trigger_uid = request.state.session["uid"]
+    trigger_uid = request.state.session["uid"]
 
-	connection = await Database().init()
-	chat = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat.find_one({"id": chatId})
-	if not chat_info:
-		connection.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
+    if not chat_info:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-	if trigger_uid != chat_info["hostId"]:
-		sensitive_table = connection.get(table="Users")
-		user = await sensitive_table.find_one({"id": trigger_uid})
-		if not user or not UserRole.is_global_staff(user.get("role", 0)):
-			connection.close()
-			return Errors.NotEnoughRights(timestamp() - t1)
+    if trigger_uid != chat_info["hostId"]:
+        sensitive_table = connection.get(table="Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or not UserRole.is_global_staff(user.get("role", 0)):
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
 
-	await chat.update_one({"id": chatId}, {"$pull": {"cohostsIds": uid}})
+    await chat.update_one({"id": chatId}, {"$pull": {"cohostsIds": uid}})
 
-	chat_info = await chat.find_one({"id": chatId})
-	cohosts = chat_info.get("cohostsIds", [])
-	xndc_users = connection.get(f"x{ndcId}", "Users")
+    chat_info = await chat.find_one({"id": chatId})
+    cohosts = chat_info.get("cohostsIds", [])
+    xndc_users = connection.get(f"x{ndcId}", "Users")
 
-	users_data = {u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts}})}
+    users_data = {u["id"]: u async for u in xndc_users.find({"id": {"$in": cohosts}})}
+
+    user_profile_list = []
+    for uid in cohosts:
+        udata = users_data[uid]
+        if uid in users_data:
+            async with await StoreService.create(uid, ndcId) as svc:
+                udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
+            user_profile_list.append(
+                User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId)
+            )
+
+    answer = Base.Answer(
+        {"userProfileList": user_profile_list, "paging": {}},
+        spent_time=timestamp() - t1,
+    )
+
+    connection.close()
+    return answer
 
 
-	user_profile_list = []
-	for uid in cohosts:
-		udata = users_data[uid]
-		if uid in users_data:
-			async with await StoreService.create(uid, ndcId) as svc:
-				udata["iconFrame"] = await svc.frame_icon(udata.get("frameId"))
-			user_profile_list.append(User.GetUserInfo(udata, membershipStatus=1, ndcId=ndcId))	
-
-
-	answer = Base.Answer(
-		{"userProfileList": user_profile_list, "paging": {}},
-		spent_time=timestamp() - t1,
-	)
-
-	connection.close()
-	return answer
-
-
-
-#TODO: We will need to create a system for sending and receiving requests to assume the host role—though it is not yet clear exactly how.
+# TODO: We will need to create a system for sending and receiving requests to assume the host role—though it is not yet clear exactly how.
 @chats.post("/g/s/chat/thread/{chatId}/transfer-organizer")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/transfer-organizer")
 async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	data = await request.json()
-	trigger_uid = request.state.session["uid"]
-	host_candidates = data.get("uidList", [])
-	if not host_candidates:
-		return Errors.InvalidRequest(timestamp() - t1)
+    data = await request.json()
+    trigger_uid = request.state.session["uid"]
+    host_candidates = data.get("uidList", [])
+    if not host_candidates:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	if isinstance(host_candidates, str):
-		host_candidates=[host_candidates]
+    if isinstance(host_candidates, str):
+        host_candidates = [host_candidates]
 
-	connection = await Database().init()
-	chat = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat.find_one({"id": chatId})
-	if not chat_info:
-		connection.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
+    if not chat_info:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
+    if trigger_uid != chat_info["hostId"]:
+        sensitive_table = connection.get(f"x{ndcId}", "Users")
+        user = await sensitive_table.find_one({"id": trigger_uid})
+        if not user or (
+            not UserRole.is_global_staff(user.get("role", 0))
+            and not UserRole.is_local_staff(user.get("role", 0))
+        ):
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
 
+    reset_tip_info = {
+        "tipOptionList": [
+            {"value": 2, "icon": "https://media.altamino.top/monetization/coins.png"},
+            {
+                "value": 10,
+                "icon": "https://media.altamino.top/monetization/stack_of_coins.png",
+            },
+            {
+                "value": 50,
+                "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png",
+            },
+        ],
+        "tipMaxCoin": 500,
+        "tippersCount": 0,
+        "tippable": True,
+        "tipMinCoin": 1,
+        "tipCustomOption": {
+            "value": None,
+            "icon": "https://media.altamino.top/monetization/bag_of_coins.png",
+        },
+        "tippedCoins": 0,
+        "tippersList": [],
+    }
 
-	if trigger_uid != chat_info["hostId"]:
-		sensitive_table = connection.get(f"x{ndcId}", "Users")
-		user = await sensitive_table.find_one({"id": trigger_uid})
-		if not user or (not UserRole.is_global_staff(user.get("role", 0)) and not UserRole.is_local_staff(user.get("role", 0))):
-			connection.close()
-			return Errors.NotEnoughRights(timestamp() - t1)
+    await chat.update_one(
+        {"id": chatId},
+        {"$set": {"hostId": host_candidates[0], "tipInfo": reset_tip_info}},
+    )
+    answer = Base.Answer(
+        spent_time=timestamp() - t1,
+    )
 
-	reset_tip_info = {
-		"tipOptionList": [
-			{"value": 2, "icon": "https://media.altamino.top/monetization/coins.png"},
-			{"value": 10, "icon": "https://media.altamino.top/monetization/stack_of_coins.png"},
-			{"value": 50, "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png"},
-		],
-		"tipMaxCoin": 500,
-		"tippersCount": 0,
-		"tippable": True,
-		"tipMinCoin": 1,
-		"tipCustomOption": {"value": None, "icon": "https://media.altamino.top/monetization/bag_of_coins.png"},
-		"tippedCoins": 0,
-		"tippersList": [],
-	}
-
-	await chat.update_one(
-		{"id": chatId},
-		{"$set": {"hostId": host_candidates[0], "tipInfo": reset_tip_info}},
-	)
-	answer = Base.Answer(
-		spent_time=timestamp() - t1,
-	)
-
-	connection.close()
-	return answer
+    connection.close()
+    return answer
 
 
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/tipping")
 @chats.post("/g/s/chat/thread/{chatId}/tipping")
 async def tip_chat(request: Request, chatId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession(timestamp() - t1)
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
 
-	trigger_uid = request.state.session["uid"]
+    trigger_uid = request.state.session["uid"]
 
-	try:
-		data = await request.json()
-		coins = float(data.get("coins", 0))
-	except Exception:
-		return Errors.InvalidRequest(timestamp() - t1)
+    try:
+        data = await request.json()
+        coins = float(data.get("coins", 0))
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	if coins < 1 or coins > 500:
-		return Errors.InvalidRequest(timestamp() - t1)
+    if coins < 1 or coins > 500:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	is_blocked, _ = await check_and_increment_tipping_limit(trigger_uid)
-	if is_blocked:
-		return Errors.TooManyRequest(timestamp() - t1)
+    is_blocked, _ = await check_and_increment_tipping_limit(trigger_uid)
+    if is_blocked:
+        return Errors.TooManyRequest(timestamp() - t1)
 
-	connection = await Database().init()
-	users_table = connection.get(table="Users")
-	sender = await users_table.find_one({"id": trigger_uid})
-	if sender is None:
-		connection.close()
-		return Errors.AccountNotExist(timestamp() - t1)
+    connection = await Database().init()
+    users_table = connection.get(table="Users")
+    sender = await users_table.find_one({"id": trigger_uid})
+    if sender is None:
+        connection.close()
+        return Errors.AccountNotExist(timestamp() - t1)
 
-	if sender.get("coins", 0.0) < coins:
-		connection.close()
-		return Errors.NotEnoughCoins(timestamp() - t1)
+    if sender.get("coins", 0.0) < coins:
+        connection.close()
+        return Errors.NotEnoughCoins(timestamp() - t1)
 
-	chat_table = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat_table.find_one({"id": chatId})
-	if chat_info is None:
-		connection.close()
-		return Errors.DataNotExist(spent_time=timestamp() - t1)
+    chat_table = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat_table.find_one({"id": chatId})
+    if chat_info is None:
+        connection.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-	host_id = chat_info.get("hostId")
+    host_id = chat_info.get("hostId")
 
-	# Deduct from sender and credit chat host
-	await users_table.update_one({"id": trigger_uid}, {"$inc": {"coins": -coins}})
-	if host_id:
-		await users_table.update_one({"id": host_id}, {"$inc": {"coins": coins}})
+    # Deduct from sender and credit chat host
+    await users_table.update_one({"id": trigger_uid}, {"$inc": {"coins": -coins}})
+    if host_id:
+        await users_table.update_one({"id": host_id}, {"$inc": {"coins": coins}})
 
-	# Update chat tipInfo leaderboard
-	tip_info = chat_info.get("tipInfo", {})
-	tippers_list = tip_info.get("tippersList", [])
+    # Update chat tipInfo leaderboard
+    tip_info = chat_info.get("tipInfo", {})
+    tippers_list = tip_info.get("tippersList", [])
 
-	tipper_entry = next((t for t in tippers_list if t.get("uid") == trigger_uid), None)
-	if tipper_entry:
-		tipper_entry["totalTippedCoins"] = round(tipper_entry.get("totalTippedCoins", 0.0) + coins, 2)
-	else:
-		ndc_users = connection.get(f"x{ndcId}", "Users")
-		ndc_sender = await ndc_users.find_one({"id": trigger_uid}) or sender
-		tipper_entry = {
-			"uid": trigger_uid,
-			"nickname": ndc_sender.get("nickname", ""),
-			"icon": ndc_sender.get("icon"),
-			"reputation": ndc_sender.get("reputation", 0),
-			"totalTippedCoins": round(coins, 2),
-		}
-		tippers_list.append(tipper_entry)
+    tipper_entry = next((t for t in tippers_list if t.get("uid") == trigger_uid), None)
+    if tipper_entry:
+        tipper_entry["totalTippedCoins"] = round(
+            tipper_entry.get("totalTippedCoins", 0.0) + coins, 2
+        )
+    else:
+        ndc_users = connection.get(f"x{ndcId}", "Users")
+        ndc_sender = await ndc_users.find_one({"id": trigger_uid}) or sender
+        tipper_entry = {
+            "uid": trigger_uid,
+            "nickname": ndc_sender.get("nickname", ""),
+            "icon": ndc_sender.get("icon"),
+            "reputation": ndc_sender.get("reputation", 0),
+            "totalTippedCoins": round(coins, 2),
+        }
+        tippers_list.append(tipper_entry)
 
-	tippers_list.sort(key=lambda x: x.get("totalTippedCoins", 0.0), reverse=True)
-	new_tipped_coins = round(tip_info.get("tippedCoins", 0.0) + coins, 2)
+    tippers_list.sort(key=lambda x: x.get("totalTippedCoins", 0.0), reverse=True)
+    new_tipped_coins = round(tip_info.get("tippedCoins", 0.0) + coins, 2)
 
-	updated_tip_info = {
-		"tipOptionList": [
-			{"value": 2, "icon": "https://media.altamino.top/monetization/coins.png"},
-			{"value": 10, "icon": "https://media.altamino.top/monetization/stack_of_coins.png"},
-			{"value": 50, "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png"},
-		],
-		"tipMaxCoin": 500,
-		"tippersCount": len(tippers_list),
-		"tippable": True,
-		"tipMinCoin": 1,
-		"tipCustomOption": {"value": None, "icon": "https://media.altamino.top/monetization/bag_of_coins.png"},
-		"tippedCoins": new_tipped_coins,
-		"tippersList": tippers_list,
-	}
+    updated_tip_info = {
+        "tipOptionList": [
+            {"value": 2, "icon": "https://media.altamino.top/monetization/coins.png"},
+            {
+                "value": 10,
+                "icon": "https://media.altamino.top/monetization/stack_of_coins.png",
+            },
+            {
+                "value": 50,
+                "icon": "https://media.altamino.top/monetization/tall_stack_of_coins.png",
+            },
+        ],
+        "tipMaxCoin": 500,
+        "tippersCount": len(tippers_list),
+        "tippable": True,
+        "tipMinCoin": 1,
+        "tipCustomOption": {
+            "value": None,
+            "icon": "https://media.altamino.top/monetization/bag_of_coins.png",
+        },
+        "tippedCoins": new_tipped_coins,
+        "tippersList": tippers_list,
+    }
 
-	await chat_table.update_one({"id": chatId}, {"$set": {"tipInfo": updated_tip_info}})
-	connection.close()
+    await chat_table.update_one({"id": chatId}, {"$set": {"tipInfo": updated_tip_info}})
+    connection.close()
 
-	return Base.Answer({"tipInfo": updated_tip_info}, spent_time=timestamp() - t1)
-
+    return Base.Answer({"tipInfo": updated_tip_info}, spent_time=timestamp() - t1)
 
 
 # invite to chat
@@ -1697,83 +1749,89 @@ async def tip_chat(request: Request, chatId: str, ndcId: int = 0):
 @chats.post("/g/s/chat/thread/{chatId}/member/invite")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/invite")
 async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	data = await request.json()
-	uid = request.state.session["uid"]
-	toInvite = data.get("uids", [])
+    data = await request.json()
+    uid = request.state.session["uid"]
+    toInvite = data.get("uids", [])
 
-	if uid in [None, "", False]:
-		return Errors.InvalidSession(timestamp() - t1)
+    if uid in [None, "", False]:
+        return Errors.InvalidSession(timestamp() - t1)
 
-	connection = await Database().init()
-	chat = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat.find_one({"id": chatId})
-	staff = [chat_info["hostId"]] + chat_info.get("cohostsId", [])
-	if uid not in staff or uid not in chat_info["memberList"]:
-		if not data.get("canMembersInvite", True):
-			connection.close()
-			return Errors.NotEnoughRights(timestamp() - t1)
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
+    staff = [chat_info["hostId"]] + chat_info.get("cohostsId", [])
+    if uid not in staff or uid not in chat_info["memberList"]:
+        if not data.get("canMembersInvite", True):
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
 
-	actuallyInvite = []
-	for member in toInvite:
-		if member in chat_info["bannedUids"] and uid != chat_info["hostId"]:
-			continue
-		if member in chat_info["invitedList"] or member in chat_info["memberList"]:
-			continue
-		actuallyInvite.append(member)
+    actuallyInvite = []
+    for member in toInvite:
+        if member in chat_info["bannedUids"] and uid != chat_info["hostId"]:
+            continue
+        if member in chat_info["invitedList"] or member in chat_info["memberList"]:
+            continue
+        actuallyInvite.append(member)
 
-	users = connection.get(f"x{ndcId}", "Users")
-	g_users = connection.get(table="Users")
-	row2 = await users.find_one({"id": uid})
+    users = connection.get(f"x{ndcId}", "Users")
+    g_users = connection.get(table="Users")
+    row2 = await users.find_one({"id": uid})
 
-	if row2 is None:
-		return Errors.AccountNotExist(timestamp() - t1)
+    if row2 is None:
+        return Errors.AccountNotExist(timestamp() - t1)
 
-	global_row = await g_users.find_one({"id": uid})
+    global_row = await g_users.find_one({"id": uid})
 
-	if global_row:
-		if not row2.get("tagList"):
-			global_tag_list = global_row.get("tagList")
-			if global_tag_list:
-				row2["tagList"] = global_tag_list
+    if global_row:
+        if not row2.get("tagList"):
+            global_tag_list = global_row.get("tagList")
+            if global_tag_list:
+                row2["tagList"] = global_tag_list
 
-		if "isTeamMember" in global_row:
-			row2["isTeamMember"] = global_row["isTeamMember"]
+        if "isTeamMember" in global_row:
+            row2["isTeamMember"] = global_row["isTeamMember"]
 
-		if "isVerified" in global_row:
-			row2["isVerified"] = global_row["isVerified"]
-		if global_row.get("status", 0) in [9, 10]:
-			row2["status"] = global_row["status"]
-		if global_row.get("extensions", {}).get("__disabledLevel__"):
-			row2["extensions"]["__disabledLevel__"] = global_row["extensions"]["__disabledLevel__"]
+        if "isVerified" in global_row:
+            row2["isVerified"] = global_row["isVerified"]
+        if global_row.get("status", 0) in [9, 10]:
+            row2["status"] = global_row["status"]
+        if global_row.get("extensions", {}).get("__disabledLevel__"):
+            row2["extensions"]["__disabledLevel__"] = global_row["extensions"][
+                "__disabledLevel__"
+            ]
 
-		if ndcId == 0:
-			row2 = global_row | row2
+        if ndcId == 0:
+            row2 = global_row | row2
 
-	async with await StoreService.create(uid, ndcId) as svc:
-		row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
+    async with await StoreService.create(uid, ndcId) as svc:
+        row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
 
-	inviter = User.GetUserInfo(row2, triggerUserId=uid, extensions=row2.get("extensions"), ndcId=ndcId)
+    inviter = User.GetUserInfo(
+        row2, triggerUserId=uid, extensions=row2.get("extensions"), ndcId=ndcId
+    )
 
-	await chat.update_one(
-		{"id": chatId}, {"$push": {"invitedList": {"$each": actuallyInvite}}}
-	)
+    await chat.update_one(
+        {"id": chatId}, {"$push": {"invitedList": {"$each": actuallyInvite}}}
+    )
 
-	connection.close()
-	asyncio.get_event_loop().create_task(send_admin_ws(
-		{
-			"ndcId": ndcId,
-			"threadId": chatId,
-			"inviter": inviter,
-			"threadType": chat_info["chatType"]
-		},
-		actuallyInvite,
-		ApiBroadcastType.InviteChatPush
-	))
-	return Base.Answer(spent_time=timestamp() - t1)
+    connection.close()
+    asyncio.get_event_loop().create_task(
+        send_admin_ws(
+            {
+                "ndcId": ndcId,
+                "threadId": chatId,
+                "inviter": inviter,
+                "threadType": chat_info["chatType"],
+            },
+            actuallyInvite,
+            ApiBroadcastType.InviteChatPush,
+        )
+    )
+    return Base.Answer(spent_time=timestamp() - t1)
 
 
 # join chat
@@ -1784,69 +1842,69 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/{userId}")
 @turtlelimiter(limit=1, period=TurtleTime.second, tag="jl-chat")
 async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	uid = request.state.session["uid"]
+    uid = request.state.session["uid"]
 
-	if uid in [None, "", False]:
-		return Errors.InvalidSession(timestamp() - t1)
+    if uid in [None, "", False]:
+        return Errors.InvalidSession(timestamp() - t1)
 
-	if userId != uid:
-		return Errors.InvalidRequest(timestamp() - t1)
+    if userId != uid:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	connection = await Database().init()
-	chat = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat.find_one({"id": chatId})
-	if userId in chat_info["memberList"]:
-		connection.close()
-		return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
-	if userId in chat_info["bannedUids"]:
-		connection.close()
-		return Errors.RemovedFromChat(timestamp() - t1)
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
+    if userId in chat_info["memberList"]:
+        connection.close()
+        return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
+    if userId in chat_info["bannedUids"]:
+        connection.close()
+        return Errors.RemovedFromChat(timestamp() - t1)
 
-	messageId = str(uuid4())
+    messageId = str(uuid4())
 
-	table = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
-	message = ModelFabric.Construct(
-		Community.Message,
-		messageId=messageId,
-		authorId=userId,
-		messageType=101,
-		clientRefId=0,
-		content=None,
-	)
-	await table.insert_one(message)
+    table = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+    message = ModelFabric.Construct(
+        Community.Message,
+        messageId=messageId,
+        authorId=userId,
+        messageType=101,
+        clientRefId=0,
+        content=None,
+    )
+    await table.insert_one(message)
 
-	await chat.update_one(
-		{"id": chatId},
-		{
-			"$push": {"memberList": userId},
-			"$pull": {"invitedList": userId},
-			"$set": {
-				"lastMessageId": messageId,
-				f"lastReadedList.{userId}": message["createdTime"],
-			},
-		},
-	)
+    await chat.update_one(
+        {"id": chatId},
+        {
+            "$push": {"memberList": userId},
+            "$pull": {"invitedList": userId},
+            "$set": {
+                "lastMessageId": messageId,
+                f"lastReadedList.{userId}": message["createdTime"],
+            },
+        },
+    )
 
-	xndc_users = connection.get(f"x{ndcId}", "Users")
-	messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
-	ws_send_obj = {
-		"t": 1000,
-		"o": {
-			"ndcId": ndcId,
-			"chatMessage": messageObj,
-			"alertOption": 1,
-			"membershipStatus": 1,
-		},
-	}
-	target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-	asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
+    xndc_users = connection.get(f"x{ndcId}", "Users")
+    messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
+    ws_send_obj = {
+        "t": 1000,
+        "o": {
+            "ndcId": ndcId,
+            "chatMessage": messageObj,
+            "alertOption": 1,
+            "membershipStatus": 1,
+        },
+    }
+    target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+    asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
 
-	connection.close()
-	return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
+    connection.close()
+    return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
 
 
 # leave chat
@@ -1857,90 +1915,90 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
 @chats.delete("/x{ndcId}/s/chat/thread/{chatId}/member/{userId}")
 @turtlelimiter(limit=1, period=TurtleTime.second, tag="jl-chat")
 async def leave_chat(
-	request: Request, chatId: str, userId: str, allowRejoin: int = 0, ndcId: int = 0
+    request: Request, chatId: str, userId: str, allowRejoin: int = 0, ndcId: int = 0
 ):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	uid = request.state.session["uid"]
-	messageId = str(uuid4())
-	work = False
-	ban = False
+    uid = request.state.session["uid"]
+    messageId = str(uuid4())
+    work = False
+    ban = False
 
-	if uid in [None, "", False]:
-		return Errors.InvalidSession(timestamp() - t1)
+    if uid in [None, "", False]:
+        return Errors.InvalidSession(timestamp() - t1)
 
-	connection = await Database().init()
-	chat = connection.get(f"x{ndcId}", "Chats")
-	chat_info = await chat.find_one({"id": chatId})
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    chat_info = await chat.find_one({"id": chatId})
 
-	if userId == uid:
-		print("user leaving")
-		work = True
+    if userId == uid:
+        print("user leaving")
+        work = True
 
-	if userId != uid:
-		print("user not leaving, its kick")
-		if userId == chat_info["hostId"]:
-			connection.close()
-			return Errors.NotEnoughRights(timestamp() - t1)
-		elif uid not in chat_info.get("cohostsIds", []) and uid != chat_info["hostId"]:
-			connection.close()
-			return Errors.NotEnoughRights(timestamp() - t1)
-		else:
-			work = True
+    if userId != uid:
+        print("user not leaving, its kick")
+        if userId == chat_info["hostId"]:
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
+        elif uid not in chat_info.get("cohostsIds", []) and uid != chat_info["hostId"]:
+            connection.close()
+            return Errors.NotEnoughRights(timestamp() - t1)
+        else:
+            work = True
 
-	if allowRejoin != 1:
-		print("allow rejoin obviously not 1")
-		if uid in chat_info.get("cohostsIds", []) or uid == chat_info["hostId"]:
-			print("ok you have rights")
-			ban = True
-		else:
-			print("haha you havent rights")
-			ban = False
-	if ban is True and userId == uid:
-		print("ok ban urself is bad")
-		ban = False
+    if allowRejoin != 1:
+        print("allow rejoin obviously not 1")
+        if uid in chat_info.get("cohostsIds", []) or uid == chat_info["hostId"]:
+            print("ok you have rights")
+            ban = True
+        else:
+            print("haha you havent rights")
+            ban = False
+    if ban is True and userId == uid:
+        print("ok ban urself is bad")
+        ban = False
 
-	if work:
-		table = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
-		message = ModelFabric.Construct(
-			Community.Message,
-			messageId=messageId,
-			authorId=userId,
-			messageType=102,
-			clientRefId=0,
-			content=None,
-		)
-		await table.insert_one(message)
+    if work:
+        table = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+        message = ModelFabric.Construct(
+            Community.Message,
+            messageId=messageId,
+            authorId=userId,
+            messageType=102,
+            clientRefId=0,
+            content=None,
+        )
+        await table.insert_one(message)
 
-		isBan = {"$push": {"bannedUids": userId}} if ban else {}
-		await chat.update_one(
-			{"id": chatId},
-			{
-				"$pull": {"memberList": userId, "invitedList": userId},
-				"$set": {"lastMessageId": messageId},
-			}
-			| isBan,
-		)
+        isBan = {"$push": {"bannedUids": userId}} if ban else {}
+        await chat.update_one(
+            {"id": chatId},
+            {
+                "$pull": {"memberList": userId, "invitedList": userId},
+                "$set": {"lastMessageId": messageId},
+            }
+            | isBan,
+        )
 
-		xndc_users = connection.get(f"x{ndcId}", "Users")
-		messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
-		ws_send_obj = {
-			"t": 1000,
-			"o": {
-				"ndcId": ndcId,
-				"chatMessage": messageObj,
-				"alertOption": 1,
-				"membershipStatus": 1,
-			},
-		}
+        xndc_users = connection.get(f"x{ndcId}", "Users")
+        messageObj = await Chat.LongMessage(message, chatId, xndc_users, ndcId=ndcId)
+        ws_send_obj = {
+            "t": 1000,
+            "o": {
+                "ndcId": ndcId,
+                "chatMessage": messageObj,
+                "alertOption": 1,
+                "membershipStatus": 1,
+            },
+        }
 
-		target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-		asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
+        target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+        asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
 
-	connection.close()
-	return Base.Answer({"membershipStatus": 0}, spent_time=timestamp() - t1)
+    connection.close()
+    return Base.Answer({"membershipStatus": 0}, spent_time=timestamp() - t1)
 
 
 # mark chat as read
@@ -1950,34 +2008,34 @@ async def leave_chat(
 @chats.post("/g/s/chat/thread/{chatId}/mark-as-read")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/mark-as-read")
 async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	uid = request.state.session["uid"]
+    uid = request.state.session["uid"]
 
-	try:
-		data = await request.json()
-		if not data.get("messageId") or not data.get("createdTime"):
-			raise Exception()
-	except Exception:
-		return Errors.InvalidMessage(timestamp() - t1)
+    try:
+        data = await request.json()
+        if not data.get("messageId") or not data.get("createdTime"):
+            raise Exception()
+    except Exception:
+        return Errors.InvalidMessage(timestamp() - t1)
 
-	connection = await Database().init()
-	chat = connection.get(f"x{ndcId}", "Chats")
-	history = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
-	msg = await history.find_one({"messageId": data["messageId"]})
-	if msg:
-		readTimestamp = msg["createdTime"]
-		await chat.update_one(
-			{"id": chatId}, {"$set": {f"lastReadedList.{uid}": readTimestamp}}
-		)
+    connection = await Database().init()
+    chat = connection.get(f"x{ndcId}", "Chats")
+    history = connection.get(f"x{ndcId}", f"_Chat:{chatId}")
+    msg = await history.find_one({"messageId": data["messageId"]})
+    if msg:
+        readTimestamp = msg["createdTime"]
+        await chat.update_one(
+            {"id": chatId}, {"$set": {f"lastReadedList.{uid}": readTimestamp}}
+        )
 
-		connection.close()
-		return Base.Answer({"lastReadTime": readTimestamp}, spent_time=timestamp() - t1)
+        connection.close()
+        return Base.Answer({"lastReadTime": readTimestamp}, spent_time=timestamp() - t1)
 
-	connection.close()
-	return Errors.DataNotExist(spent_time=timestamp() - t1)
+    connection.close()
+    return Errors.DataNotExist(spent_time=timestamp() - t1)
 
 
 # toggle things
@@ -1990,90 +2048,95 @@ async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
 @chats.post("/g/s/chat/thread/{chatId}/{parameter}/{mode}")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/{parameter}/{mode}")
 async def toggle_things(
-	chatId: str, mode: str, parameter: str, request: Request, ndcId: int = 0
+    chatId: str, mode: str, parameter: str, request: Request, ndcId: int = 0
 ):
-	t1 = timestamp()
-	if not request.state.session["validsession"]:
-		return Errors.InvalidSession()
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
 
-	if mode not in ["disable", "enable"]:
-		return Errors.InvalidRequest(timestamp() - t1)
-	if parameter not in ["members-can-invite", "view-only"]:
-		return Errors.InvalidRequest(timestamp() - t1)
+    if mode not in ["disable", "enable"]:
+        return Errors.InvalidRequest(timestamp() - t1)
+    if parameter not in ["members-can-invite", "view-only"]:
+        return Errors.InvalidRequest(timestamp() - t1)
 
-	trigger_uid = request.state.session["uid"]
+    trigger_uid = request.state.session["uid"]
 
-	db = await Database().init()
-	table = db.get(f"x{ndcId}", "Chats")
-	chat_info = await table.find_one({"id": chatId})
+    db = await Database().init()
+    table = db.get(f"x{ndcId}", "Chats")
+    chat_info = await table.find_one({"id": chatId})
 
-	if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
-		"cohostsIds", []
-	):
-		if parameter == "view-only":
-			await table.update_one(
-				{"id": chatId},
-				{"$set": {"isViewMode": True if mode == "enable" else False}},
-			)
+    if chat_info["hostId"] == trigger_uid or trigger_uid in chat_info.get(
+        "cohostsIds", []
+    ):
+        if parameter == "view-only":
+            await table.update_one(
+                {"id": chatId},
+                {"$set": {"isViewMode": True if mode == "enable" else False}},
+            )
 
-			history = db.get(f"x{ndcId}", f"_Chat:{chatId}")
-			messageId = str(uuid4())
-			message = ModelFabric.Construct(
-				Community.Message,
-				messageId=messageId,
-				authorId=trigger_uid,
-				messageType=125 if mode == "enable" else 126,
-			)
-			await history.insert_one(message)
-			await table.update_one(
-				{"id": chatId},
-				{
-					"$set": {
-						"lastMessageId": messageId,
-						"lastMessageTimestamp": message["timestamp"],
-						f"lastReadedList.{trigger_uid}": message["createdTime"],
-					}
-				},
-			)
+            history = db.get(f"x{ndcId}", f"_Chat:{chatId}")
+            messageId = str(uuid4())
+            message = ModelFabric.Construct(
+                Community.Message,
+                messageId=messageId,
+                authorId=trigger_uid,
+                messageType=125 if mode == "enable" else 126,
+            )
+            await history.insert_one(message)
+            await table.update_one(
+                {"id": chatId},
+                {
+                    "$set": {
+                        "lastMessageId": messageId,
+                        "lastMessageTimestamp": message["timestamp"],
+                        f"lastReadedList.{trigger_uid}": message["createdTime"],
+                    }
+                },
+            )
 
-			xndc_users = db.get(f"x{ndcId}", "Users")
-			user = await xndc_users.find_one({"id": message["authorId"]}) or {}
+            xndc_users = db.get(f"x{ndcId}", "Users")
+            user = await xndc_users.find_one({"id": message["authorId"]}) or {}
 
-			globalBubbleId = user.get("bubbleId")
-			chatBubbleId = user.get("chatBubbles", {}).get(chatId)
+            globalBubbleId = user.get("bubbleId")
+            chatBubbleId = user.get("chatBubbles", {}).get(chatId)
 
-			bubbleId = chatBubbleId or globalBubbleId
-			bubbleVersion = None
+            bubbleId = chatBubbleId or globalBubbleId
+            bubbleVersion = None
 
-			if bubbleId:
-				bubbles_table = db.get(table="ChatBubbles")
-				bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
-				bubbleVersion = bubble.get("version", 1)
+            if bubbleId:
+                bubbles_table = db.get(table="ChatBubbles")
+                bubble = await bubbles_table.find_one({"bubbleId": bubbleId}) or {}
+                bubbleVersion = bubble.get("version", 1)
 
-			messageObj = await Chat.LongMessage(
-						message, chatId, xndc_users, ndcId=ndcId, chatBubbleVersion=bubbleVersion, chatBubbleId=bubbleId
-					)
+            messageObj = await Chat.LongMessage(
+                message,
+                chatId,
+                xndc_users,
+                ndcId=ndcId,
+                chatBubbleVersion=bubbleVersion,
+                chatBubbleId=bubbleId,
+            )
 
-			ws_send_obj = {
-				"t": 1000,
-				"o": {
-					"ndcId": ndcId,
-					"chatMessage": messageObj,
-					"alertOption": 1,
-					"membershipStatus": 1,
-				},
-			}
-			target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
-			asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
-		elif parameter == "members-can-invite":
-			await table.update_one(
-				{"id": chatId},
-				{"$set": {"canMembersInvite": True if mode == "enable" else False}},
-			)
+            ws_send_obj = {
+                "t": 1000,
+                "o": {
+                    "ndcId": ndcId,
+                    "chatMessage": messageObj,
+                    "alertOption": 1,
+                    "membershipStatus": 1,
+                },
+            }
+            target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
+            asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
+        elif parameter == "members-can-invite":
+            await table.update_one(
+                {"id": chatId},
+                {"$set": {"canMembersInvite": True if mode == "enable" else False}},
+            )
 
-		db.close()
-		return Base.Answer(spent_time=timestamp() - t1)
+        db.close()
+        return Base.Answer(spent_time=timestamp() - t1)
 
-	else:
-		db.close()
-		return Errors.NotEnoughRights(timestamp() - t1)
+    else:
+        db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)

@@ -152,7 +152,7 @@ class Communities:
                 ),
                 "themePackRevision": data.get("themeRevision"),
             },
-            "mediaList":  data.get("mediaList", []),
+            "mediaList": data.get("mediaList", []),
             "isStandaloneAppMonetizationEnabled": False,
             "activeInfo": {},
             "configuration": {

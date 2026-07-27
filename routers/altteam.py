@@ -22,7 +22,6 @@ from string import ascii_letters, digits
 import secrets
 
 
-
 from helpers.database.models import Global, ModelFabric
 from helpers.generator import Generator
 from objects import Links
@@ -32,13 +31,8 @@ from datetime import UTC, datetime
 from objects.types.store import DiscountStatus, RestrictType
 
 
-
-
 def _iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-
 
 
 altteam = APIRouter()
@@ -60,6 +54,7 @@ async def get_altamino_team(request: Request):
         spent_time=timestamp() - t1,
     )
 
+
 @altteam.get("/g/s/altteam")
 async def get_altamino_team(request: Request):
     t1 = timestamp()
@@ -75,7 +70,16 @@ async def get_altamino_team(request: Request):
 
         global_cursor = sensitive_table.find(
             {"role": {"$in": UserRole.GODS}},
-            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1, "isVerified": 1},
+            {
+                "_id": 0,
+                "id": 1,
+                "role": 1,
+                "tagList": 1,
+                "aminoId": 1,
+                "telegramId": 1,
+                "isTeamMember": 1,
+                "isVerified": 1,
+            },
         )
         global_members = await global_cursor.to_list(length=None)
         if not global_members:
@@ -112,9 +116,7 @@ async def get_altamino_team(request: Request):
             merged["telegramId"] = g.get("telegramId")
             merged["extensions"]["isMemberOfTeamAmino"] = g.get("isTeamMember", False)
             merged["isNicknameVerified"] = bool(g.get("isVerified", False))
-            team_list.append(
-                merged   
-            )
+            team_list.append(merged)
         return Base.Answer({"userProfileList": team_list}, spent_time=timestamp() - t1)
     finally:
         db.close()
@@ -135,10 +137,19 @@ async def get_altamino_team_member(request: Request, userId: str):
 
         global_member = await sensitive_table.find_one(
             {"id": userId, "role": {"$in": UserRole.GODS}},
-            {"_id": 0, "id": 1, "role": 1, "tagList": 1, "aminoId": 1, "telegramId": 1, "isTeamMember": 1, "isVerified": 1},
+            {
+                "_id": 0,
+                "id": 1,
+                "role": 1,
+                "tagList": 1,
+                "aminoId": 1,
+                "telegramId": 1,
+                "isTeamMember": 1,
+                "isVerified": 1,
+            },
         )
         if not global_member:
-            return Errors.InvalidRequest(timestamp() - t1) 
+            return Errors.InvalidRequest(timestamp() - t1)
 
         local_profile = await local_table.find_one(
             {"id": userId},
@@ -162,7 +173,9 @@ async def get_altamino_team_member(request: Request, userId: str):
         merged["extensions"]["tagList"] = global_member.get("tagList", [])
         merged["aminoId"] = global_member.get("aminoId")
         merged["telegramId"] = global_member.get("telegramId")
-        merged["extensions"]["isMemberOfTeamAmino"] = global_member.get("isTeamMember", False)
+        merged["extensions"]["isMemberOfTeamAmino"] = global_member.get(
+            "isTeamMember", False
+        )
         merged["isNicknameVerified"] = bool(global_member.get("isVerified", False))
 
         return Base.Answer({"userProfile": merged}, spent_time=timestamp() - t1)
@@ -170,7 +183,6 @@ async def get_altamino_team_member(request: Request, userId: str):
         return Errors.InvalidRequest(timestamp() - t1)
     finally:
         db.close()
-
 
 
 @altteam.post("/g/s/altteam/telegram/link")
@@ -189,7 +201,7 @@ async def link_telegram(request: Request, body: dict):
     db = await Database().init()
     try:
         sensitive_table = db.get(table="Users")
-        
+
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or user.get("role", 0) != UserRole.System:
             return Errors.NotEnoughRights(timestamp() - t1)
@@ -197,8 +209,7 @@ async def link_telegram(request: Request, body: dict):
         target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
 
         await sensitive_table.update_one(
-            target_query,
-            {"$set": {"telegramId": telegram_id}}
+            target_query, {"$set": {"telegramId": telegram_id}}
         )
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
@@ -209,7 +220,7 @@ async def link_telegram(request: Request, body: dict):
 async def unlink_telegram(request: Request, body: dict = None):
     t1 = timestamp()
     trigger_uid = request.state.session.get("uid")
-    
+
     body = body or {}
     amino_id = body.get("aminoId")
 
@@ -219,24 +230,17 @@ async def unlink_telegram(request: Request, body: dict = None):
     db = await Database().init()
     try:
         sensitive_table = db.get(table="Users")
-        
+
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or user.get("role", 0) != UserRole.System:
             return Errors.NotEnoughRights(timestamp() - t1)
 
         target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
 
-        await sensitive_table.update_one(
-            target_query,
-            {"$unset": {"telegramId": ""}}
-        )
+        await sensitive_table.update_one(target_query, {"$unset": {"telegramId": ""}})
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
         db.close()
-
-
-
-
 
 
 @altteam.post("/g/s/altteam/{userId}/edit")
@@ -250,30 +254,33 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
     db = await Database().init()
     try:
         sensitive_table = db.get(table="Users")
-        
+
         trigger_user = await sensitive_table.find_one({"id": trigger_uid})
         if not trigger_user or trigger_user.get("role", 0) != UserRole.AltAminoStaff:
             return Errors.NotEnoughRights(timestamp() - t1)
-        
+
         target_user = await sensitive_table.find_one({"id": userId})
         if not target_user:
             return Errors.InvalidRequest(timestamp() - t1)
-        
+
         update_fields = {}
-        
+
         new_role = body.get("role")
         is_verified = body.get("isVerified")
         new_tags = body.get("tagList")
         altteam_status = body.get("isMemberOfTeamAmino")
-        
+
         if new_role is not None:
-            if target_user.get("role", 0) == UserRole.AltAminoStaff or userId == trigger_uid:
+            if (
+                target_user.get("role", 0) == UserRole.AltAminoStaff
+                or userId == trigger_uid
+            ):
                 return Errors.NotEnoughRights(timestamp() - t1)
             if not UserRole.is_valid_role(new_role):
                 return Errors.InvalidRequest(timestamp() - t1)
-            
+
             update_fields["role"] = new_role
-            
+
         if new_tags is not None:
             if isinstance(new_tags, list):
                 update_fields["tagList"] = new_tags
@@ -286,15 +293,12 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
 
         if update_fields:
             await sensitive_table.update_one({"id": userId}, {"$set": update_fields})
-        
+
         return Base.Answer(spent_time=timestamp() - t1)
     except:
         return Errors.InvalidRequest(timestamp() - t1)
     finally:
         db.close()
-
-
-
 
 
 @altteam.post("/g/s/altteam/reset-password")
@@ -310,7 +314,7 @@ async def support_reset_password(request: Request, ndcId: int = 0):
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
     try:
-        secret = ''.join(secrets.choice(ascii_letters + digits) for _ in range(12))
+        secret = "".join(secrets.choice(ascii_letters + digits) for _ in range(12))
         data = await request.json()
         updateSecret = Blake(
             data=f"0 {secret}",
@@ -350,8 +354,6 @@ async def support_reset_password(request: Request, ndcId: int = 0):
     )
 
 
-
-
 @altteam.post("/g/s/altteam/user-profile/{userId}/status")
 async def set_user_status(request: Request, userId: str):
     t1 = timestamp()
@@ -371,16 +373,15 @@ async def set_user_status(request: Request, userId: str):
             raise Exception
     except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
-    
+
     table = db.get(table="Users")
     await table.update_one({"id": userId}, {"$set": {"status": status}})
     db.close()
-    
+
     return Base.Answer(
         {},
         spent_time=timestamp() - t1,
     )
-
 
 
 @altteam.get("/g/s/altteam/user-profile/{userId}/communities")
@@ -394,7 +395,9 @@ async def get_user_communities(request: Request, userId: str):
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             return Errors.NotEnoughRights(timestamp() - t1)
 
-        target = await sensitive_table.find_one({"id": userId}, {"communityList": 1, "nickname": 1, "icon": 1})
+        target = await sensitive_table.find_one(
+            {"id": userId}, {"communityList": 1, "nickname": 1, "icon": 1}
+        )
         if not target:
             return Errors.AccountNotExist(timestamp() - t1)
 
@@ -403,16 +406,16 @@ async def get_user_communities(request: Request, userId: str):
         communities_table = db.get(table="Communities")
         links_table = db.get(table="Links")
         result = []
-        
+
         async for item in communities_table.find({"id": {"$in": community_ids}}):
             ndc_id = item["id"]
             ndc_users_table = db.get(f"x{ndc_id}", "Users")
             ndc_profile = await ndc_users_table.find_one({"id": userId})
-            
+
             link = await links_table.find_one(
                 {"objectId": userId, "objectType": 0, "ndcId": int(ndc_id)}
             )
-            
+
             if link is None and ndc_profile:
                 link = ModelFabric.Construct(
                     Global.Links,
@@ -424,24 +427,29 @@ async def get_user_communities(request: Request, userId: str):
                 )
                 await links_table.insert_one(link)
 
-
             if link:
                 link_data = Links.User(link)
             else:
                 link_data = None
 
-            result.append({
-                "ndcId": item.get("id"),
-                "endpoint": item.get("aminoId"),
-                "name": item.get("name"),
-                "icon": item.get("icon"),
-                "userProfile": {
-                    "nickname": ndc_profile.get("nickname") if ndc_profile else target.get("nickname"),
-                    "icon": ndc_profile.get("icon") if ndc_profile else target.get("icon"),
-                    "role": ndc_profile.get("role", 0) if ndc_profile else 0,
-                    "linkData": link_data
+            result.append(
+                {
+                    "ndcId": item.get("id"),
+                    "endpoint": item.get("aminoId"),
+                    "name": item.get("name"),
+                    "icon": item.get("icon"),
+                    "userProfile": {
+                        "nickname": ndc_profile.get("nickname")
+                        if ndc_profile
+                        else target.get("nickname"),
+                        "icon": ndc_profile.get("icon")
+                        if ndc_profile
+                        else target.get("icon"),
+                        "role": ndc_profile.get("role", 0) if ndc_profile else 0,
+                        "linkData": link_data,
+                    },
                 }
-            })
+            )
 
         return Base.Answer(
             {
@@ -452,11 +460,6 @@ async def get_user_communities(request: Request, userId: str):
         )
     finally:
         db.close()
-
-
-
-
-
 
 
 async def _fetch_resource_config(resource_url: str) -> tuple[str, dict] | None:
@@ -473,9 +476,9 @@ async def _fetch_resource_config(resource_url: str) -> tuple[str, dict] | None:
     except Exception as e:
         print(e)
         return None
- 
+
     md5_hex = hashlib.md5(raw).hexdigest()
- 
+
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as zf:
             with zf.open("config.json") as f:
@@ -483,18 +486,17 @@ async def _fetch_resource_config(resource_url: str) -> tuple[str, dict] | None:
     except (zipfile.BadZipFile, KeyError, json.JSONDecodeError, UnicodeDecodeError):
         print("zip/json error")
         return None
- 
+
     if not isinstance(config, dict):
         return None
     return md5_hex, config
- 
- 
- 
+
+
 async def _require_global_staff(db, trigger_uid: str) -> bool:
     user = await db.get(table="Users").find_one({"id": trigger_uid})
     return bool(user and UserRole.is_global_staff(user.get("role", 0)))
- 
- 
+
+
 async def _purge_ownership(db, object_type: int, object_id: str, worn_field: str):
     await db.get(table="UserStoreItems").delete_many(
         {"objectType": object_type, "objectId": object_id}
@@ -502,10 +504,9 @@ async def _purge_ownership(db, object_type: int, object_id: str, worn_field: str
     await db.get(table="Users").update_many(
         {worn_field: object_id}, {"$set": {worn_field: None}}
     )
- 
- 
+
+
 #  Avatar Frames
- 
 
 
 @altteam.post("/g/s/altteam/altstore/avatar-frame")
@@ -516,20 +517,20 @@ async def create_frame(request: Request):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         try:
             data = await request.json()
             resource_url = data["resourceUrl"]
         except Exception:
             print("data error")
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         fetched = await _fetch_resource_config(resource_url)
         if fetched is None:
             print("fetched none")
             return Errors.InvalidRequest(timestamp() - t1)
         md5_hex, config = fetched
- 
+
         frame_id = str(uuid.uuid4())
         doc = {
             "frameId": frame_id,
@@ -537,12 +538,12 @@ async def create_frame(request: Request):
             "version": config.get("version"),
             "resourceUrl": resource_url,
             "md5": md5_hex,
-   
             "icon": data.get("icon"),
             "frameType": data.get("frameType", 1),
             "description": data.get("description", ""),
             "price": data.get("price", 0),
-            "restrictType": data.get("restrictType") or (RestrictType.COIN if data.get("price", 0) else RestrictType.FREE),
+            "restrictType": data.get("restrictType")
+            or (RestrictType.COIN if data.get("price", 0) else RestrictType.FREE),
             "discountStatus": data.get("discountStatus", DiscountStatus.OFF),
             "discountValue": data.get("discountValue", 0),
             "availableDuration": data.get("availableDuration", 0),
@@ -551,22 +552,24 @@ async def create_frame(request: Request):
             "createdTime": _iso(),
             "modifiedTime": _iso(),
             "extensions": {},
-            "availableNdcIds": data.get("availableNdcIds", [])
+            "availableNdcIds": data.get("availableNdcIds", []),
         }
- 
+
         if not doc["name"]:
             print("no name")
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         frames = db.get(table="AvatarFrames")
         await frames.insert_one(doc)
         doc.pop("_id", None)
- 
-        return Base.Answer({"frameId": frame_id, "avatarFrame": doc}, spent_time=timestamp() - t1)
+
+        return Base.Answer(
+            {"frameId": frame_id, "avatarFrame": doc}, spent_time=timestamp() - t1
+        )
     finally:
         db.close()
- 
- 
+
+
 @altteam.post("/g/s/altteam/altstore/avatar-frame/{frameId}/edit")
 async def edit_frame(request: Request, frameId: str):
     t1 = timestamp()
@@ -575,32 +578,40 @@ async def edit_frame(request: Request, frameId: str):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         try:
             data = await request.json()
         except Exception:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         allowed = {
-             "resourceUrl", "icon", "frameType", "description",
-            "price", "restrictType", "discountStatus", "discountValue",
-            "availableDuration", "md5", "status",
+            "resourceUrl",
+            "icon",
+            "frameType",
+            "description",
+            "price",
+            "restrictType",
+            "discountStatus",
+            "discountValue",
+            "availableDuration",
+            "md5",
+            "status",
         }
         changes = {k: v for k, v in data.items() if k in allowed and v is not None}
         if not changes:
             return Errors.InvalidRequest(timestamp() - t1)
         changes["modifiedTime"] = _iso()
- 
+
         frames = db.get(table="AvatarFrames")
         result = await frames.update_one({"frameId": frameId}, {"$set": changes})
         if result.matched_count == 0:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
         db.close()
- 
- 
+
+
 @altteam.post("/g/s/altteam/altstore/avatar-frame/{frameId}/delete")
 async def delete_frame(request: Request, frameId: str):
     t1 = timestamp()
@@ -609,20 +620,20 @@ async def delete_frame(request: Request, frameId: str):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         frames = db.get(table="AvatarFrames")
         result = await frames.delete_one({"frameId": frameId})
         if result.deleted_count == 0:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         # снести владение и снять у всех, кто носит
         await _purge_ownership(db, StoreItemType.AvatarFrame, frameId, "frameId")
- 
+
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
         db.close()
- 
- 
+
+
 @altteam.get("/g/s/altteam/altstore/avatar-frame")
 async def list_frames(request: Request):
     t1 = timestamp()
@@ -631,18 +642,18 @@ async def list_frames(request: Request):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         frames = db.get(table="AvatarFrames")
         docs = await frames.find({}, {"_id": 0}).to_list(length=None)
- 
+
         return Base.Answer({"avatarFrameList": docs}, spent_time=timestamp() - t1)
     finally:
         db.close()
- 
- 
+
+
 #  Chat Bubbles
- 
- 
+
+
 @altteam.post("/g/s/altteam/altstore/chat-bubble")
 async def create_bubble(request: Request):
     t1 = timestamp()
@@ -651,18 +662,18 @@ async def create_bubble(request: Request):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         try:
             data = await request.json()
             resource_url = data["resourceUrl"]
         except Exception:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         fetched = await _fetch_resource_config(resource_url)
         if fetched is None:
             return Errors.InvalidRequest(timestamp() - t1)
         md5_hex, config = fetched
- 
+
         bubble_id = str(uuid.uuid4())
         doc = {
             "bubbleId": bubble_id,
@@ -677,7 +688,8 @@ async def create_bubble(request: Request):
             "backgroundImage": data.get("backgroundImage"),
             "bannerImage": data.get("bannerImage"),
             "price": data.get("price", 0),
-            "restrictType": data.get("restrictType") or (RestrictType.COIN if data.get("price", 0) else RestrictType.FREE),
+            "restrictType": data.get("restrictType")
+            or (RestrictType.COIN if data.get("price", 0) else RestrictType.FREE),
             "discountStatus": data.get("discountStatus", DiscountStatus.OFF),
             "discountValue": data.get("discountValue", 0),
             "availableDuration": data.get("availableDuration", 0),
@@ -687,21 +699,23 @@ async def create_bubble(request: Request):
             "createdTime": _iso(),
             "modifiedTime": _iso(),
             "extensions": {},
-            "availableNdcIds": data.get("availableNdcIds", [])
+            "availableNdcIds": data.get("availableNdcIds", []),
         }
- 
+
         if not doc["name"]:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         bubbles = db.get(table="ChatBubbles")
         await bubbles.insert_one(doc)
         doc.pop("_id", None)
- 
-        return Base.Answer({"bubbleId": bubble_id, "chatBubble": doc}, spent_time=timestamp() - t1)
+
+        return Base.Answer(
+            {"bubbleId": bubble_id, "chatBubble": doc}, spent_time=timestamp() - t1
+        )
     finally:
         db.close()
- 
- 
+
+
 @altteam.post("/g/s/altteam/altstore/chat-bubble/{bubbleId}/edit")
 async def edit_bubble(request: Request, bubbleId: str):
     t1 = timestamp()
@@ -710,33 +724,46 @@ async def edit_bubble(request: Request, bubbleId: str):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         try:
             data = await request.json()
         except Exception:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         allowed = {
-            "name", "resourceUrl", "coverImage", "backgroundImage", "bannerImage",
-            "bubbleType", "config", "templateId", "price", "restrictType",
-            "discountStatus", "discountValue", "availableDuration", "md5",
-            "version", "status", "deletable",
+            "name",
+            "resourceUrl",
+            "coverImage",
+            "backgroundImage",
+            "bannerImage",
+            "bubbleType",
+            "config",
+            "templateId",
+            "price",
+            "restrictType",
+            "discountStatus",
+            "discountValue",
+            "availableDuration",
+            "md5",
+            "version",
+            "status",
+            "deletable",
         }
         changes = {k: v for k, v in data.items() if k in allowed and v is not None}
         if not changes:
             return Errors.InvalidRequest(timestamp() - t1)
         changes["modifiedTime"] = _iso()
- 
+
         bubbles = db.get(table="ChatBubbles")
         result = await bubbles.update_one({"bubbleId": bubbleId}, {"$set": changes})
         if result.matched_count == 0:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
         db.close()
- 
- 
+
+
 @altteam.post("/g/s/altteam/altstore/chat-bubble/{bubbleId}/delete")
 async def delete_bubble(request: Request, bubbleId: str):
     t1 = timestamp()
@@ -745,20 +772,20 @@ async def delete_bubble(request: Request, bubbleId: str):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         bubbles = db.get(table="ChatBubbles")
         result = await bubbles.delete_one({"bubbleId": bubbleId})
         if result.deleted_count == 0:
             return Errors.InvalidRequest(timestamp() - t1)
- 
+
         # снести владение и снять у всех, кто носит
         await _purge_ownership(db, StoreItemType.ChatBubble, bubbleId, "bubbleId")
- 
+
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
         db.close()
- 
- 
+
+
 @altteam.get("/g/s/altteam/altstore/chat-bubble")
 async def list_bubbles(request: Request):
     t1 = timestamp()
@@ -767,11 +794,10 @@ async def list_bubbles(request: Request):
     try:
         if not await _require_global_staff(db, trigger_uid):
             return Errors.NotEnoughRights(timestamp() - t1)
- 
+
         bubbles = db.get(table="ChatBubbles")
         docs = await bubbles.find({}, {"_id": 0}).to_list(length=None)
- 
+
         return Base.Answer({"chatBubbleList": docs}, spent_time=timestamp() - t1)
     finally:
         db.close()
- 

@@ -1,5 +1,3 @@
-
-
 class StoreItemType:
     StickerCollection: int = 114
     ChatBubble: int = 116
@@ -7,14 +5,26 @@ class StoreItemType:
 
     STORE_SECTIONS = (StickerCollection, ChatBubble, AvatarFrame)
     SECTION_META = {
-        "avatar-frame": {"name": "Avatar Frames", "collection": "AvatarFrames", "objectType": AvatarFrame},
-        "chat-bubble":  {"name": "Chat Bubbles",  "collection": "ChatBubbles",  "objectType": ChatBubble},
-        "sticker":      {"name": "Stickers",      "collection": "StickerCollections", "objectType": StickerCollection},
+        "avatar-frame": {
+            "name": "Avatar Frames",
+            "collection": "AvatarFrames",
+            "objectType": AvatarFrame,
+        },
+        "chat-bubble": {
+            "name": "Chat Bubbles",
+            "collection": "ChatBubbles",
+            "objectType": ChatBubble,
+        },
+        "sticker": {
+            "name": "Stickers",
+            "collection": "StickerCollections",
+            "objectType": StickerCollection,
+        },
     }
     TYPE_INFO = {
         AvatarFrame: ("AvatarFrames", "frameId"),
-        ChatBubble:  ("ChatBubbles", "bubbleId"),
-        StickerCollection: ("StickerCollections", "??")#??
+        ChatBubble: ("ChatBubbles", "bubbleId"),
+        StickerCollection: ("StickerCollections", "??"),  # ??
     }
 
 
@@ -29,6 +39,7 @@ class RestrictType:
 class DiscountStatus:
     OFF = 0
     AMINO_PLUS = 1
+
 
 class PurchaseError:
     NOT_ENOUGH_COINS = 4300

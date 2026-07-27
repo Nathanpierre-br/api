@@ -102,12 +102,14 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
         if cum_data is None:
             return Errors.DataNotExist(timestamp() - t1)
         return Base.Answer(
-            Links.Community({
-                "objectType": 16,
-                "ndcId": cum_data.get("id"),
-                "code": query,
-                "objectId": str(cum_data.get("id")),
-            }),
+            Links.Community(
+                {
+                    "objectType": 16,
+                    "ndcId": cum_data.get("id"),
+                    "code": query,
+                    "objectId": str(cum_data.get("id")),
+                }
+            ),
             spent_time=timestamp() - t1,
         )
 
@@ -120,12 +122,14 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
         if link is None:
             return Errors.DataNotExist(timestamp() - t1)
         return Base.Answer(
-            Links.User({
-                "objectType": 0,
-                "ndcId": 0,
-                "code": query,
-                "objectId": str(link.get("id")),
-            }),
+            Links.User(
+                {
+                    "objectType": 0,
+                    "ndcId": 0,
+                    "code": query,
+                    "objectId": str(link.get("id")),
+                }
+            ),
             spent_time=timestamp() - t1,
         )
 
@@ -136,12 +140,14 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
         if link is None:
             return Errors.DataNotExist(timestamp() - t1)
         return Base.Answer(
-            Links.Blog({
-                "objectType": 1,
-                "ndcId": 0,
-                "code": query,
-                "objectId": str(link.get("id")),
-            }),
+            Links.Blog(
+                {
+                    "objectType": 1,
+                    "ndcId": 0,
+                    "code": query,
+                    "objectId": str(link.get("id")),
+                }
+            ),
             spent_time=timestamp() - t1,
         )
 
@@ -154,8 +160,6 @@ async def resolute_link(request: Request, q: str, ndcId: int = 0):
         return Base.Answer(Links.Blog(link), spent_time=timestamp() - t1)
     elif link["objectType"] == 12:
         return Base.Answer(Links.Chat(link), spent_time=timestamp() - t1)
-    
-
 
 
 @links.get("/g/s/community/link-identify")
@@ -167,7 +171,7 @@ async def community_link_identify(request: Request, q: str = ""):
         q = q.strip()
 
         if "/c/" in q:
-            aminoid_or_id = q[q.find("/c/") + 3:]
+            aminoid_or_id = q[q.find("/c/") + 3 :]
             aminoid_or_id = aminoid_or_id.split("/")[0].split("?")[0].strip()
         else:
             aminoid_or_id = q

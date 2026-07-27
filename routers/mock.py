@@ -55,6 +55,7 @@ async def personabasic_mock(request: Request):
 async def newusercoupon_mock(request: Request):
     return Base.Answer({"couponMappingList": []})
 
+
 @mock.get("/g/s/block/full-list")
 async def blockedandblocker_mock(request: Request, size: int = 1, language: str = "en"):
     return Base.Answer({"blockedUidList": [], "blockerUidList": []})

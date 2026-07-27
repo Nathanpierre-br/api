@@ -5,11 +5,12 @@ from httpx import AsyncClient
 from helpers.config import Config
 from objects.errors import Errors
 
+
 async def bbnonsfw_manual_check(image: str | bytes) -> bool:
     """
     False if image is OK, True if NSFW.
     """
-    #this shit always get bad request from BBNONSFW_API_URL
+    # this shit always get bad request from BBNONSFW_API_URL
     """
     if not Config.ENABLE_BBNONSFW:
         return False
@@ -44,6 +45,7 @@ async def bbnonsfw_manual_check(image: str | bytes) -> bool:
     """
     return False
 
+
 def bbnonsfw(
     target: Literal["body", "json"],
     key: str | None = None,
@@ -59,5 +61,7 @@ def bbnonsfw(
                 if await bbnonsfw_manual_check(body):
                     return Errors.NSFWContent()
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
