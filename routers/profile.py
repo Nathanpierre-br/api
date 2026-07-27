@@ -300,8 +300,8 @@ async def get_user_following(
 			user["iconFrame"] = await svc.frame_icon(user.get("frameId"))
 
 		following_list.append(
-			User.GetUserInfo(user),
-			ndcId=ndcId,
+			User.GetUserInfo(user,
+			ndcId=ndcId)
 		)
 
 	db.close()
@@ -326,8 +326,8 @@ async def get_user_followers(
 			user["iconFrame"] = await svc.frame_icon(user.get("frameId"))
 
 		followers_list.append(
-			User.GetUserInfo(user),
-			ndcId=ndcId,
+			User.GetUserInfo(user,
+			ndcId=ndcId)
 		)
 
 	db.close()
@@ -667,18 +667,9 @@ async def get_comment_voted_users(
 			user["iconFrame"] = await svc.frame_icon(user.get("frameId"))
 
 		voters_list.append(
-			User.GetUserInfo(user),
-			ndcId=ndcId,
+			User.GetUserInfo(user,
+			ndcId=ndcId)
 		)
-
-	voters_list = [
-		User.GetUserInfo(
-			await xndcid_table.find_one({"id": item}),
-			ndcId=ndcId,
-		)
-		for item in votes_selected
-	]
-	
 
 	db.close()
 	return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
