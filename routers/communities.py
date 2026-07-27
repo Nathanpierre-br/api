@@ -412,8 +412,10 @@ async def leave_community(request: Request, ndcId: int):
             if not user_info or user_info["role"] not in [200, 201, 254, 555]
             else user_info["role"]
         )
+        new_status = user_info.get("status", 0) if user_info and user_info.get("status") in (9, 11) else 5
         await table_xndc_users.update_one(
-            {"id": trigger_uid}, {"$set": {"role": role, "status": 5}}
+            {"id": trigger_uid},
+            {"$set": {"role": role, "status": new_status}},
         )
 
         return Base.Answer({}, spent_time=timestamp() - t1)

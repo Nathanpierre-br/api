@@ -110,6 +110,10 @@ async def user_search(
 		for item in unique_users:
 			g_row = await g_users.find_one({"id": item["id"]})
 			merged = (g_row or {}) | item
+
+			async with await StoreService.create(item["id"], ndcId) as svc:
+				merged["iconFrame"] = await svc.frame_icon(merged.get("frameId"))
+
 			userProfileList.append(User.GetUserInfo(merged, ndcId=ndcId))
 
 		if userProfileList:
@@ -230,6 +234,10 @@ async def community_general_check(request: Request, ndcId: int):
 
 	checked_in_today = row.get("lastCheckInDate") == today_str
 
+
+	async with await StoreService.create(trigger_uid, ndcId) as svc:
+		row["iconFrame"] = await svc.frame_icon(row.get("frameId"))
+
 	return Base.Answer(
 		{
 			"hasCheckInToday": checked_in_today,
@@ -284,13 +292,17 @@ async def get_user_following(
 	xndcid_table = db.get(f"x{ndcId}", "Users")
 	row = await xndcid_table.find_one({"id": uid})
 	following = row["following"][start : start + size]
-	following_list = [
-		User.GetUserInfo(
-			await xndcid_table.find_one({"id": item}),
+
+	following_list=[]
+	for item in following:
+		user = await xndcid_table.find_one({"id": item})
+		async with await StoreService.create(item, ndcId) as svc:
+			user["iconFrame"] = await svc.frame_icon(user.get("frameId"))
+
+		following_list.append(
+			User.GetUserInfo(user),
 			ndcId=ndcId,
 		)
-		for item in following
-	]
 
 	db.close()
 	return Base.Answer({"userProfileList": following_list}, spent_time=timestamp() - t1)
@@ -307,13 +319,16 @@ async def get_user_followers(
 	xndcid_table = db.get(f"x{ndcId}", "Users")
 	row = await xndcid_table.find_one({"id": uid})
 	followers = row["whoFollows"][start : start + size]
-	followers_list = [
-		User.GetUserInfo(
-			await xndcid_table.find_one({"id": item}),
+	followers_list=[]
+	for item in followers:
+		user = await xndcid_table.find_one({"id": item})
+		async with await StoreService.create(item, ndcId) as svc:
+			user["iconFrame"] = await svc.frame_icon(user.get("frameId"))
+
+		followers_list.append(
+			User.GetUserInfo(user),
 			ndcId=ndcId,
 		)
-		for item in followers
-	]
 
 	db.close()
 	return Base.Answer({"userProfileList": followers_list}, spent_time=timestamp() - t1)
@@ -645,6 +660,17 @@ async def get_comment_voted_users(
 		db.close()
 		return Base.Answer({"userProfileList": []}, spent_time=timestamp() - t1)
 
+	voters_list=[]
+	for item in votes_selected:
+		user = await xndcid_table.find_one({"id": item})
+		async with await StoreService.create(item, ndcId) as svc:
+			user["iconFrame"] = await svc.frame_icon(user.get("frameId"))
+
+		voters_list.append(
+			User.GetUserInfo(user),
+			ndcId=ndcId,
+		)
+
 	voters_list = [
 		User.GetUserInfo(
 			await xndcid_table.find_one({"id": item}),
@@ -652,6 +678,7 @@ async def get_comment_voted_users(
 		)
 		for item in votes_selected
 	]
+	
 
 	db.close()
 	return Base.Answer({"userProfileList": voters_list}, spent_time=timestamp() - t1)
@@ -675,6 +702,9 @@ async def follow_user(uid: str, request: Request, ndcId: int = 0):
 	if suid not in target_user["whoFollows"] or uid not in inited_user["following"]:
 		await table.update_one({"id": uid}, {"$push": {"whoFollows": suid}})
 		await table.update_one({"id": suid}, {"$push": {"following": uid}})
+
+	async with await StoreService.create(suid, ndcId) as svc:
+		inited_user["iconFrame"] = await svc.frame_icon(inited_user.get("frameId"))
 
 	inviter = User.GetUserInfo(inited_user, triggerUserId=uid, ndcId=ndcId)
 
@@ -834,6 +864,9 @@ async def edit_user_info(uid, request: Request, ndcId=0):
 	if row2 is None:
 		return Errors.AccountNotExist(timestamp() - t1)
 
+	async with await StoreService.create(uid, ndcId) as svc:
+		row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
+
 	return Base.Answer(
 		{"userProfile": User.GetUserInfo(row2, ndcId=ndcId)},
 		spent_time=timestamp() - t1,
@@ -859,9 +892,13 @@ async def get_self_info(request: Request, ndcId: int = 0):
 	row2 = await table.find_one({"id": uid})
 	if row2 is None:
 		return Errors.AccountNotExist(timestamp() - t1)
+	row = row1 | row2
 	db.close()
+	async with await StoreService.create(row, ndcId) as svc:
+		row["iconFrame"] = await svc.frame_icon(row.get("frameId"))
+
 	return Base.Answer(
-		{"userProfile": User.GetUserInfo(row1 | row2, ndcId=ndcId)},
+		{"userProfile": User.GetUserInfo(row, ndcId=ndcId)},
 		spent_time=timestamp() - t1,
 	)
 
