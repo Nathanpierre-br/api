@@ -378,7 +378,7 @@ class StoreService:
         duration = item.get("availableDuration", 0)
         expired = None
         if duration:
-            expired = (datetime.now(UTC) + timedelta(days=duration)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            expired = (datetime.now(UTC) + timedelta(seconds=duration)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         ownership_info = {
             "createdTime": _iso(),

@@ -19,7 +19,7 @@ def _restriction(
         "restrictType": restrictType if restrictType is not None
         else (RestrictType.COIN if price else RestrictType.FREE),
         "restrictValue": price,
-        "availableDuration": availableDuration,
+        "availableDuration": availableDuration if availableDuration != 0 else None,
         "discountStatus": discountStatus if discountStatus is not None else DiscountStatus.OFF,
         "discountValue": discountValue or 0,
     }
