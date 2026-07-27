@@ -2,7 +2,7 @@ from typing import Union
 
 from .medialist import MediaList
 from .user import User
-
+from services.store import StoreService
 
 class Blog:
     @staticmethod
@@ -24,6 +24,10 @@ class Blog:
         else:
             xndc_users = connection.get(f"x{ndcId}", "Users")
             author_data = await xndc_users.find_one({"id": data["authorId"]}) or {}
+
+        if author_data:
+            async with await StoreService.create(data["authorId"], ndcId) as svc:
+                author_data["iconFrame"] = await svc.frame_icon(author_data.get("frameId"))
 
         extensions = data.get("extensions", {})
         return {

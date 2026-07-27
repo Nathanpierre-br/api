@@ -1,6 +1,6 @@
 from .user import User
 from .medialist import MediaList
-
+from services.store import StoreService
 
 class Comments:
     @staticmethod
@@ -22,6 +22,10 @@ class Comments:
             1 if triggerUserId in upvotes else -1 if triggerUserId in downvotes else 0
         )
 
+        author = await xndcid_users.find_one({"id": row["authorId"]}) or {}
+        async with await StoreService.create(row["authorId"], ndcId) as svc:
+            author["iconFrame"] = await svc.frame_icon(author.get("frameId"))
+
         return {
             "modifiedTime": row["modifiedTime"],
             "ndcId": ndcId,
@@ -33,7 +37,7 @@ class Comments:
             "votesSum": votesSum,
             "subcommentsPreview": [],  # subcomments preview
             "author": User.GetUserInfo(
-                await xndcid_users.find_one({"id": row["authorId"]}) or {}
+                author, ndcId
             ),
             "content": row["content"],
             "extensions": {} | extenstions,
@@ -63,6 +67,10 @@ class Comments:
             1 if triggerUserId in upvotes else -1 if triggerUserId in downvotes else 0
         )
 
+        author = await xndcid_users.find_one({"id": row["authorId"]}) or {}
+        async with await StoreService.create(row["authorId"], ndcId) as svc:
+            author["iconFrame"] = await svc.frame_icon(author.get("frameId"))
+
         return {
             "headCommentId": headCommentId,
             "modifiedTime": row["modifiedTime"],
@@ -74,7 +82,7 @@ class Comments:
             "mediaList": MediaList.List(row.get("mediaList", [])),
             "votesSum": votesSum,
             "author": User.GetUserInfo(
-                await xndcid_users.find_one({"id": row["authorId"]}) or {}
+                author, ndcId
             ),
             "content": row["content"],
             "extensions": {} | extenstions,

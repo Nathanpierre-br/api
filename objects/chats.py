@@ -28,6 +28,8 @@ class Chat:
         memberId: str, xndc_users, membershipStatus: bool = True, ndcId: int = 0
     ):
         xndc_data = await xndc_users.find_one({"id": memberId}) or {}
+        async with await StoreService.create(memberId, ndcId) as svc:
+            xndc_data["iconFrame"] = await svc.frame_icon(xndc_data.get("frameId"))
         return User.GetUserInfo(
             xndc_data, membershipStatus=1 if membershipStatus else 2, ndcId=ndcId
         )
@@ -221,6 +223,10 @@ class Chat:
         else:
             xndc_users = connection.get(f"x{ndcId}", "Users")
             host_xndcId = await xndc_users.find_one({"id": data["hostId"]}) or {}
+
+        if host_xndcId:
+            async with await StoreService.create(data["hostId"], ndcId) as svc:
+                host_xndcId["iconFrame"] = await svc.frame_icon(host_xndcId.get("frameId"))
 
         membershipStatus = 0
         if trigger_uid in data["memberList"]:
