@@ -232,7 +232,7 @@ class User:
 
         return {
             "iconFrameId": iconFrame.get("frameId"),
-            "iconFrame": iconFrame or None,
+            "avatarFrame": iconFrame or None,
             "status": row["status"],
             "uid": row["id"],
             "modifiedTime": row["modifiedTime"],
