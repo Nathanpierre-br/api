@@ -4,32 +4,38 @@ from datetime import UTC, datetime, timedelta
 from re import escape as regex_escape
 from time import time as timestamp
 from uuid import uuid4
-
+from datetime import datetime, timedelta, timezone as _tz
 from fastapi import APIRouter, Request
 from pymongo import DESCENDING
 from services.store import StoreService
 import asyncio
-
+from helpers.decorators.validauth import validauth_required
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
 
-from helpers.daily_settlement import (
-    CHECKIN_COIN_REWARDS,
-    CHECKIN_COIN_WEIGHTS,
-    LOTTERY_REWARDS,
-    LOTTERY_WEIGHTS,
-    date_str as _date_str,
-    earned_rep as _earned_rep,
-    get_tz as _get_tz,
-    local_date as _local_date,
-    settle_user_active_coins,
+
+
+from helpers.checkins import (
+    CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS,
+    LOTTERY_REWARDS, LOTTERY_WEIGHTS,
+    REPAIR_COIN_COST, REPAIR_WINDOW_SIZE,
+    REPAIR_METHOD_COIN, REPAIR_METHOD_AMINOPLUS,
+    local_date, date_str, iso_to_unix,
+    get_tz, earned_rep,
+    compute_streak, compute_broken_streaks, has_check_in_today,
+    build_history_b64, build_checkin_history_obj,
+    build_reminder_result
 )
+
+
+
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Comments, Errors, User
+from helpers.checkins import build_history_b64, iso_to_unix
 
 profile_methods = APIRouter()
 profile_methods.route_class = CachableRoute
@@ -160,6 +166,58 @@ async def get_recommended_profiles(request: Request, ndcId: int):
     return Base.Answer({"userProfileList": []})
 
 
+
+@profile_methods.get("/g/s/reminder/check")
+@profile_methods.get("/x{ndcId}/s/reminder/check")
+@validauth_required
+async def reminder_configs(
+    request: Request,
+    ndcId: int = 0,
+    ndcIds: str = "",
+    ignoreUnreadChatThreadsCount: bool = False,
+):
+    t1 = timestamp()
+    trigger_uid = request.state.session["uid"]
+
+    tz = await get_tz(request)
+    today = local_date(tz)
+
+    chunks: list[int] = []
+    if ndcIds:
+        for c in ndcIds.split(","):
+            c = c.strip()
+            if c:
+                try:
+                    chunks.append(int(c))
+                except ValueError:
+                    pass
+
+    db = await Database().init()
+    try:
+        if ndcId:
+            row = await db.get(f"x{ndcId}", table="Users").find_one({"id": trigger_uid})
+        else:
+            row = await db.get(table="Users").find_one({"id": trigger_uid})
+        main_result = build_reminder_result(row, today)
+
+        per_community = {}
+        for cid in chunks:
+            c_row = await db.get(f"x{cid}", table="Users").find_one({"id": trigger_uid})
+            per_community[str(cid)] = build_reminder_result(c_row, today)
+    finally:
+        db.close()
+
+    return Base.Answer(
+        {
+            "reminderCheckResult": main_result,
+            "treatedNdcIds": chunks,
+            "reminderCheckResultInCommunities": per_community,
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+
 @profile_methods.get("/x{ndcId}/s/check-in/history")
 async def check_in_history(
     request: Request, startTime: int, stopTime: int, ndcId: int, timezone: int = 0
@@ -177,31 +235,26 @@ async def check_in_history(
         return Errors.AccountNotExist(timestamp() - t1)
     db.close()
 
-    start_dt = datetime.fromtimestamp(startTime / 1000, UTC) + timedelta(
-        minutes=timezone
-    )
-    stop_dt = datetime.fromtimestamp(stopTime / 1000, UTC) + timedelta(minutes=timezone)
-    start_str, stop_str = _date_str(start_dt), _date_str(stop_dt)
+    start_dt = datetime.fromtimestamp(startTime, UTC) + timedelta(minutes=timezone)
+    stop_dt = datetime.fromtimestamp(stopTime, UTC) + timedelta(minutes=timezone)
 
-    full_history = row.get("checkInHistory", {}) or {}
-    # history = full_history #{d: v for d, v in full_history.items() if start_str <= d <= stop_str}
-
-    today_str = _date_str(_local_date(timezone))
-
-    filtered = {d: v for d, v in full_history.items() if start_str <= d <= stop_str}
+    history = row.get("checkInHistory", {}) or {}
+    today = local_date(timezone)
 
     return Base.Answer(
         {
             "checkInHistory": {
-                "joinedTime": None,
+                "joinedTime": iso_to_unix(row.get("createdTime")),
                 "startTime": startTime,
                 "stopTime": stopTime,
-                "consecutiveCheckInDays": row.get("consecutiveCheckInDays", 0),
-                "hasCheckInToday": row.get("lastCheckInDate") == today_str,
-                "hasAnyCheckIn": bool(full_history),
-                "history": dumps(filtered),
+                "consecutiveCheckInDays": compute_streak(history, today),
+                "hasCheckInToday": has_check_in_today(history, today),
+                "hasAnyCheckIn": bool(history),
+                "history": build_history_b64(history, start_dt, stop_dt),
+                "streakRepairCoinCost": REPAIR_COIN_COST,
+                "streakRepairWindowSize": REPAIR_WINDOW_SIZE,
             },
-            "brokenStreaks": row.get("brokenStreaks", 0),
+            "brokenStreaks": compute_broken_streaks(history, row, today),
         },
         spent_time=timestamp() - t1,
     )
@@ -215,8 +268,9 @@ async def community_general_check(request: Request, ndcId: int):
         return Errors.InvalidSession(timestamp() - t1)
     trigger_uid = request.state.session["uid"]
 
-    # tz = await _get_tz(request)
-    today_str = datetime.now().strftime("%Y-%m-%d")  # _date_str(_local_date(tz))
+    tz = await get_tz(request)
+    today = local_date(tz)
+    today_str = date_str(today)
 
     db = await Database().init()
     try:
@@ -232,11 +286,11 @@ async def community_general_check(request: Request, ndcId: int):
 
     if row is None:
         return Errors.AccountNotExist(timestamp() - t1)
-
     if row.get("banned"):
         return Errors.UserBanned(timestamp() - t1)
 
-    checked_in_today = row.get("lastCheckInDate") == today_str
+    history = row.get("checkInHistory", {}) or {}
+    checked_in_today = has_check_in_today(history, today)
 
     async with await StoreService.create(trigger_uid, ndcId) as svc:
         row["iconFrame"] = await svc.frame_icon(row.get("frameId"))
@@ -244,7 +298,7 @@ async def community_general_check(request: Request, ndcId: int):
     return Base.Answer(
         {
             "hasCheckInToday": checked_in_today,
-            "consecutiveCheckInDays": int(row.get("consecutiveCheckInDays", 0)),
+            "consecutiveCheckInDays": compute_streak(history, today),
             "canPlayLottery": checked_in_today
             and row.get("lastLotteryDate") != today_str,
             "userProfile": User.GetUserInfo(row, ndcId=ndcId),
@@ -256,6 +310,7 @@ async def community_general_check(request: Request, ndcId: int):
         },
         spent_time=timestamp() - t1,
     )
+
 
 
 @profile_methods.get("/x{ndcId}/s/user-profile/{userId}/achievements")
@@ -274,16 +329,249 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
     blogs_table = db.get(f"x{ndcId}", table="Blogs")
     blogs_count = await blogs_table.count_documents({"authorId": userId, "status": 0})
     db.close()
+
     return Base.Answer(
         {
             "achievements": {
-                "secondsSpent": int(row.get("secondsSpent", 0)),
-                "numberOfFollowersCount": len(row.get("whoFollows", [])),
                 "numberOfPostsCreated": blogs_count,
+                "numberOfMembersCount": len(row.get("whoFollows", [])),
+                "secondsSpentOfLast24Hours": int(row.get("secondsSpentOfLast24Hours", 0)),
+                "secondsSpentOfLast7Days": int(row.get("secondsSpentOfLast7Days", 0)),
             }
         },
         spent_time=timestamp() - t1,
     )
+
+
+
+@profile_methods.post("/g/s/wallet/daily-reward")
+@profile_methods.post("/x{ndcId}/s/check-in")
+async def claim_daily_reward(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+
+    tz = await get_tz(request)
+    now_local = local_date(tz)
+    today_str = date_str(now_local)
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", table="Users")
+        global_table = db.get(table="Users")
+
+        row = await table.find_one({"id": trigger_uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        if (row.get("checkInHistory", {}) or {}).get(today_str):
+            return Errors.AlreadyClaimed(timestamp() - t1)
+
+        coins = round(
+            random.choices(CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS, k=1)[0], 2
+        )
+
+        result = await table.update_one(
+            {"id": trigger_uid, f"checkInHistory.{today_str}": {"$ne": 1}},
+            {"$set": {f"checkInHistory.{today_str}": 1}},
+        )
+        if result.modified_count == 0:
+            return Errors.AlreadyClaimed(timestamp() - t1)
+
+        updated_row = await table.find_one({"id": trigger_uid})
+        history = updated_row.get("checkInHistory", {}) or {}
+        streak = compute_streak(history, now_local)
+        rep = earned_rep(streak)
+
+        await table.update_one(
+            {"id": trigger_uid}, {"$inc": {"reputation": rep}}
+        )
+
+        await global_table.update_one(
+            {"id": trigger_uid}, {"$inc": {"coins": coins}}
+        )
+
+        global_row = await global_table.find_one({"id": trigger_uid})
+    finally:
+        db.close()
+
+    updated_coins = round(float((global_row or {}).get("coins", 0.0)), 2)
+
+    return Base.Answer(
+        {
+            "claimedCoins": coins,
+            "totalCoins": int(updated_coins),
+            "totalCoinsFloat": updated_coins,
+            "consecutiveCheckInDays": streak,
+            "canPlayLottery": updated_row.get("lastLotteryDate") != today_str,
+            "earnedReputationPoint": rep,
+            "additionalReputationPoint": 0,
+            "checkInHistory": build_checkin_history_obj(updated_row, tz),
+            "userProfile": User.GetUserInfo(updated_row, ndcId=ndcId),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+
+@profile_methods.post("/g/s/check-in/lottery")
+@profile_methods.post("/x{ndcId}/s/check-in/lottery")
+async def claim_daily_lottery(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1)
+    trigger_uid = request.state.session["uid"]
+
+    tz = await get_tz(request)
+    now_local = local_date(tz)
+    today_str = date_str(now_local)
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", table="Users")
+        global_table = db.get(table="Users")
+
+        row = await table.find_one({"id": trigger_uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+
+        if not (row.get("checkInHistory", {}) or {}).get(today_str):
+            return Errors.LotteryNotAvailable(timestamp() - t1)
+
+        if row.get("lastLotteryDate") == today_str:
+            return Errors.LotteryPlayed(timestamp() - t1)
+
+        award = round(random.choices(LOTTERY_REWARDS, LOTTERY_WEIGHTS, k=1)[0], 2)
+
+        result = await table.update_one(
+            {"id": trigger_uid, "lastLotteryDate": {"$ne": today_str}},
+            {"$set": {"lastLotteryDate": today_str}},
+        )
+        if result.modified_count == 0:
+            return Errors.LotteryPlayed(timestamp() - t1)
+
+        await global_table.update_one(
+            {"id": trigger_uid}, {"$inc": {"coins": award}}
+        )
+
+        updated_row = await table.find_one({"id": trigger_uid})
+    finally:
+        db.close()
+
+    return Base.Answer(
+        {
+            "lotteryLog": {
+                "awardValue": int(award),
+                "awardType": 1,
+                "parentId": None,
+                "parentType": 0,
+                "objectId": str(uuid4()),
+                "objectType": 0,
+                "createdTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "refObject": None,
+            },
+            "userProfile": User.GetUserInfo(updated_row, ndcId=ndcId),
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+@profile_methods.post("/g/s/check-in/repair")
+@profile_methods.post("/x{ndcId}/s/check-in/repair")
+@validauth_required
+async def check_in_repair(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    trigger_uid = request.state.session["uid"]
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    repair_method = int(body.get("repairMethod", REPAIR_METHOD_COIN))
+    tz = await get_tz(request)
+    now_local = local_date(tz)
+    today_str = date_str(now_local)
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", table="Users")
+        global_table = db.get(table="Users")
+
+        row = await table.find_one({"id": trigger_uid})
+        if row is None:
+            return Errors.AccountNotExist(timestamp() - t1)
+
+        global_row = await global_table.find_one({"id": trigger_uid}) or {}
+        history = row.get("checkInHistory", {}) or {}
+        joined = None
+        joined_unix = iso_to_unix(row.get("createdTime"))
+        if joined_unix:
+            joined = datetime.fromtimestamp(joined_unix, UTC).date()
+
+        missed = []
+        for i in range(1, REPAIR_WINDOW_SIZE + 1):
+            day = now_local - timedelta(days=i)
+            if joined and day.date() < joined:
+                break
+            day_str = date_str(day)
+            if not history.get(day_str):
+                missed.append(day_str)
+
+        if not missed:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        repair_day = missed[0]
+
+        if repair_method == REPAIR_METHOD_COIN:
+            cost = REPAIR_COIN_COST
+            balance = round(float(global_row.get("coins", 0.0)), 2)
+            if balance < cost:
+                return Errors.NotEnoughCoins(timestamp() - t1)
+
+            res = await global_table.update_one(
+                {"id": trigger_uid, "coins": {"$gte": cost}},
+                {"$inc": {"coins": -cost}},
+            )
+            if res.modified_count == 0:
+                return Errors.NotEnoughCoins(timestamp() - t1)
+
+        elif repair_method == REPAIR_METHOD_AMINOPLUS:
+            if not global_row.get("isPaidSubscriber"):
+                return Errors.MembershipRequired(timestamp() - t1)
+
+            last_free = global_row.get("lastFreeStreakRepair")
+            if last_free:
+                last_dt = datetime.fromisoformat(last_free.replace("Z", "+00:00"))
+                if (datetime.now(UTC) - last_dt) < timedelta(days=30):
+                    return Errors.RepairAlreadyUsed(timestamp() - t1)
+
+            await global_table.update_one(
+                {"id": trigger_uid},
+                {"$set": {"lastFreeStreakRepair": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}},
+            )
+        else:
+            return Errors.InvalidRequest(timestamp() - t1)
+
+        await table.update_one(
+            {"id": trigger_uid},
+            {"$set": {f"checkInHistory.{repair_day}": 1}},
+        )
+
+        updated_row = await table.find_one({"id": trigger_uid})
+    finally:
+        db.close()
+
+    return Base.Answer(
+        {"checkInHistory": build_checkin_history_obj(updated_row, tz)},
+        spent_time=timestamp() - t1,
+    )
+
+
+
+
+
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/joined")
@@ -939,154 +1227,6 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
         spent_time=timestamp() - t1,
     )
 
-
-@profile_methods.post("/g/s/wallet/daily-reward")
-@profile_methods.post("/x{ndcId}/s/check-in")
-async def claim_daily_reward(request: Request, ndcId: int = 0):
-    t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-    trigger_uid = request.state.session["uid"]
-
-    tz = await _get_tz(request)
-    now_local = _local_date(tz)
-    today_str = _date_str(now_local)
-    yesterday_str = _date_str(now_local - timedelta(days=1))
-
-    db = await Database().init()
-    try:
-        table = db.get(f"x{ndcId}", table="Users")
-        global_table = db.get(table="Users")
-
-        row = await table.find_one({"id": trigger_uid})
-        if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
-
-        if row.get("lastCheckInDate") == today_str:
-            return Errors.AlreadyClaimed(timestamp() - t1)
-
-        prev_streak = int(row.get("consecutiveCheckInDays", 0))
-        if row.get("lastCheckInDate") == yesterday_str:
-            streak = prev_streak + 1
-            broke = 0
-        else:
-            streak = 1
-            broke = 1 if row.get("lastCheckInDate") else 0
-
-        coins = round(
-            random.choices(CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS, k=1)[0], 2
-        )
-        rep = _earned_rep(streak)
-
-        result = await table.update_one(
-            {"id": trigger_uid, "lastCheckInDate": {"$ne": today_str}},
-            {
-                "$inc": {"reputation": rep, "brokenStreaks": broke},
-                "$set": {
-                    "lastCheckInDate": today_str,
-                    "consecutiveCheckInDays": streak,
-                    f"checkInHistory.{today_str}": 1,
-                },
-            },
-        )
-        if result.modified_count == 0:
-            return Errors.AlreadyClaimed(timestamp() - t1)
-
-        await global_table.update_one(
-            {"id": trigger_uid},
-            {"$inc": {"coins": coins}},
-        )
-
-        updated_row = await table.find_one({"id": trigger_uid})
-        global_row = await global_table.find_one({"id": trigger_uid})
-    finally:
-        db.close()
-
-    updated_coins = round(float((global_row or {}).get("coins", 0.0)), 2)
-    return Base.Answer(
-        {
-            "claimedCoins": coins,
-            "totalCoins": int(updated_coins),
-            "totalCoinsFloat": updated_coins,
-            "consecutiveCheckInDays": streak,
-            "canPlayLottery": updated_row.get("lastLotteryDate") != today_str,
-            "earnedReputationPoint": rep,
-            "additionalReputationPoint": 0,
-            "checkInHistory": {
-                "joinedTime": None,
-                "startTime": None,
-                "stopTime": None,
-                "consecutiveCheckInDays": streak,
-                "hasCheckInToday": True,
-                "hasAnyCheckIn": True,
-                "history": None,
-            },
-            "userProfile": User.GetUserInfo(updated_row, ndcId=ndcId),
-        },
-        spent_time=timestamp() - t1,
-    )
-
-
-@profile_methods.post("/g/s/check-in/lottery")
-@profile_methods.post("/x{ndcId}/s/check-in/lottery")
-async def claim_daily_lottery(request: Request, ndcId: int = 0):
-    t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-    trigger_uid = request.state.session["uid"]
-
-    tz = await _get_tz(request)
-    today_str = _date_str(_local_date(tz))
-
-    db = await Database().init()
-    try:
-        table = db.get(f"x{ndcId}", table="Users")
-        global_table = db.get(table="Users")
-
-        row = await table.find_one({"id": trigger_uid})
-        if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
-
-        if row.get("lastCheckInDate") != today_str:
-            return Errors.LotteryNotAvailable(timestamp() - t1)
-
-        if row.get("lastLotteryDate") == today_str:
-            return Errors.LotteryPlayed(timestamp() - t1)
-
-        award = round(random.choices(LOTTERY_REWARDS, LOTTERY_WEIGHTS, k=1)[0], 2)
-
-        result = await table.update_one(
-            {"id": trigger_uid, "lastLotteryDate": {"$ne": today_str}},
-            {"$set": {"lastLotteryDate": today_str}},
-        )
-        if result.modified_count == 0:
-            return Errors.LotteryPlayed(timestamp() - t1)
-
-        await global_table.update_one(
-            {"id": trigger_uid},
-            {"$inc": {"coins": award}},
-        )
-
-        updated_row = await table.find_one({"id": trigger_uid})
-    finally:
-        db.close()
-
-    return Base.Answer(
-        {
-            "lotteryLog": {
-                "awardValue": int(award),
-                "awardType": 1,
-                "parentId": None,
-                "parentType": 0,
-                "objectId": str(uuid4()),
-                "objectType": 0,
-                "createdTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "refObject": None,
-            },
-            "userProfile": User.GetUserInfo(updated_row, ndcId=ndcId),
-        },
-        spent_time=timestamp() - t1,
-    )
 
 
 @profile_methods.get("/g/s/wallet/setting/ads")

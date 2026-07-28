@@ -117,7 +117,7 @@ class User:
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
-            "reputation": 0,  # if ndcId == 0 else row["reputation"],
+            "reputation": 0 if ndcId == 0 else row.get("reputation", 0),  # if ndcId == 0 else row["reputation"],
             "level": 0 if ndcId == 0 else get_level(row.get("reputation", 0)),
             "mood": None,  # if ndcId == 0 else row["mood"],
             "content": ((row.get("description") or "").strip()),
@@ -302,7 +302,7 @@ class User:
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
-            "reputation": row.get("reputation", 0),
+            "reputation": 0 if ndcId == 0 else row.get("reputation", 0),
             "level": 0 if ndcId == 0 else get_level(row.get("reputation", 0)),
             "mood": None if ndcId == 0 else row.get("mood"),
             "moodSticker": (
@@ -341,7 +341,7 @@ class User:
             }
             | extensions,
             "consecutiveCheckInDays": (
-                None if ndcId == 0 else row.get("consecutiveDaysOfCheckIns", 0)
+                None if ndcId == 0 else row.get("consecutiveCheckInDays", 0)
             ),  # [TODO] when communitues will be implemented do that
             "onlineStatus": 2,  # [TODO]: check wtf is this
             "isNicknameVerified": bool(row.get("isVerified", False)),
