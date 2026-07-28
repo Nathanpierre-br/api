@@ -18,7 +18,7 @@ from helpers.database.redis import get as get_redis
 
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
-
+from services.store import StoreService
 communities = APIRouter()
 communities.route_class = CachableRoute
 
@@ -562,13 +562,15 @@ async def get_community_profiles(
     try:
         table = db.get(f"x{ndcId}", "Users")
 
-        items = [
-            User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1)
-            async for item in table.find(query)
-            .skip(start)
-            .limit(size)
-            .sort([("role", DESCENDING), ("createdTime", -1)])
-        ]
+        items = []
+
+        async for item in table.find(query).skip(start).limit(size).sort([("role", DESCENDING), ("createdTime", -1)]):
+            async with await StoreService.create(item["id"], ndcId) as svc:
+                item["iconFrame"] = await svc.frame_icon(item.get("frameId"))
+
+            items.append(User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1))
+
+
         return Base.Answer(
             {
                 "userProfileCount": 0,
@@ -760,11 +762,14 @@ async def _get_profiles_for_live_layer(ndcId: int, uids: list[str]) -> list[dict
         table = db.get(f"x{ndcId}", "Users")
         cursor = table.find({"id": {"$in": uids}})
         rows_by_id = {row["id"]: row async for row in cursor}
-        return [
-            User.OwnNonSensetiveProfile(rows_by_id[u], ndcId=ndcId, membershipStatus=1)
-            for u in uids
-            if u in rows_by_id
-        ]
+        result = []
+        for u in uids:
+            if u in rows_by_id:
+                row = rows_by_id[u]
+                async with await StoreService.create(u, ndcId) as svc:
+                    row["iconFrame"] = await svc.frame_icon(row.get("frameId"))
+                result.append(User.OwnNonSensetiveProfile(row, ndcId=ndcId, membershipStatus=1))
+        return result
     finally:
         db.close()
 

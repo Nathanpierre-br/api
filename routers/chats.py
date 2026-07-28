@@ -30,7 +30,7 @@ from helpers.functions import (
 from helpers.imageTools import ImageTools
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Chat, Errors, User
-from objects.types import ChatType, UserRole
+from objects.types import ChatType, UserRole, ChatAlertOptions
 from objects.types.store import StoreItemType
 from services.store import StoreService
 
@@ -1082,19 +1082,38 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     }
     target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
     asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
-    asyncio.get_event_loop().create_task(
-        send_admin_ws(
-            {
-                "ndcId": ndcId,
-                "threadId": chatId,
-                "messageType": data["type"],
-                "content": data.get("content"),
-                "author": messageObj["author"],
-            },
-            target,  # TODO notifications off
-            ApiBroadcastType.ChatMessagePush,
+
+
+    alert_options = chat_info.get("alertOptions", {})
+    mentioned_uids = [
+        m.get("uid")
+        for m in extensions.get("mentionedArray", [])
+        if isinstance(m, dict)
+    ]
+    notify_targets = []
+    for usr in target:
+        if usr == trigger_uid:
+            continue
+        alert = alert_options.get(usr, 1)
+        if alert == 2 and usr not in mentioned_uids:
+            continue
+        notify_targets.append(usr)
+
+    if notify_targets:
+        asyncio.get_event_loop().create_task(
+            send_admin_ws(
+                {
+                    "ndcId": ndcId,
+                    "threadId": chatId,
+                    "messageType": data["type"],
+                    "content": data.get("content"),
+                    "author": messageObj["author"],
+                },
+                notify_targets,
+                ApiBroadcastType.ChatMessagePush,
+            )
         )
-    )
+
 
     db.close()
     return answer
@@ -1168,9 +1187,9 @@ async def get_message(request: Request, chatId: str, messageId: str, ndcId: int 
 
 
 @chats.delete("/g/s/chat/thread/{chatId}/message/{messageId}")
-@chats.delete("/g/s/chat/thread/{chatId}/message/{messageId}/{admin}")
+@chats.post("/g/s/chat/thread/{chatId}/message/{messageId}/{admin}")
 @chats.delete("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}")
-@chats.delete("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}/{admin}")
+@chats.post("/x{ndcId}/s/chat/thread/{chatId}/message/{messageId}/{admin}")
 async def delete_message(
     request: Request, chatId: str, messageId: str, ndcId: int = 0, admin: str = ""
 ):
@@ -1191,7 +1210,9 @@ async def delete_message(
         if user and user.get("role", 0) in [100, 101, 102, 250, 251, 555]:
             await table.delete_one(
                 {"messageId": messageId}
-            )  # todo: maybe somehow save them?
+            )
+
+            #todo add it to moderation logs maybe?
 
             db.close()
             return Base.Answer(spent_time=timestamp() - t1)
@@ -2140,3 +2161,35 @@ async def toggle_things(
     else:
         db.close()
         return Errors.NotEnoughRights(timestamp() - t1)
+
+
+
+
+@chats.post("/g/s/chat/thread/{chatId}/member/{userId}/alert")
+@chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/{userId}/alert")
+async def chat_alert_options(
+    chatId: str, userId: str, request: Request, ndcId: int = 0
+):
+    t1 = timestamp()
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession()
+
+    uid = request.state.session["uid"]
+    if uid in [None, "", False]:
+        return Errors.InvalidSession(timestamp() - t1)
+    if uid != userId:
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    data = await request.json()
+    alert_option = data.get("alertOption")
+
+    if alert_option not in (ChatAlertOptions.ON, ChatAlertOptions.OFF):
+        return Errors.InvalidRequest(timestamp() - t1)
+    db = await Database().init()
+    chat = db.get(f"x{ndcId}", "Chats")
+    await chat.update_one(
+        {"id": chatId},
+        {"$set": {f"alertOptions.{uid}": alert_option}}
+    )
+    db.close()
+    return Base.Answer(spent_time=timestamp() - t1)

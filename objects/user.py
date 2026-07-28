@@ -4,10 +4,51 @@ from .medialist import MediaList
 from helpers.store import build_avatar_frame_icon
 
 
+LEVEL_REPUTATION = {
+    1: 0,
+    2: 20,
+    3: 70,
+    4: 170,
+    5: 320,
+    6: 535,
+    7: 835,
+    8: 1235,
+    9: 1750,
+    10: 2400,
+    11: 3200,
+    12: 4200,
+    13: 5400,
+    14: 6800,
+    15: 8500,
+    16: 10500,
+    17: 12800,
+    18: 15500,
+    19: 18700,
+    20: 22500,
+}
+
+
+def get_level(reputation: int) -> int:
+    level = 0
+    for lvl, req in LEVEL_REPUTATION.items():
+        if reputation >= req:
+            level = lvl
+        else:
+            break
+    return level
+
+
+
 class User:
     @staticmethod
     def OwnSensetiveProfile(row):
+        iconFrame = row.get("iconFrame")
+        if iconFrame is None:
+            iconFrame = {}
+
         return {
+            "iconFrameId": iconFrame.get("frameId"),
+            "avatarFrame": iconFrame or None,
             "username": None,
             "status": row.get("status", 0),
             "uid": row["id"],
@@ -56,7 +97,13 @@ class User:
         triggerUserId is who triggered this shit
         """
         ndcId = int(ndcId)
+        iconFrame = row.get("iconFrame")
+        if iconFrame is None:
+            iconFrame = {}
+
         return {
+            "iconFrameId": iconFrame.get("frameId"),
+            "avatarFrame": iconFrame or None,
             "status": row["status"],
             "uid": row["id"],
             "modifiedTime": row["modifiedTime"],
@@ -71,7 +118,7 @@ class User:
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
             "reputation": 0,  # if ndcId == 0 else row["reputation"],
-            "level": 0,  # if ndcId == 0 else row["level"],
+            "level": 0 if ndcId == 0 else get_level(row.get("reputation", 0)),
             "mood": None,  # if ndcId == 0 else row["mood"],
             "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["following"]),
@@ -142,7 +189,13 @@ class User:
         if membershipStatus is not None:
             followingStatus = membershipStatus
 
+        iconFrame = row.get("iconFrame")
+        if iconFrame is None:
+            iconFrame = {}
+
         return {
+            "iconFrameId": iconFrame.get("frameId"),
+            "avatarFrame": iconFrame or None,
             "status": row["status"],
             "uid": row["id"],
             "modifiedTime": row["modifiedTime"],
@@ -157,7 +210,7 @@ class User:
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
             "reputation": 0 if ndcId == 0 else row["reputation"],
-            "level": 0 if ndcId == 0 else row["level"],
+            "level": 0 if ndcId == 0 else get_level(row.get("reputation", 0)),
             "mood": None if ndcId == 0 else row["mood"],
             "content": ((row.get("description") or "").strip()),
             "joinedCount": len(row["whoFollows"]),
@@ -250,7 +303,7 @@ class User:
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
             "reputation": row.get("reputation", 0),
-            "level": 0 if ndcId == 0 else row.get("level", 0),
+            "level": 0 if ndcId == 0 else get_level(row.get("reputation", 0)),
             "mood": None if ndcId == 0 else row.get("mood"),
             "moodSticker": (
                 None if ndcId == 0 else row.get("mood")
