@@ -299,7 +299,7 @@ async def community_general_check(request: Request, ndcId: int):
         {
             "hasCheckInToday": checked_in_today,
             "consecutiveCheckInDays": compute_streak(history, today),
-            "canPlayLottery": checked_in_today
+            "canPlayLottery": а
             and row.get("lastLotteryDate") != today_str,
             "userProfile": User.GetUserInfo(row, ndcId=ndcId),
             "notificationsCount": 0,
