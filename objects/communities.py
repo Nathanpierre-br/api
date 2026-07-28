@@ -10,6 +10,7 @@ from .user import User
 this is top tier bullshit
 """
 
+
 RANKING_TABLE = [
     {"id": "1",  "level": 1,  "reputation": 0,     "title": "Level 1"},
     {"id": "2",  "level": 2,  "reputation": 20,    "title": "Level 2"},
@@ -31,67 +32,93 @@ RANKING_TABLE = [
     {"id": "18", "level": 18, "reputation": 15500, "title": "Level 18"},
     {"id": "19", "level": 19, "reputation": 18700, "title": "Level 19"},
     {"id": "20", "level": 20, "reputation": 22500, "title": "Level 20"},
+    {"id": "21", "level": 21, "reputation": 225500, "title": "Level 21"},
 ]
 
 
-
-
-PAGES = {
-    "defaultList": [
-        #        {"url": "ndc://leaderboards", "alias": None, "id": "leaderboards-default"},
-        {"url": "ndc://featured", "alias": None, "id": "featured-default"},
-        {"url": "ndc://my-chats", "alias": None, "id": "chat-default"},
-        {"url": "ndc://public-chats", "alias": None, "id": "chat-public-chats"},
-        {"url": "ndc://latest-posts", "alias": None, "id": "post-latest-feed"},
-        {"url": "ndc://following-feed", "alias": None, "id": "post-following-feed"},
-        {"url": "ndc://image-posts", "alias": None, "id": "post-image-posts"},
-        {"url": "ndc://blogs", "alias": None, "id": "post-blogs"},
-        #        {"url": "ndc://quizzes", "alias": None, "id": "post-quizzes"},
-        #        {
-        #            "url": "ndc://quizzes/best",
-        #            "alias": None,
-        #            "id": "post-best-quizzes",
-        #            "parentId": "post-quizzes",
-        #        },
-        #        {
-        #            "url": "ndc://quizzes/trending",
-        #            "alias": None,
-        #            "id": "post-trending-quizzes",
-        #            "parentId": "post-quizzes",
-        #        },
-        #        {
-        #            "url": "ndc://quizzes/latest",
-        #            "alias": None,
-        #            "id": "post-latest-quizzes",
-        #            "parentId": "post-quizzes",
-        #        },
-        #        {"url": "ndc://link-posts", "alias": None, "id": "post-link-posts"},
-        {"url": "ndc://questions", "alias": None, "id": "post-questions"},
-        {"url": "ndc://polls", "alias": None, "id": "post-polls"},
-        #        {"url": "ndc://stories", "alias": None, "id": "post-stories"},
-        #        {"url": "ndc://shared-folder", "alias": None, "id": "shared-folder"},
-        #        {
-        #            "url": "ndc://shared-folder/albums",
-        #            "alias": None,
-        #            "id": "shared-folder-albums",
-        #            "parentId": "shared-folder",
-        #        },
-        #        {
-        #            "url": "ndc://shared-folder/photos",
-        #            "alias": None,
-        #            "id": "shared-folder-photos",
-        #            "parentId": "shared-folder",
-        #        },
-        #        {"url": "ndc://catalog", "alias": None, "id": "catalog-default"},
-        #        {
-        #            "url": "ndc://blog-categories",
-        #            "alias": None,
-        #            "id": "topic-categories-default",
-        #        },
-        {"url": "ndc://guidelines", "alias": None, "id": "guidelines"},
-    ],
-    "customList": [],
+MODULE_DEFAULTS = {
+    "post": True,
+    "chat": True,
+    "ranking": True,
+    "leaderboard": False,
+    "featured": False,
+    "catalog": False,
+    "sharedFolder": False,
+    "influencer": False,
+    "topicCategories": False,
+    "externalContent": False,
 }
+
+
+def _mod_enabled(mods: dict, name: str) -> bool:
+    m = mods.get(name)
+    if isinstance(m, dict):
+        return bool(m.get("enabled", MODULE_DEFAULTS.get(name, True)))
+    if isinstance(m, bool):
+        return m
+    return MODULE_DEFAULTS.get(name, True)
+
+
+
+_DEFAULT_PAGES = [
+    ({"url": "ndc://leaderboards",    "alias": None, "id": "leaderboards-default",    "parentId": None, "originalTitle": None}, "ranking"),
+    ({"url": "ndc://featured",        "alias": None, "id": "featured-default",        "parentId": None, "originalTitle": None}, "featured"),
+    ({"url": "ndc://my-chats",        "alias": None, "id": "chat-default",            "parentId": None, "originalTitle": None}, "chat"),
+    ({"url": "ndc://public-chats",    "alias": None, "id": "chat-public-chats",       "parentId": None, "originalTitle": None}, "chat"),
+    ({"url": "ndc://latest-posts",    "alias": None, "id": "post-latest-feed",        "parentId": None, "originalTitle": None}, "post"),
+    ({"url": "ndc://following-feed",  "alias": None, "id": "post-following-feed",     "parentId": None, "originalTitle": None}, "post"),
+    ({"url": "ndc://image-posts",     "alias": None, "id": "post-image-posts",        "parentId": None, "originalTitle": None}, "post"),
+    ({"url": "ndc://blogs",           "alias": None, "id": "post-blogs",              "parentId": None, "originalTitle": None}, "post"),
+    ({"url": "ndc://questions",       "alias": None, "id": "post-questions",          "parentId": None, "originalTitle": None}, "post"),
+    ({"url": "ndc://polls",           "alias": None, "id": "post-polls",              "parentId": None, "originalTitle": None}, "post"),
+    ({"url": "ndc://catalog",         "alias": None, "id": "catalog-default",         "parentId": None, "originalTitle": None}, "catalog"),
+    ({"url": "ndc://shared-folder",   "alias": None, "id": "shared-folder",           "parentId": None, "originalTitle": None}, "sharedFolder"),
+    ({"url": "ndc://blog-categories", "alias": None, "id": "topic-categories-default","parentId": None, "originalTitle": None}, "topicCategories"),
+    ({"url": "ndc://guidelines",      "alias": None, "id": "guidelines",              "parentId": None, "originalTitle": None}, None),
+]
+
+
+def _build_pages(mods: dict, conf: dict) -> dict:
+    default_list = [
+        page for page, gate in _DEFAULT_PAGES
+        if gate is None or _mod_enabled(mods, gate)
+    ]
+    return {
+        "defaultList": conf.get("pageDefaultList", default_list),
+        "customList": conf.get("pageCustomList", []),
+    }
+
+
+
+def _build_appearance(conf: dict) -> dict:
+    return {
+        "leftSidePanel": {
+            "style": {
+                "iconColor": conf.get("sidepanelIconColor"),
+            },
+            "navigation": {
+                "level1": conf.get("sidepanelTopNav", [
+                    {"id": "guidelines"},
+                    {"id": "chat-default"},
+                    {"id": "chat-public-chats"},
+                ]),
+                "level2": conf.get("sidepanelBottomNav", []),
+            },
+        },
+        "homePage": {
+            "navigation": conf.get("homepageNav", [
+                {"id": "guidelines"},
+                {"id": "post-latest-feed", "isStartPage": True},
+                {"id": "chat-public-chats"},
+            ]),
+        },
+    }
+
+def _mod_field(mods: dict, name: str, field: str, default):
+    m = mods.get(name)
+    if isinstance(m, dict):
+        return m.get(field, default)
+    return default
 
 
 class Communities:
@@ -120,7 +147,6 @@ class Communities:
             data = ndcId
             ndcId = data["id"]
 
-        # host_global = connection.get(table="Users").find_one({"id": data["agent"]})
         table = connection.get(f"x{ndcId}", "Users")
         host_xndcId = await table.find_one({"id": data["agent"]})
         agent = User.OwnNonSensetiveProfile(host_xndcId, ndcId) if host_xndcId else None
@@ -134,12 +160,16 @@ class Communities:
 
         conf = data.get("configuration", {})
         mods = conf.get("modules", {})
+        adv = conf.get("advancedSettings", {})
 
         chat_mod = mods.get("chat", {})
         blog_mod = mods.get("blog", {})
         poll_mod = mods.get("poll", {})
         image_mod = mods.get("image", {})
         question_mod = mods.get("question", {})
+
+        av = chat_mod.get("avChat", {}) if isinstance(chat_mod, dict) else {}
+
         return {
             "agent": agent,
             "ndcId": ndcId,
@@ -158,13 +188,13 @@ class Communities:
             "extensions": {},
             "createdTime": data.get("createdTime", "2023-01-01T12:00:00Z"),
             "modifiedTime": data.get("modifiedTime", "2023-01-01T12:00:00Z"),
-            "userAddedTopicList": [],
-            "searchable": True,
-            "influencerList": [],
+            "userAddedTopicList": data.get("userAddedTopicList", []),
+            "searchable": data.get("searchable", True),
+            "influencerList": data.get("influencerList", []),
             "primaryLanguage": data.get("lang", "en"),
             "isStandaloneAppDeprecated": False,
             "listedStatus": data.get("listedStatus", 2),
-            "probationStatus": 0,
+            "probationStatus": data.get("probationStatus", 0),
             "hidden": data.get("hidden", False),
             "themePack": {
                 "themeColor": data.get("themeColor", "#1B1C43"),
@@ -172,9 +202,7 @@ class Communities:
                 "themePackHash": data.get(
                     "themeHash",
                     sha256(
-                        data.get("themeUrl", "https://trolo.lol/example").encode(
-                            "utf-8"
-                        )
+                        data.get("themeUrl", "https://trolo.lol/example").encode("utf-8")
                     ).hexdigest(),
                 ),
                 "themePackRevision": data.get("themeRevision"),
@@ -183,10 +211,10 @@ class Communities:
             "isStandaloneAppMonetizationEnabled": False,
             "activeInfo": {},
             "configuration": {
-                "page": PAGES,
+                "page": _build_pages(mods, conf),
                 "module": {
                     "post": {
-                        "enabled": True,
+                        "enabled": _mod_enabled(mods, "post"),
                         "postType": {
                             "publicChatRooms": Communities.ModuleInfo(chat_mod),
                             "blog": Communities.ModuleInfo(blog_mod),
@@ -196,61 +224,62 @@ class Communities:
                         },
                     },
                     "chat": {
-                        "enabled": chat_mod.get("enabled", True),
-                        "spamProtectionEnabled": True,
+                        "enabled": _mod_enabled(mods, "chat"),
+                        "spamProtectionEnabled": _mod_field(mods, "chat", "spamProtectionEnabled", True),
                         "avChat": {
-                            "screeningRoomEnabled": False,
-                            "audioEnabled": True,
-                            "videoEnabled": False,
-                            "audio2Enabled": True,
+                            "screeningRoomEnabled": av.get("screeningRoomEnabled", False),
+                            "audioEnabled": av.get("audioEnabled", True),
+                            "videoEnabled": av.get("videoEnabled", False),
+                            "audio2Enabled": av.get("audio2Enabled", True),
                         },
                         "publicChat": Communities.ModuleInfo(chat_mod),
                     },
                     "ranking": {
-                        "enabled": True,
-                        "leaderboardEnabled": True,
-                        "rankingTable": RANKING_TABLE,
-                        "leaderboardList": [],  
+                        "enabled": _mod_enabled(mods, "ranking"),
+                        "leaderboardEnabled": _mod_enabled(mods, "leaderboard"),
+                        "rankingTable": conf.get("rankingTable", RANKING_TABLE),
+                        "leaderboardList": conf.get("leaderboardList", []),
+                    },
+                    "featured": {
+                        "enabled": _mod_enabled(mods, "featured"),
+                        "postEnabled": _mod_field(mods, "featured", "postEnabled", _mod_enabled(mods, "featured")),
+                        "memberEnabled": _mod_field(mods, "featured", "memberEnabled", _mod_enabled(mods, "featured")),
+                        "publicChatRoomEnabled": _mod_field(mods, "featured", "publicChatRoomEnabled", _mod_enabled(mods, "chat")),
+                        "layout": _mod_field(mods, "featured", "layout", 1),
+                    },
+                    "catalog": {
+                        "enabled": _mod_enabled(mods, "catalog"),
+                        "curationEnabled": _mod_field(mods, "catalog", "curationEnabled", _mod_enabled(mods, "catalog")),
+                    },
+                    "sharedFolder": {
+                        "enabled": _mod_enabled(mods, "sharedFolder"),
+                        "uploadPrivilege": _mod_field(mods, "sharedFolder", "uploadPrivilege", 2),
+                        "albumManagePrivilege": _mod_field(mods, "sharedFolder", "albumManagePrivilege", 2),
+                    },
+                    "influencer": {
+                        "enabled": _mod_enabled(mods, "influencer"),
+                        "maxVipNumbers": _mod_field(mods, "influencer", "maxVipNumbers", 12),
+                        "maxVipMonthlyFee": _mod_field(mods, "influencer", "maxVipMonthlyFee", 500),
+                        "lock": _mod_field(mods, "influencer", "lock", False),
+                    },
+                    "topicCategories": {
+                        "enabled": _mod_enabled(mods, "topicCategories"),
+                    },
+                    "externalContent": {
+                        "enabled": _mod_enabled(mods, "externalContent"),
                     },
                 },
-                "appearance": {
-                    "leftSidePanel": {
-                        "style": {  # there is possible to add icon, i need example community infos
-                            "iconColor": None,
-                        },
-                        "navigation": {
-                            "level1": conf.get(
-                                "sidepanelTopNav",
-                                [
-                                    {"id": "guidelines"},
-                                    {"id": "chat-default"},
-                                    {"id": "chat-public-chats"},
-                                ],
-                            ),
-                            "level2": conf.get("sidepanelBottomNav", []),
-                        },
-                    },
-                    "homePage": {
-                        "navigation": conf.get(
-                            "homepageNav",
-                            [
-                                {"id": "guidelines"},
-                                {"id": "post-latest-feed"},
-                                {"id": "chat-public-chats", "isStartPage": True},
-                            ],
-                        )
-                    },
-                },
+                "appearance": _build_appearance(conf),
             },
             "advancedSettings": {
-                "pollMinFullBarVoteCount": 10,
+                "pollMinFullBarVoteCount": adv.get("pollMinFullBarVoteCount", 10),
                 "welcomeMessageEnabled": conf.get("welcomeMessageEnabled", False),
                 "welcomeMessageText": conf.get("welcomeMessage", ""),
-                "catalogEnabled": True,  # ???
-                "defaultRankingTypeInLeaderboard": 1,
+                "catalogEnabled": _mod_enabled(mods, "catalog"),
+                "defaultRankingTypeInLeaderboard": adv.get("defaultRankingTypeInLeaderboard", 1),
                 "frontPageLayout": conf.get("frontPageLayout", 1),
             },
-            "communityHeadList": [],
+            "communityHeadList": data.get("communityHeadList", []),
             "promotionalMediaList": [MediaList.Item(data["coverUrl"])]
             if "coverUrl" in data
             else None,
