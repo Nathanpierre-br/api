@@ -240,7 +240,7 @@ class Chat:
             membershipStatus = 1
         elif trigger_uid in data["invitedList"]:
             membershipStatus = 2
-
+        alert_options = data.get("alertOptions", {})
         return {
             "userAddedTopicList": [],
             "uid": data["hostId"],
@@ -292,7 +292,7 @@ class Chat:
             "membershipStatus": membershipStatus,
             "content": data.get("description"),
             "needHidden": False,
-            "alertOption": 1,
+            "alertOption": alert_options.get(trigger_uid, 1),
             "lastReadTime": data["lastReadedList"].get(
                 trigger_uid,
                 datetime.fromtimestamp(0, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),

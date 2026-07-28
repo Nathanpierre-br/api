@@ -104,11 +104,26 @@ def _build_bubble_ref(
         else False,
         **_common_ref_fields(bubble, restriction, created, modified, ndcId=ndcId),
     }
+def _build_sticker(sticker: dict) -> dict:
+    return {
+        "stickerId": sticker["stickerId"],
+        "name": sticker.get("name"),
+        "stickerCollectionId": sticker.get("stickerCollectionId"),
+        "status": sticker.get("status", 0),
+        "stickerStatus": sticker.get("stickerStatus", 0),
+        "sourceType": sticker.get("sourceType", 0),
+        "isGift": sticker.get("isGift", False),
+        "iconV2": sticker.get("iconV2") or sticker.get("icon"),
+        "smallIconV2": sticker.get("smallIconV2") or sticker.get("smallIcon"),
+        "mediumIconV2": sticker.get("mediumIconV2") or sticker.get("thumbnail"),
+    }
 
 
 def _build_sticker_ref(
     coll: dict, restriction: dict, created: str, modified: str, ndcId: int | None = None
 ) -> dict:
+    raw_stickers = coll.get("stickerList") or coll.get("stickersList") or []
+    stickers = [_build_sticker(s) for s in raw_stickers]
     return {
         "collectionId": coll["collectionId"],
         "collectionType": coll.get("collectionType", 1),
@@ -118,12 +133,12 @@ def _build_sticker_ref(
         "bannerUrl": coll.get("bannerUrl"),
         "description": coll.get("description", ""),
         "usedCount": coll.get("usedCount", 0),
-        "stickersCount": coll.get("stickersCount", len(coll.get("stickersList", []))),
-        "stickersList": coll.get("stickersList", []),
+        "stickersCount": coll.get("stickersCount", len(stickers)),
+        "stickerList": stickers,
         "uid": coll.get("uid"),
+        "author": coll.get("author"),
         **_common_ref_fields(coll, restriction, created, modified, ndcId=ndcId),
     }
-
 
 class StoreItemSpec:
     def __init__(
