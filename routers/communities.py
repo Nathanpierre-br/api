@@ -550,8 +550,8 @@ async def get_community_profiles(
     queries = {
         "leaders": {"role": {"$in": [102, 100]}},
         "curators": {"role": 101},
-        "recent": {},
-        "summary": {},
+        "recent": {"status": {"$nin": [9,11,5]}},
+        "summary": {"status": {"$nin": [9,11,5]}}, #banned, deleted, leaved
     }
 
     query = queries.get(type)
@@ -563,7 +563,7 @@ async def get_community_profiles(
         table = db.get(f"x{ndcId}", "Users")
 
         items = []
-
+        total = await table.count_documents(query)
         async for item in table.find(query).skip(start).limit(size).sort([("role", DESCENDING), ("createdTime", -1)]):
             async with await StoreService.create(item["id"], ndcId) as svc:
                 item["iconFrame"] = await svc.frame_icon(item.get("frameId"))
@@ -573,7 +573,7 @@ async def get_community_profiles(
 
         return Base.Answer(
             {
-                "userProfileCount": 0,
+                "userProfileCount": total,
                 "userProfileList": items,
             },
             spent_time=timestamp() - t1,

@@ -130,18 +130,14 @@ async def admin_action(
 
     if table_name == "Users":
         if operation == 18:
-            return (
-                Errors.UnimplementedPath()
-            )  # it's banned user, idk why, but in app use this one
             await table.update_one(
                 {"id": object_id},
-                {"$set": {"status": 9, "extensions.__disabledLevel__": 3}},
+                {"$set": {"extensions.hideUserProfile": True}},
             )
         elif operation == 19:
-            return Errors.UnimplementedPath()  # it's
             await table.update_one(
                 {"id": object_id},
-                {"$set": {"status": 0, "extensions.__disabledLevel__": 0}},
+                {"$set": {"extensions.hideUserProfile": False}},
             )
         elif operation == 207:
             if ndcId == 0:

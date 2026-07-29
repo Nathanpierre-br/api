@@ -919,18 +919,20 @@ async def tip_blog(request: Request, blogId: str, ndcId: int = 0):
         db.close()
         return Errors.DataNotExist(spent_time=timestamp() - t1)
 
-    author_uid = blog.get("uid")
+    author_uid = blog.get("authorId")
 
     # Deduct from sender and credit author
-    await users_table.update_one({"id": trigger_uid}, {"$inc": {"coins": -coins}})
     if author_uid:
+        await users_table.update_one({"id": trigger_uid}, {"$inc": {"coins": -coins}})
         await users_table.update_one({"id": author_uid}, {"$inc": {"coins": coins}})
+    else:
+        db.close()
+        return Errors.DataNotExist(spent_time=timestamp() - t1)
 
     # Update blog tipInfo leaderboard
     tip_info = blog.get("tipInfo", {})
     tippers_list = tip_info.get("tippersList", [])
 
-    # Update or insert tipper in list
     tipper_entry = next((t for t in tippers_list if t.get("uid") == trigger_uid), None)
     if tipper_entry:
         tipper_entry["totalTippedCoins"] = round(

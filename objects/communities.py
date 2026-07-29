@@ -32,7 +32,6 @@ RANKING_TABLE = [
     {"id": "18", "level": 18, "reputation": 15500, "title": "Level 18"},
     {"id": "19", "level": 19, "reputation": 18700, "title": "Level 19"},
     {"id": "20", "level": 20, "reputation": 22500, "title": "Level 20"},
-    {"id": "21", "level": 21, "reputation": 225500, "title": "Level 21"},
 ]
 
 

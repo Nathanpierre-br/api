@@ -2,16 +2,74 @@ from datetime import UTC, datetime
 from time import time as timestamp
 
 from fastapi import APIRouter, Request
-
+from pymongo import DESCENDING
 from helpers.config import Config
 from helpers.database.mongo import Database
 from helpers.decorators.validauth import validauth_required
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Errors, Communities
+from objects import Base, Errors, Communities, User
 from objects.types import UserRole
 
 altacm = APIRouter()
 altacm.route_class = CachableRoute
+
+
+
+
+@altacm.get("/altacm/s/community/x{ndcId}/user/banned")
+@validauth_required
+async def get_community_banned_users(
+    ndcId: int,
+    request: Request,
+    start: int = 0,
+    size: int = 25,
+):
+
+    t1 = timestamp()
+    trigger_uid = request.state.session["uid"]
+    size = size if 0 < size < 101 else 25
+    db = await Database().init()
+    try:
+
+        global_users_table = db.get(table="Users")
+        table = db.get(f"x{ndcId}", "Users")
+        global_user = await global_users_table.find_one({"id": trigger_uid})
+
+        is_global = global_user and UserRole.is_global_staff(global_user.get("role", 0))
+        is_allowed = is_global
+
+        if not is_allowed:
+            local_user = await table.find_one({"id": trigger_uid})
+
+            if local_user and local_user.get("role", 0) in (
+                UserRole.Leader,
+                UserRole.Agent,
+            ):
+                is_allowed = True
+
+        if not is_allowed:
+            return Errors.NotEnoughRights(timestamp() - t1)
+
+        query = {"status": 9}
+        total = await table.count_documents(query)
+
+        items = []
+        async for item in table.find(query).skip(start).limit(size).sort(
+            [("role", DESCENDING), ("createdTime", -1)]
+        ):
+            items.append(User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1))
+
+        return Base.Answer(
+            {
+                "userProfileCount": total,
+                "userProfileList": items,
+            },
+            spent_time=timestamp() - t1,
+        )
+    finally:
+        db.close()
+
+
 
 
 @altacm.post("/altacm/s/community/x{ndcId}/user/{userId}/promote")

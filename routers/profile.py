@@ -299,7 +299,7 @@ async def community_general_check(request: Request, ndcId: int):
         {
             "hasCheckInToday": checked_in_today,
             "consecutiveCheckInDays": compute_streak(history, today),
-            "canPlayLottery": а
+            "canPlayLottery": checked_in_today
             and row.get("lastLotteryDate") != today_str,
             "userProfile": User.GetUserInfo(row, ndcId=ndcId),
             "notificationsCount": 0,
@@ -1196,7 +1196,6 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
 
     db = await Database().init()
     table = db.get(table="Users")
-    await settle_user_active_coins(db, trigger_uid)
     row = await table.find_one({"id": trigger_uid})
     if row is None:
         db.close()

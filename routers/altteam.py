@@ -801,3 +801,39 @@ async def list_bubbles(request: Request):
         return Base.Answer({"chatBubbleList": docs}, spent_time=timestamp() - t1)
     finally:
         db.close()
+
+
+@altteam.post("/g/s/altteam/mod/{t}/{action}/{objId}")
+async def disable_toggle(request: Request, t: str, action: str, objId: str):
+    t1 = timestamp()
+
+
+    _t = {
+        "user": "Users",
+        "community": "Communities"
+    }
+
+    if t not in _t or action not in ("disable", "enable"):
+        return Errors.InvalidRequest(timestamp() - t1)
+
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    sensitive_table = db.get(table="Users")
+    user = await sensitive_table.find_one({"id": trigger_uid})
+    if not user or not UserRole.is_global_staff(user.get("role", 0)):
+        db.close()
+        return Errors.NotEnoughRights(timestamp() - t1)
+
+    table = db.get(table=_t[t])
+    result = await table.update_one(
+        {"id": objId},
+        {"$set": {"status": 9 if action == "disable" else 0}},
+    )
+    if result.matched_count == 0:
+        db.close()
+        return Errors.DataNotExist(timestamp() - t1)
+    return Base.Answer(
+        {},
+        spent_time=timestamp() - t1,
+    )
+    db.close()
