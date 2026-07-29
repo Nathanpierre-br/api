@@ -550,8 +550,8 @@ async def get_community_profiles(
     queries = {
         "leaders": {"role": {"$in": [102, 100]}},
         "curators": {"role": 101},
-        "recent": {"status": {"$nin": [9,11,5]}},
-        "summary": {"status": {"$nin": [9,11,5]}}, #banned, deleted, leaved
+        "recent": {"status": {"$nin": [9,10,5]}},
+        "summary": {"status": {"$nin": [9,10,5]}}, #banned, deleted, leaved
     }
 
     query = queries.get(type)
