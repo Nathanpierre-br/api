@@ -19,6 +19,7 @@ from helpers.database.redis import get as get_redis
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
 from services.store import StoreService
+
 communities = APIRouter()
 communities.route_class = CachableRoute
 
@@ -550,8 +551,8 @@ async def get_community_profiles(
     queries = {
         "leaders": {"role": {"$in": [102, 100]}},
         "curators": {"role": 101},
-        "recent": {"status": {"$nin": [9,10,5]}},
-        "summary": {"status": {"$nin": [9,10,5]}}, #banned, deleted, leaved
+        "recent": {"status": {"$nin": [9, 10, 5]}},
+        "summary": {"status": {"$nin": [9, 10, 5]}},  # banned, deleted, leaved
     }
 
     query = queries.get(type)
@@ -564,12 +565,18 @@ async def get_community_profiles(
 
         items = []
         total = await table.count_documents(query)
-        async for item in table.find(query).skip(start).limit(size).sort([("role", DESCENDING), ("createdTime", -1)]):
+        async for item in (
+            table.find(query)
+            .skip(start)
+            .limit(size)
+            .sort([("role", DESCENDING), ("createdTime", -1)])
+        ):
             async with await StoreService.create(item["id"], ndcId) as svc:
                 item["iconFrame"] = await svc.frame_icon(item.get("frameId"))
 
-            items.append(User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1))
-
+            items.append(
+                User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1)
+            )
 
         return Base.Answer(
             {
@@ -768,7 +775,9 @@ async def _get_profiles_for_live_layer(ndcId: int, uids: list[str]) -> list[dict
                 row = rows_by_id[u]
                 async with await StoreService.create(u, ndcId) as svc:
                     row["iconFrame"] = await svc.frame_icon(row.get("frameId"))
-                result.append(User.OwnNonSensetiveProfile(row, ndcId=ndcId, membershipStatus=1))
+                result.append(
+                    User.OwnNonSensetiveProfile(row, ndcId=ndcId, membershipStatus=1)
+                )
         return result
     finally:
         db.close()

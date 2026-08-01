@@ -1083,7 +1083,6 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     target = chat_info.get("memberList", []) + chat_info.get("invitedList", [])
     asyncio.get_event_loop().create_task(send_admin_ws(ws_send_obj, target))
 
-
     alert_options = chat_info.get("alertOptions", {})
     mentioned_uids = [
         m.get("uid")
@@ -1113,7 +1112,6 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 ApiBroadcastType.ChatMessagePush,
             )
         )
-
 
     db.close()
     return answer
@@ -1208,11 +1206,9 @@ async def delete_message(
 
         user = await xndc_users.find_one({"id": trigger_uid})
         if user and user.get("role", 0) in [100, 101, 102, 250, 251, 555]:
-            await table.delete_one(
-                {"messageId": messageId}
-            )
+            await table.delete_one({"messageId": messageId})
 
-            #todo add it to moderation logs maybe?
+            # todo add it to moderation logs maybe?
 
             db.close()
             return Base.Answer(spent_time=timestamp() - t1)
@@ -1355,9 +1351,11 @@ async def get_chat_members(
             if not (uid in members_in_chat and uid in cohosts_in_chat)
         ][start : start + size]
 
-        users_data = {
-            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
-        }
+        query = {"id": {"$in": target_ids}}
+        if q:
+            query["nickname"] = {"$regex": f"^{regex_escape(q)}", "$options": "i"}
+
+        users_data = {u["id"]: u async for u in xndc_users.find(query)}
         member_list = []
 
         for uid in target_ids:
@@ -1383,9 +1381,11 @@ async def get_chat_members(
         all_ids = members_in_chat + cohosts_in_chat
         target_ids = all_ids[start : start + size]
 
-        users_data = {
-            u["id"]: u async for u in xndc_users.find({"id": {"$in": target_ids}})
-        }
+        query = {"id": {"$in": target_ids}}
+        if q:
+            query["nickname"] = {"$regex": f"^{regex_escape(q)}", "$options": "i"}
+
+        users_data = {u["id"]: u async for u in xndc_users.find(query)}
 
         member_list = []
         _temp = set()
@@ -2163,8 +2163,6 @@ async def toggle_things(
         return Errors.NotEnoughRights(timestamp() - t1)
 
 
-
-
 @chats.post("/g/s/chat/thread/{chatId}/member/{userId}/alert")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/{userId}/alert")
 async def chat_alert_options(
@@ -2188,8 +2186,7 @@ async def chat_alert_options(
     db = await Database().init()
     chat = db.get(f"x{ndcId}", "Chats")
     await chat.update_one(
-        {"id": chatId},
-        {"$set": {f"alertOptions.{uid}": alert_option}}
+        {"id": chatId}, {"$set": {f"alertOptions.{uid}": alert_option}}
     )
     db.close()
     return Base.Answer(spent_time=timestamp() - t1)

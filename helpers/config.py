@@ -6,6 +6,9 @@ class Config:
     Config class that contains all configuration variables from ENV.
     """
 
+    # static values
+    LANG_SEGMENTS = ["en", "ru", "es", "ar", "pt", "zh", "ko", "ja"]
+
     # database connection settings (required)
     REDIS_CONNECTION_STRING = environ.get("REDIS_CONNECTION_STRING")
     MONGODB_CONNECTION_STRING = environ.get("MONGODB_CONNECTION_STRING")

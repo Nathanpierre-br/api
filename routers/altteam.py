@@ -807,11 +807,7 @@ async def list_bubbles(request: Request):
 async def disable_toggle(request: Request, t: str, action: str, objId: str):
     t1 = timestamp()
 
-
-    _t = {
-        "user": "Users",
-        "community": "Communities"
-    }
+    _t = {"user": "Users", "community": "Communities"}
 
     if t not in _t or action not in ("disable", "enable"):
         return Errors.InvalidRequest(timestamp() - t1)

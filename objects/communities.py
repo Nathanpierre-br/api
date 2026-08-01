@@ -12,21 +12,21 @@ this is top tier bullshit
 
 
 RANKING_TABLE = [
-    {"id": "1",  "level": 1,  "reputation": 0,     "title": "Level 1"},
-    {"id": "2",  "level": 2,  "reputation": 20,    "title": "Level 2"},
-    {"id": "3",  "level": 3,  "reputation": 70,    "title": "Level 3"},
-    {"id": "4",  "level": 4,  "reputation": 170,   "title": "Level 4"},
-    {"id": "5",  "level": 5,  "reputation": 320,   "title": "Level 5"},
-    {"id": "6",  "level": 6,  "reputation": 535,   "title": "Level 6"},
-    {"id": "7",  "level": 7,  "reputation": 835,   "title": "Level 7"},
-    {"id": "8",  "level": 8,  "reputation": 1235,  "title": "Level 8"},
-    {"id": "9",  "level": 9,  "reputation": 1750,  "title": "Level 9"},
-    {"id": "10", "level": 10, "reputation": 2400,  "title": "Level 10"},
-    {"id": "11", "level": 11, "reputation": 3200,  "title": "Level 11"},
-    {"id": "12", "level": 12, "reputation": 4200,  "title": "Level 12"},
-    {"id": "13", "level": 13, "reputation": 5400,  "title": "Level 13"},
-    {"id": "14", "level": 14, "reputation": 6800,  "title": "Level 14"},
-    {"id": "15", "level": 15, "reputation": 8500,  "title": "Level 15"},
+    {"id": "1", "level": 1, "reputation": 0, "title": "Level 1"},
+    {"id": "2", "level": 2, "reputation": 20, "title": "Level 2"},
+    {"id": "3", "level": 3, "reputation": 70, "title": "Level 3"},
+    {"id": "4", "level": 4, "reputation": 170, "title": "Level 4"},
+    {"id": "5", "level": 5, "reputation": 320, "title": "Level 5"},
+    {"id": "6", "level": 6, "reputation": 535, "title": "Level 6"},
+    {"id": "7", "level": 7, "reputation": 835, "title": "Level 7"},
+    {"id": "8", "level": 8, "reputation": 1235, "title": "Level 8"},
+    {"id": "9", "level": 9, "reputation": 1750, "title": "Level 9"},
+    {"id": "10", "level": 10, "reputation": 2400, "title": "Level 10"},
+    {"id": "11", "level": 11, "reputation": 3200, "title": "Level 11"},
+    {"id": "12", "level": 12, "reputation": 4200, "title": "Level 12"},
+    {"id": "13", "level": 13, "reputation": 5400, "title": "Level 13"},
+    {"id": "14", "level": 14, "reputation": 6800, "title": "Level 14"},
+    {"id": "15", "level": 15, "reputation": 8500, "title": "Level 15"},
     {"id": "16", "level": 16, "reputation": 10500, "title": "Level 16"},
     {"id": "17", "level": 17, "reputation": 12800, "title": "Level 17"},
     {"id": "18", "level": 18, "reputation": 15500, "title": "Level 18"},
@@ -58,35 +58,160 @@ def _mod_enabled(mods: dict, name: str) -> bool:
     return MODULE_DEFAULTS.get(name, True)
 
 
-
 _DEFAULT_PAGES = [
-    ({"url": "ndc://leaderboards",    "alias": None, "id": "leaderboards-default",    "parentId": None, "originalTitle": None}, "ranking"),
-    ({"url": "ndc://featured",        "alias": None, "id": "featured-default",        "parentId": None, "originalTitle": None}, "featured"),
-    ({"url": "ndc://my-chats",        "alias": None, "id": "chat-default",            "parentId": None, "originalTitle": None}, "chat"),
-    ({"url": "ndc://public-chats",    "alias": None, "id": "chat-public-chats",       "parentId": None, "originalTitle": None}, "chat"),
-    ({"url": "ndc://latest-posts",    "alias": None, "id": "post-latest-feed",        "parentId": None, "originalTitle": None}, "post"),
-    ({"url": "ndc://following-feed",  "alias": None, "id": "post-following-feed",     "parentId": None, "originalTitle": None}, "post"),
-    ({"url": "ndc://image-posts",     "alias": None, "id": "post-image-posts",        "parentId": None, "originalTitle": None}, "post"),
-    ({"url": "ndc://blogs",           "alias": None, "id": "post-blogs",              "parentId": None, "originalTitle": None}, "post"),
-    ({"url": "ndc://questions",       "alias": None, "id": "post-questions",          "parentId": None, "originalTitle": None}, "post"),
-    ({"url": "ndc://polls",           "alias": None, "id": "post-polls",              "parentId": None, "originalTitle": None}, "post"),
-    ({"url": "ndc://catalog",         "alias": None, "id": "catalog-default",         "parentId": None, "originalTitle": None}, "catalog"),
-    ({"url": "ndc://shared-folder",   "alias": None, "id": "shared-folder",           "parentId": None, "originalTitle": None}, "sharedFolder"),
-    ({"url": "ndc://blog-categories", "alias": None, "id": "topic-categories-default","parentId": None, "originalTitle": None}, "topicCategories"),
-    ({"url": "ndc://guidelines",      "alias": None, "id": "guidelines",              "parentId": None, "originalTitle": None}, None),
+    (
+        {
+            "url": "ndc://leaderboards",
+            "alias": None,
+            "id": "leaderboards-default",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "ranking",
+    ),
+    (
+        {
+            "url": "ndc://featured",
+            "alias": None,
+            "id": "featured-default",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "featured",
+    ),
+    (
+        {
+            "url": "ndc://my-chats",
+            "alias": None,
+            "id": "chat-default",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "chat",
+    ),
+    (
+        {
+            "url": "ndc://public-chats",
+            "alias": None,
+            "id": "chat-public-chats",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "chat",
+    ),
+    (
+        {
+            "url": "ndc://latest-posts",
+            "alias": None,
+            "id": "post-latest-feed",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "post",
+    ),
+    (
+        {
+            "url": "ndc://following-feed",
+            "alias": None,
+            "id": "post-following-feed",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "post",
+    ),
+    (
+        {
+            "url": "ndc://image-posts",
+            "alias": None,
+            "id": "post-image-posts",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "post",
+    ),
+    (
+        {
+            "url": "ndc://blogs",
+            "alias": None,
+            "id": "post-blogs",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "post",
+    ),
+    (
+        {
+            "url": "ndc://questions",
+            "alias": None,
+            "id": "post-questions",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "post",
+    ),
+    (
+        {
+            "url": "ndc://polls",
+            "alias": None,
+            "id": "post-polls",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "post",
+    ),
+    (
+        {
+            "url": "ndc://catalog",
+            "alias": None,
+            "id": "catalog-default",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "catalog",
+    ),
+    (
+        {
+            "url": "ndc://shared-folder",
+            "alias": None,
+            "id": "shared-folder",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "sharedFolder",
+    ),
+    (
+        {
+            "url": "ndc://blog-categories",
+            "alias": None,
+            "id": "topic-categories-default",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        "topicCategories",
+    ),
+    (
+        {
+            "url": "ndc://guidelines",
+            "alias": None,
+            "id": "guidelines",
+            "parentId": None,
+            "originalTitle": None,
+        },
+        None,
+    ),
 ]
 
 
 def _build_pages(mods: dict, conf: dict) -> dict:
     default_list = [
-        page for page, gate in _DEFAULT_PAGES
+        page
+        for page, gate in _DEFAULT_PAGES
         if gate is None or _mod_enabled(mods, gate)
     ]
     return {
         "defaultList": conf.get("pageDefaultList", default_list),
         "customList": conf.get("pageCustomList", []),
     }
-
 
 
 def _build_appearance(conf: dict) -> dict:
@@ -96,22 +221,29 @@ def _build_appearance(conf: dict) -> dict:
                 "iconColor": conf.get("sidepanelIconColor"),
             },
             "navigation": {
-                "level1": conf.get("sidepanelTopNav", [
-                    {"id": "guidelines"},
-                    {"id": "chat-default"},
-                    {"id": "chat-public-chats"},
-                ]),
+                "level1": conf.get(
+                    "sidepanelTopNav",
+                    [
+                        {"id": "guidelines"},
+                        {"id": "chat-default"},
+                        {"id": "chat-public-chats"},
+                    ],
+                ),
                 "level2": conf.get("sidepanelBottomNav", []),
             },
         },
         "homePage": {
-            "navigation": conf.get("homepageNav", [
-                {"id": "guidelines"},
-                {"id": "post-latest-feed", "isStartPage": True},
-                {"id": "chat-public-chats"},
-            ]),
+            "navigation": conf.get(
+                "homepageNav",
+                [
+                    {"id": "guidelines"},
+                    {"id": "post-latest-feed", "isStartPage": True},
+                    {"id": "chat-public-chats"},
+                ],
+            ),
         },
     }
+
 
 def _mod_field(mods: dict, name: str, field: str, default):
     m = mods.get(name)
@@ -201,7 +333,9 @@ class Communities:
                 "themePackHash": data.get(
                     "themeHash",
                     sha256(
-                        data.get("themeUrl", "https://trolo.lol/example").encode("utf-8")
+                        data.get("themeUrl", "https://trolo.lol/example").encode(
+                            "utf-8"
+                        )
                     ).hexdigest(),
                 ),
                 "themePackRevision": data.get("themeRevision"),
@@ -224,9 +358,13 @@ class Communities:
                     },
                     "chat": {
                         "enabled": _mod_enabled(mods, "chat"),
-                        "spamProtectionEnabled": _mod_field(mods, "chat", "spamProtectionEnabled", True),
+                        "spamProtectionEnabled": _mod_field(
+                            mods, "chat", "spamProtectionEnabled", True
+                        ),
                         "avChat": {
-                            "screeningRoomEnabled": av.get("screeningRoomEnabled", False),
+                            "screeningRoomEnabled": av.get(
+                                "screeningRoomEnabled", False
+                            ),
                             "audioEnabled": av.get("audioEnabled", True),
                             "videoEnabled": av.get("videoEnabled", False),
                             "audio2Enabled": av.get("audio2Enabled", True),
@@ -241,24 +379,52 @@ class Communities:
                     },
                     "featured": {
                         "enabled": _mod_enabled(mods, "featured"),
-                        "postEnabled": _mod_field(mods, "featured", "postEnabled", _mod_enabled(mods, "featured")),
-                        "memberEnabled": _mod_field(mods, "featured", "memberEnabled", _mod_enabled(mods, "featured")),
-                        "publicChatRoomEnabled": _mod_field(mods, "featured", "publicChatRoomEnabled", _mod_enabled(mods, "chat")),
+                        "postEnabled": _mod_field(
+                            mods,
+                            "featured",
+                            "postEnabled",
+                            _mod_enabled(mods, "featured"),
+                        ),
+                        "memberEnabled": _mod_field(
+                            mods,
+                            "featured",
+                            "memberEnabled",
+                            _mod_enabled(mods, "featured"),
+                        ),
+                        "publicChatRoomEnabled": _mod_field(
+                            mods,
+                            "featured",
+                            "publicChatRoomEnabled",
+                            _mod_enabled(mods, "chat"),
+                        ),
                         "layout": _mod_field(mods, "featured", "layout", 1),
                     },
                     "catalog": {
                         "enabled": _mod_enabled(mods, "catalog"),
-                        "curationEnabled": _mod_field(mods, "catalog", "curationEnabled", _mod_enabled(mods, "catalog")),
+                        "curationEnabled": _mod_field(
+                            mods,
+                            "catalog",
+                            "curationEnabled",
+                            _mod_enabled(mods, "catalog"),
+                        ),
                     },
                     "sharedFolder": {
                         "enabled": _mod_enabled(mods, "sharedFolder"),
-                        "uploadPrivilege": _mod_field(mods, "sharedFolder", "uploadPrivilege", 2),
-                        "albumManagePrivilege": _mod_field(mods, "sharedFolder", "albumManagePrivilege", 2),
+                        "uploadPrivilege": _mod_field(
+                            mods, "sharedFolder", "uploadPrivilege", 2
+                        ),
+                        "albumManagePrivilege": _mod_field(
+                            mods, "sharedFolder", "albumManagePrivilege", 2
+                        ),
                     },
                     "influencer": {
                         "enabled": _mod_enabled(mods, "influencer"),
-                        "maxVipNumbers": _mod_field(mods, "influencer", "maxVipNumbers", 12),
-                        "maxVipMonthlyFee": _mod_field(mods, "influencer", "maxVipMonthlyFee", 500),
+                        "maxVipNumbers": _mod_field(
+                            mods, "influencer", "maxVipNumbers", 12
+                        ),
+                        "maxVipMonthlyFee": _mod_field(
+                            mods, "influencer", "maxVipMonthlyFee", 500
+                        ),
                         "lock": _mod_field(mods, "influencer", "lock", False),
                     },
                     "topicCategories": {
@@ -275,7 +441,9 @@ class Communities:
                 "welcomeMessageEnabled": conf.get("welcomeMessageEnabled", False),
                 "welcomeMessageText": conf.get("welcomeMessage", ""),
                 "catalogEnabled": _mod_enabled(mods, "catalog"),
-                "defaultRankingTypeInLeaderboard": adv.get("defaultRankingTypeInLeaderboard", 1),
+                "defaultRankingTypeInLeaderboard": adv.get(
+                    "defaultRankingTypeInLeaderboard", 1
+                ),
                 "frontPageLayout": conf.get("frontPageLayout", 1),
             },
             "communityHeadList": data.get("communityHeadList", []),

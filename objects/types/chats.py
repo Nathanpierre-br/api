@@ -5,5 +5,5 @@ class ChatType:
 
 
 class ChatAlertOptions:
-    ON: int = 1 #alets on
+    ON: int = 1  # alets on
     OFF: int = 2

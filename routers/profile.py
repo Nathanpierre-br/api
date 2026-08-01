@@ -9,24 +9,33 @@ from fastapi import APIRouter, Request
 from pymongo import DESCENDING
 from services.store import StoreService
 import asyncio
+from helpers.config import Config
 from helpers.decorators.validauth import validauth_required
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
 
 
-
 from helpers.checkins import (
-    CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS,
-    LOTTERY_REWARDS, LOTTERY_WEIGHTS,
-    REPAIR_COIN_COST, REPAIR_WINDOW_SIZE,
-    REPAIR_METHOD_COIN, REPAIR_METHOD_AMINOPLUS,
-    local_date, date_str, iso_to_unix,
-    get_tz, earned_rep,
-    compute_streak, compute_broken_streaks, has_check_in_today,
-    build_history_b64, build_checkin_history_obj,
-    build_reminder_result
+    CHECKIN_COIN_REWARDS,
+    CHECKIN_COIN_WEIGHTS,
+    LOTTERY_REWARDS,
+    LOTTERY_WEIGHTS,
+    REPAIR_COIN_COST,
+    REPAIR_WINDOW_SIZE,
+    REPAIR_METHOD_COIN,
+    REPAIR_METHOD_AMINOPLUS,
+    local_date,
+    date_str,
+    iso_to_unix,
+    get_tz,
+    earned_rep,
+    compute_streak,
+    compute_broken_streaks,
+    has_check_in_today,
+    build_history_b64,
+    build_checkin_history_obj,
+    build_reminder_result,
 )
-
 
 
 from helpers.database.models import Community, ModelFabric
@@ -166,7 +175,6 @@ async def get_recommended_profiles(request: Request, ndcId: int):
     return Base.Answer({"userProfileList": []})
 
 
-
 @profile_methods.get("/g/s/reminder/check")
 @profile_methods.get("/x{ndcId}/s/reminder/check")
 @validauth_required
@@ -217,10 +225,13 @@ async def reminder_configs(
     )
 
 
-
 @profile_methods.get("/x{ndcId}/s/check-in/history")
 async def check_in_history(
-    request: Request, startTime: int, stopTime: int, ndcId: int, timezone: int = 0
+    request: Request,
+    startTime: int,
+    ndcId: int,
+    stopTime: int | None = None,
+    timezone: int = 0,
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -235,6 +246,8 @@ async def check_in_history(
         return Errors.AccountNotExist(timestamp() - t1)
     db.close()
 
+    if not stopTime:
+        stopTime = int(timestamp())
     start_dt = datetime.fromtimestamp(startTime, UTC) + timedelta(minutes=timezone)
     stop_dt = datetime.fromtimestamp(stopTime, UTC) + timedelta(minutes=timezone)
 
@@ -312,7 +325,6 @@ async def community_general_check(request: Request, ndcId: int):
     )
 
 
-
 @profile_methods.get("/x{ndcId}/s/user-profile/{userId}/achievements")
 async def get_user_achievements(request: Request, userId: str, ndcId: int):
     t1 = timestamp()
@@ -335,13 +347,14 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
             "achievements": {
                 "numberOfPostsCreated": blogs_count,
                 "numberOfMembersCount": len(row.get("whoFollows", [])),
-                "secondsSpentOfLast24Hours": int(row.get("secondsSpentOfLast24Hours", 0)),
+                "secondsSpentOfLast24Hours": int(
+                    row.get("secondsSpentOfLast24Hours", 0)
+                ),
                 "secondsSpentOfLast7Days": int(row.get("secondsSpentOfLast7Days", 0)),
             }
         },
         spent_time=timestamp() - t1,
     )
-
 
 
 @profile_methods.post("/g/s/wallet/daily-reward")
@@ -384,13 +397,9 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
         streak = compute_streak(history, now_local)
         rep = earned_rep(streak)
 
-        await table.update_one(
-            {"id": trigger_uid}, {"$inc": {"reputation": rep}}
-        )
+        await table.update_one({"id": trigger_uid}, {"$inc": {"reputation": rep}})
 
-        await global_table.update_one(
-            {"id": trigger_uid}, {"$inc": {"coins": coins}}
-        )
+        await global_table.update_one({"id": trigger_uid}, {"$inc": {"coins": coins}})
 
         global_row = await global_table.find_one({"id": trigger_uid})
     finally:
@@ -414,7 +423,6 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
     )
 
 
-
 @profile_methods.post("/g/s/check-in/lottery")
 @profile_methods.post("/x{ndcId}/s/check-in/lottery")
 async def claim_daily_lottery(request: Request, ndcId: int = 0):
@@ -436,7 +444,6 @@ async def claim_daily_lottery(request: Request, ndcId: int = 0):
         if row is None:
             return Errors.AccountNotExist(timestamp() - t1)
 
-
         if not (row.get("checkInHistory", {}) or {}).get(today_str):
             return Errors.LotteryNotAvailable(timestamp() - t1)
 
@@ -452,9 +459,7 @@ async def claim_daily_lottery(request: Request, ndcId: int = 0):
         if result.modified_count == 0:
             return Errors.LotteryPlayed(timestamp() - t1)
 
-        await global_table.update_one(
-            {"id": trigger_uid}, {"$inc": {"coins": award}}
-        )
+        await global_table.update_one({"id": trigger_uid}, {"$inc": {"coins": award}})
 
         updated_row = await table.find_one({"id": trigger_uid})
     finally:
@@ -549,7 +554,13 @@ async def check_in_repair(request: Request, ndcId: int = 0):
 
             await global_table.update_one(
                 {"id": trigger_uid},
-                {"$set": {"lastFreeStreakRepair": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}},
+                {
+                    "$set": {
+                        "lastFreeStreakRepair": datetime.now(UTC).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"
+                        )
+                    }
+                },
             )
         else:
             return Errors.InvalidRequest(timestamp() - t1)
@@ -567,11 +578,6 @@ async def check_in_repair(request: Request, ndcId: int = 0):
         {"checkInHistory": build_checkin_history_obj(updated_row, tz)},
         spent_time=timestamp() - t1,
     )
-
-
-
-
-
 
 
 @profile_methods.get("/g/s/user-profile/{uid}/joined")
@@ -1113,7 +1119,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
         extensions = data["extensions"]
         if isinstance(extensions.get("defaultBubbleId"), str):
             preparedQueries.update({"bubbleId": extensions.get("defaultBubbleId")})
-        if extensions.get("contentLanguage", "en") in ["ru", "en", "ar", "es"]:
+        if extensions.get("contentLanguage", "en") in Config.LANG_SEGMENTS:
             lang = {"lang": extensions.get("contentLanguage", "en")}
         if extensions.get("style"):
             style = extensions["style"]
@@ -1225,7 +1231,6 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
         },
         spent_time=timestamp() - t1,
     )
-
 
 
 @profile_methods.get("/g/s/wallet/setting/ads")

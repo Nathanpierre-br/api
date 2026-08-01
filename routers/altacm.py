@@ -14,8 +14,6 @@ altacm = APIRouter()
 altacm.route_class = CachableRoute
 
 
-
-
 @altacm.get("/altacm/s/community/x{ndcId}/user/banned")
 @validauth_required
 async def get_community_banned_users(
@@ -30,7 +28,6 @@ async def get_community_banned_users(
     size = size if 0 < size < 101 else 25
     db = await Database().init()
     try:
-
         global_users_table = db.get(table="Users")
         table = db.get(f"x{ndcId}", "Users")
         global_user = await global_users_table.find_one({"id": trigger_uid})
@@ -54,10 +51,15 @@ async def get_community_banned_users(
         total = await table.count_documents(query)
 
         items = []
-        async for item in table.find(query).skip(start).limit(size).sort(
-            [("role", DESCENDING), ("createdTime", -1)]
+        async for item in (
+            table.find(query)
+            .skip(start)
+            .limit(size)
+            .sort([("role", DESCENDING), ("createdTime", -1)])
         ):
-            items.append(User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1))
+            items.append(
+                User.OwnNonSensetiveProfile(item, ndcId=ndcId, membershipStatus=1)
+            )
 
         return Base.Answer(
             {
@@ -68,8 +70,6 @@ async def get_community_banned_users(
         )
     finally:
         db.close()
-
-
 
 
 @altacm.post("/altacm/s/community/x{ndcId}/user/{userId}/promote")
@@ -322,7 +322,6 @@ async def destroy_community(request: Request, ndcId: int):
     return Base.Answer(spent_time=timestamp() - t1)
 
 
-
 @altacm.post("/altacm/s/community/x{ndcId}/edit")
 @validauth_required
 async def edit_community(request: Request, ndcId: int = 0):
@@ -410,6 +409,7 @@ async def edit_community(request: Request, ndcId: int = 0):
 
     finally:
         db.close()
+
 
 @altacm.post("/altacm/s/community/x{ndcId}/theme-pack")
 @validauth_required
@@ -503,13 +503,6 @@ async def communities_with_role(request: Request, userId: str):
         db.close()
 
 
-
-
-
-
-
-
-
 async def _can_edit_community(db, ndcId: int, trigger_uid: str) -> bool:
     global_user = await db.get(table="Users").find_one({"id": trigger_uid})
     if global_user and UserRole.is_global_staff(global_user.get("role", 0)):
@@ -521,15 +514,12 @@ async def _can_edit_community(db, ndcId: int, trigger_uid: str) -> bool:
     )
 
 
-
-
-
 MODULE_SCHEMA = {
     "post": {
         "enabled": (bool, True),
-        "blog":     ("module_info", None),
-        "poll":     ("module_info", None),
-        "image":    ("module_info", None),
+        "blog": ("module_info", None),
+        "poll": ("module_info", None),
+        "image": ("module_info", None),
         "question": ("module_info", None),
     },
     "chat": {
@@ -605,17 +595,20 @@ def _validate_module_field(mod_name: str, field: str, value):
                 return False, None
             cleaned["enabled"] = value["enabled"]
         if "accessType" in value:
-            if isinstance(value["accessType"], bool) or not isinstance(value["accessType"], int):
+            if isinstance(value["accessType"], bool) or not isinstance(
+                value["accessType"], int
+            ):
                 return False, None
             cleaned["accessType"] = value["accessType"]
         if "minLevel" in value:
-            if isinstance(value["minLevel"], bool) or not isinstance(value["minLevel"], int):
+            if isinstance(value["minLevel"], bool) or not isinstance(
+                value["minLevel"], int
+            ):
                 return False, None
             cleaned["minLevel"] = value["minLevel"]
         return True, cleaned
 
     return False, None
-
 
 
 @altacm.post("/altacm/s/community/x{ndcId}/modules")
@@ -673,7 +666,6 @@ async def edit_community_modules(request: Request, ndcId: int):
     )
 
 
-
 @altacm.get("/altacm/s/community/x{ndcId}/modules/schema")
 @validauth_required
 async def get_modules_schema(request: Request, ndcId: int):
@@ -703,7 +695,11 @@ async def get_modules_schema(request: Request, ndcId: int):
             # текущее значение по dot-path (avChat.videoEnabled)
             if "." in field:
                 parent, child = field.split(".", 1)
-                current = cur.get(parent, {}).get(child, default) if isinstance(cur.get(parent), dict) else default
+                current = (
+                    cur.get(parent, {}).get(child, default)
+                    if isinstance(cur.get(parent), dict)
+                    else default
+                )
             else:
                 current = cur.get(field, default)
             field_defs[field] = {
@@ -716,12 +712,21 @@ async def get_modules_schema(request: Request, ndcId: int):
     return Base.Answer({"schema": schema_out}, spent_time=timestamp() - t1)
 
 
-
 _KNOWN_PAGE_IDS = {
-    "guidelines", "featured-default", "chat-default", "chat-public-chats",
-    "post-latest-feed", "post-following-feed", "post-image-posts", "post-blogs",
-    "post-questions", "post-polls", "catalog-default", "shared-folder",
-    "topic-categories-default", "leaderboards-default",
+    "guidelines",
+    "featured-default",
+    "chat-default",
+    "chat-public-chats",
+    "post-latest-feed",
+    "post-following-feed",
+    "post-image-posts",
+    "post-blogs",
+    "post-questions",
+    "post-polls",
+    "catalog-default",
+    "shared-folder",
+    "topic-categories-default",
+    "leaderboards-default",
 }
 
 
@@ -763,7 +768,9 @@ async def edit_community_navigation(request: Request, ndcId: int):
         custom_pages = (
             community.get("configuration", {}).get("pageCustomList", []) or []
         )
-        custom_ids = {p.get("id") for p in custom_pages if isinstance(p, dict) and p.get("id")}
+        custom_ids = {
+            p.get("id") for p in custom_pages if isinstance(p, dict) and p.get("id")
+        }
 
         set_ops = {}
 
@@ -780,7 +787,9 @@ async def edit_community_navigation(request: Request, ndcId: int):
             set_ops["configuration.sidepanelBottomNav"] = cleaned
 
         if "homepageNav" in data:
-            ok, cleaned = _validate_nav(data["homepageNav"], custom_ids, allow_start=True)
+            ok, cleaned = _validate_nav(
+                data["homepageNav"], custom_ids, allow_start=True
+            )
             if not ok:
                 return Errors.InvalidRequest(timestamp() - t1)
             starts = [e for e in cleaned if e.get("isStartPage")]
@@ -803,7 +812,6 @@ async def edit_community_navigation(request: Request, ndcId: int):
     )
 
 
-
 from uuid import uuid4
 
 
@@ -824,7 +832,9 @@ async def add_community_page(request: Request, ndcId: int):
         is_global = global_user and UserRole.is_global_staff(global_user.get("role", 0))
         is_allowed = is_global
         if not is_allowed:
-            local_user = await db.get(f"x{ndcId}", "Users").find_one({"id": trigger_uid})
+            local_user = await db.get(f"x{ndcId}", "Users").find_one(
+                {"id": trigger_uid}
+            )
             if local_user and local_user.get("role", 0) in (
                 UserRole.Leader,
                 UserRole.Agent,
@@ -840,7 +850,7 @@ async def add_community_page(request: Request, ndcId: int):
 
         page = {
             "id": data.get("id") or str(uuid4()),
-            "url": url,                              # https://... or ndc://...
+            "url": url,  # https://... or ndc://...
             "alias": data.get("alias"),
             "originalTitle": data.get("originalTitle"),
             "parentId": data.get("parentId"),
@@ -850,7 +860,9 @@ async def add_community_page(request: Request, ndcId: int):
             {"id": ndcId},
             {
                 "$push": {"configuration.pageCustomList": page},
-                "$set": {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")},
+                "$set": {
+                    "modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+                },
             },
         )
     finally:
@@ -871,7 +883,9 @@ async def remove_community_page(request: Request, ndcId: int, pageId: str):
         is_global = global_user and UserRole.is_global_staff(global_user.get("role", 0))
         is_allowed = is_global
         if not is_allowed:
-            local_user = await db.get(f"x{ndcId}", "Users").find_one({"id": trigger_uid})
+            local_user = await db.get(f"x{ndcId}", "Users").find_one(
+                {"id": trigger_uid}
+            )
             if local_user and local_user.get("role", 0) in (
                 UserRole.Leader,
                 UserRole.Agent,
@@ -885,7 +899,9 @@ async def remove_community_page(request: Request, ndcId: int, pageId: str):
             {"id": ndcId},
             {
                 "$pull": {"configuration.pageCustomList": {"id": pageId}},
-                "$set": {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")},
+                "$set": {
+                    "modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+                },
             },
         )
         if res.modified_count == 0:

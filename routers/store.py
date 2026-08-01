@@ -57,10 +57,14 @@ async def apply_avatar_frame(request: Request, ndcId: int = 0):
     t1 = timestamp()
     try:
         data = await request.json()
-        frame_id = data["frameId"]
+        frame_id = data.get("frameId")
         apply_to_all = int(data.get("applyToAll", 0)) == 1
     except Exception:
         return Errors.InvalidRequest(timestamp() - t1)
+
+    # [note] in case of default frame w/ None id
+    if not frame_id:
+        return Base.Answer()
 
     async with await StoreService.create(_uid(request), ndcId) as svc:
         ok = await svc.apply_avatar_frame(frame_id, apply_to_all)

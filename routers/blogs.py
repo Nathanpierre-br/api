@@ -284,8 +284,14 @@ async def get_blog_comments(
 @blog_methods.get("/g/s/blog/{blogId}/g-comment/{commentId}/response")
 @blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}")
 @blog_methods.get("/g/s/blog/{blogId}/comment/{commentId}/response")
+@blog_methods.get("/g/s/item/{blogId}/g-comment/{commentId}")
+@blog_methods.get("/g/s/item/{blogId}/g-comment/{commentId}/response")
+@blog_methods.get("/g/s/item/{blogId}/comment/{commentId}")
+@blog_methods.get("/g/s/item/{blogId}/comment/{commentId}/response")
 @blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment/{commentId}")
 @blog_methods.get("/x{ndcId}/s/blog/{blogId}/comment/{commentId}/response")
+@blog_methods.get("/x{ndcId}/s/item/{blogId}/comment/{commentId}")
+@blog_methods.get("/x{ndcId}/s/item/{blogId}/comment/{commentId}/response")
 async def get_blog_comment_answers(
     request: Request,
     blogId: str,

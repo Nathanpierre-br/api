@@ -1,0 +1,53 @@
+explore:
+    hand-picked: Team's Pick
+    recommended: Recommended
+    recent-approvals: Recently created
+    joined: Joined Communities
+mod:
+    op:
+        hide:
+            content:
+                action: Hid content
+                title: Your content got hidden! 
+            profile:
+                action: Hid profile
+                title: Your profile got hidden! 
+        unhide:
+            content:
+                action: Unhid content
+                title: Your content got unhidden! 
+            profile:
+                action: Unhid profile
+                title: Your profile got unhidden! 
+        warn:
+            action: Sent warning
+            title: You got a warning! 
+        strike:
+            action: User muted
+            title: You got a strike! 
+        unstrike:
+            action: User unmuted
+            title: You got unmuted! 
+        ban:
+            action: User banned
+        unban:
+            action: User unbanned
+        copyright:
+            action: Copyright infringement
+            title: Your content was removed due copyright infringement!        
+            title: You got unbanned! 
+            title: You got banned! 
+        promotion:
+            agent: 
+                action: Agent promotion
+            leader:
+                action: Leader promotion
+            curator:
+                action: Curator promotion
+        promoted:
+            agent: 
+                action: Agent promoted
+            leader:
+                action: Leader promoted
+            curator:
+                action: Curator promoted

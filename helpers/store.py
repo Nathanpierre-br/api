@@ -104,6 +104,8 @@ def _build_bubble_ref(
         else False,
         **_common_ref_fields(bubble, restriction, created, modified, ndcId=ndcId),
     }
+
+
 def _build_sticker(sticker: dict) -> dict:
     return {
         "stickerId": sticker["stickerId"],
@@ -139,6 +141,7 @@ def _build_sticker_ref(
         "author": coll.get("author"),
         **_common_ref_fields(coll, restriction, created, modified, ndcId=ndcId),
     }
+
 
 class StoreItemSpec:
     def __init__(

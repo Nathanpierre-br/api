@@ -1,4 +1,3 @@
-
 import base64
 from datetime import datetime, timedelta, timezone as _tz
 from fastapi import Request
@@ -53,7 +52,6 @@ async def get_tz(request: Request) -> int:
         return int(body.get("timezone", 0))
     except Exception:
         return 0
-
 
 
 def _joined_date(row: dict):
@@ -123,7 +121,6 @@ def build_checkin_history_obj(row: dict, tz: int, window_days: int = 30) -> dict
     }
 
 
-
 async def settle_user_active_coins(db, uid: str) -> float:
     redis = get_redis()
     today = datetime.now(_tz.utc).strftime("%Y-%m-%d")
@@ -148,7 +145,6 @@ async def settle_user_active_coins(db, uid: str) -> float:
         total = round(total, 2)
         await db.get(table="Users").update_one({"id": uid}, {"$inc": {"coins": total}})
     return total
-
 
 
 def build_reminder_history(row: dict, today: datetime, days: int = 7) -> dict:

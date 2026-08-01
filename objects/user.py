@@ -38,7 +38,6 @@ def get_level(reputation: int) -> int:
     return level
 
 
-
 class User:
     @staticmethod
     def OwnSensetiveProfile(row):
@@ -117,7 +116,9 @@ class User:
             "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
-            "reputation": 0 if ndcId == 0 else row.get("reputation", 0),  # if ndcId == 0 else row["reputation"],
+            "reputation": 0
+            if ndcId == 0
+            else row.get("reputation", 0),  # if ndcId == 0 else row["reputation"],
             "level": 0 if ndcId == 0 else get_level(row.get("reputation", 0)),
             "mood": None,  # if ndcId == 0 else row["mood"],
             "content": ((row.get("description") or "").strip()),

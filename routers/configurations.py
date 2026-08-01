@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 
 from helpers.database.mongo import Database
 from helpers.decorators.validauth import validauth_required
+from helpers.config import Config
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors, Communities
 
@@ -121,7 +122,7 @@ async def eventlog_config(request: Request):
 
 @configurations.get("/g/s/community-collection/supported-languages")
 async def supported_languages_config(request: Request):
-    return Base.Answer({"supportedLanguages": ["en", "ru", "es", "ar", "pt"]})
+    return Base.Answer({"supportedLanguages": Config.LANG_SEGMENTS})
 
 
 @configurations.get("/g/s/membership")
