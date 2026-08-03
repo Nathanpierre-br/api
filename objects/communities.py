@@ -40,7 +40,7 @@ MODULE_DEFAULTS = {
     "chat": True,
     "ranking": True,
     "leaderboard": False,
-    "featured": False,
+    "featured": True,
     "catalog": False,
     "sharedFolder": False,
     "influencer": False,
@@ -225,6 +225,7 @@ def _build_appearance(conf: dict) -> dict:
                     "sidepanelTopNav",
                     [
                         {"id": "guidelines"},
+                        {"id": "featured-default"},
                         {"id": "chat-default"},
                         {"id": "chat-public-chats"},
                     ],
@@ -237,7 +238,8 @@ def _build_appearance(conf: dict) -> dict:
                 "homepageNav",
                 [
                     {"id": "guidelines"},
-                    {"id": "post-latest-feed", "isStartPage": True},
+                    {"id": "featured-default", "isStartPage": True},
+                    {"id": "post-latest-feed"},
                     {"id": "chat-public-chats"},
                 ],
             ),

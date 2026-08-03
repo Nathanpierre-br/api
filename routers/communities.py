@@ -15,6 +15,7 @@ from helpers.routers.cachable import CachableRoute
 from objects import Base, Communities, Errors, User
 from objects.types import UserGroupType
 from helpers.database.redis import get as get_redis
+from helpers.config import Config
 
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
@@ -446,7 +447,7 @@ async def get_community_info(request: Request, ndcId: int = 0):
 
     try:
         uid = request.state.session["uid"]
-    except:
+    except Exception:
         uid = None
     db = await Database().init()
     try:
@@ -483,10 +484,12 @@ async def get_official_guidelines(
     try:
         file = await aioyaml("files/guidelines.yaml")
         language = (
-            language.lower() if language.lower() in ["ru", "en", "ar", "es"] else "en"
+            language.lower() if language.lower() in Config.LANG_SEGMENTS else "en"
         )
-        # we should also think about not hardcoding ndc langs
-        guideline = file[language]
+        try:
+            guideline = file[language]
+        except Exception:
+            guideline = file.get("en", "Error loading file.")
     except Exception as e:
         print("Cant get official guidelines via yaml!:", e)
         guideline = "[b]Oh no!\nSomething went wrong. Please try again later."
@@ -756,9 +759,12 @@ async def remove_from_user_group(
 
 async def _get_online_uids(ndcId: int) -> list[str]:
     redis = get_redis()
-    key = f"x{ndcId}:online"
-    members = await redis.smembers(key)
-    return sorted([m.decode() if isinstance(m, bytes) else m for m in members])
+    pattern = f"x{ndcId}:online:*"
+    uids = []
+    async for key in redis.scan_iter(pattern):
+        # key format is x{ndcId}:online:{uid}
+        uids.append(key.split(":")[-1])
+    return uids
 
 
 async def _get_profiles_for_live_layer(ndcId: int, uids: list[str]) -> list[dict]:

@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from PIL import Image
 from helpers.config import Config
 from objects.errors import Errors
+from helpers.functions import detect_file_ext
 
 
 def shrink_image_data_if_needed(
@@ -64,6 +65,17 @@ async def bbnonsfw_manual_check(image: str | bytes) -> bool:
     """
 
     if not Config.ENABLE_BBNONSFW:
+        return False
+
+    if isinstance(image, bytes):
+        first_bytes = image[:128]
+    elif isinstance(image, str):
+        first_bytes = b64decode(image)[:128]
+    else:
+        raise Exception("Empty data")
+
+    file_ext = detect_file_ext(first_bytes)
+    if file_ext is None:
         return False
 
     image = await asyncio.to_thread(shrink_image_data_if_needed, image, 650)

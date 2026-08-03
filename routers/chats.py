@@ -472,6 +472,7 @@ async def if_chat_exists(
     size: int = 25,
     start: int = 0,
     ndcId: int = 0,
+    stoptime: str | None = None,
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -507,21 +508,31 @@ async def if_chat_exists(
         return Base.Answer(
             {"threadList": [], "playlistInThreadList": {}}, spent_time=timestamp() - t1
         )
-    elif type == "joined-me" or (start and size):
+    elif type == "joined-me":
         size = size if 0 < size < 101 else 25
 
         db = await Database().init()
         table = db.get(f"x{ndcId}", "Chats")
-        joined = await table.find({"memberList": uid}).distinct("id") or []
-        invited = await table.find({"invitedList": uid}).distinct("id") or []
-        row = (joined + invited)[start : start + size]
+        query = {"$or": [{"memberList": uid}, {"invitedList": uid}]}
+        if stoptime:
+            dt = datetime.strptime(stoptime, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+            stop_ms = int(dt.timestamp() * 1000)
+            query["lastMessageTimestamp"] = {"$lt": stop_ms}
+
+        cursor = (
+            table.find(query)
+            .sort("lastMessageTimestamp", DESCENDING)
+            .skip(start)
+            .limit(size)
+        )
+        items = [
+            await Chat.Info(item, db, trigger_uid=uid, ndcId=ndcId)
+            async for item in cursor
+        ]
 
         info = Base.Answer(
             {
-                "threadList": [
-                    await Chat.Info(chatId, db, trigger_uid=uid, ndcId=ndcId)
-                    for chatId in row
-                ]
+                "threadList": items,
             },
             spent_time=timestamp() - t1,
         )
@@ -670,6 +681,7 @@ async def create_chat(request: Request, ndcId: int = 0):
         {
             "$set": {
                 "lastMessageId": lastMsgId,
+                "lastMessageTimestamp": messages[-1]["timestamp"],
                 f"lastReadedList.{trigger_uid}": messages[-1]["createdTime"],
             }
         },
@@ -1905,6 +1917,7 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
             "$pull": {"invitedList": userId},
             "$set": {
                 "lastMessageId": messageId,
+                "lastMessageTimestamp": message["timestamp"],
                 f"lastReadedList.{userId}": message["createdTime"],
             },
         },
@@ -1998,7 +2011,10 @@ async def leave_chat(
             {"id": chatId},
             {
                 "$pull": {"memberList": userId, "invitedList": userId},
-                "$set": {"lastMessageId": messageId},
+                "$set": {
+                    "lastMessageId": messageId,
+                    "lastMessageTimestamp": message["timestamp"],
+                },
             }
             | isBan,
         )

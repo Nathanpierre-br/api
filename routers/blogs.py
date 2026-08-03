@@ -28,6 +28,12 @@ async def get_recommended_blogs(request: Request, ndcId: int):
     return Base.Answer({"blogList": []})
 
 
+# fearured
+@blog_methods.get("/x{ndcId}/s/feed/featured")
+async def get_featured_blogs(request: Request, ndcId: int):
+    return Base.Answer({"featuredList": []})
+
+
 @blog_methods.get("/x{ndcId}/s/feed/blog-all")
 @blog_methods.get("/g/s/feed/blog-all")
 async def get_latest_blog_posts(
