@@ -28,9 +28,13 @@ class MediaList:
             if not isinstance(mediaType, int) or not isinstance(url, str):
                 raise Exception("Invalid data held in MediaList item")
 
+            if not is_app_link(url):
+                raise Exception("External links are not allowed ")
+
             desc = desc[:255] if isinstance(desc, str) else None
             tag = tag if isinstance(tag, str) else None
 
+            print([mediaType, url, desc, tag])
             return [mediaType, url, desc, tag]
         else:
             raise Exception("Invalid item for MediaList!")

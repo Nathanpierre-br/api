@@ -43,7 +43,7 @@ from helpers.database.mongo import Database
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Comments, Errors, User
+from objects import Base, Comments, Errors, User, MediaList
 from helpers.checkins import build_history_b64, iso_to_unix
 
 profile_methods = APIRouter()
@@ -1112,7 +1112,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
             preparedQueries.update({"icon": data["icon"]})
 
     if data.get("mediaList"):
-        mediaList = [item[1] for item in data["mediaList"]]
+        mediaList = MediaList.List(data["mediaList"])
         preparedQueries.update({"mediaList": mediaList})
 
     if data.get("extensions"):
@@ -1127,7 +1127,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
             # background!
             preparedQueries.update({"backgroundColor": style.get("backgroundColor")})
             if isinstance(style.get("backgroundMediaList"), list):
-                mediaList = [item[1] for item in style["backgroundMediaList"]]
+                mediaList = MediaList.List(style["backgroundMediaList"])
                 preparedQueries.update({"backgroundMediaList": mediaList})
             else:
                 preparedQueries.update({"backgroundMediaList": None})

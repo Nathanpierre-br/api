@@ -15,7 +15,7 @@ from helpers.tipping_limiter import check_and_increment_tipping_limit
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Blog, Comments, Errors, User
+from objects import Base, Blog, Comments, Errors, User, MediaList
 from objects.types import BlogType, UserRole
 
 blog_methods = APIRouter()

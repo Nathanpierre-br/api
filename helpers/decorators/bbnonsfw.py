@@ -48,12 +48,14 @@ def shrink_image_data_if_needed(
                 resized_img.save(out_buffer, format=img_format)
                 resized_bytes = out_buffer.getvalue()
 
-                image_data = resized_bytes
+                image_bytes = resized_bytes
     except Exception as e:
         print(f"Error shrinking image: {e}")
         return image_data
 
-    return b64encode(image_data).decode()
+    # if isinstance(image_bytes, str):
+    #    return image_bytes
+    return b64encode(image_bytes).decode()
 
 
 async def bbnonsfw_manual_check(image: str | bytes) -> bool:
