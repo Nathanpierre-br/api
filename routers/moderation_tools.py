@@ -388,7 +388,8 @@ async def send_notice(request: Request, ndcId: int = 0):
 
         table = db.get(f"x{ndcId}", "Users")
         await table.update_one(
-            {"id": uid}, {"$set": {"timeout_until": int(timestamp()) + penalty_value}}
+            {"id": target_uid},
+            {"$set": {"timeout_until": int(timestamp()) + penalty_value}},
         )
 
     history = db.get(f"x{ndcId}", "ModerationHistory")
