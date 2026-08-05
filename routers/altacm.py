@@ -45,7 +45,7 @@ async def get_community_banned_users(
                 is_allowed = True
 
         if not is_allowed:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         query = {"status": 9}
         total = await table.count_documents(query)
@@ -85,7 +85,7 @@ async def promotions(request: Request, ndcId: int, userId: str):
         data = await request.json()
         role = data.get("role")
         if not isinstance(role, int) or not UserRole.is_local_staff(role):
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     else:
         role = UserRole.User
 
@@ -100,7 +100,7 @@ async def promotions(request: Request, ndcId: int, userId: str):
         gu = await ndc_users_table.find_one({"id": userId})
 
         if not gu:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         is_god = bool(user) and UserRole.is_global_staff(user.get("role", 0))
         is_admin = bool(local_user) and UserRole.is_local_admin(
@@ -108,14 +108,14 @@ async def promotions(request: Request, ndcId: int, userId: str):
         )
 
         if not (is_god or is_admin):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         if role == UserRole.Agent:
             trigger_is_agent = (
                 bool(local_user) and local_user.get("role", 0) == UserRole.Agent
             )
             if not (is_god or trigger_is_agent):
-                return Errors.NotEnoughRights(timestamp() - t1)
+                return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
             old_agent = await ndc_users_table.find_one({"role": UserRole.Agent})
             if old_agent and old_agent["id"] != userId:
@@ -145,7 +145,7 @@ async def create_community(request: Request):
     fields = ["name", "aminoId", "lang"]
     missing_fields = [field for field in fields if field not in data]
     if missing_fields:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
@@ -155,14 +155,14 @@ async def create_community(request: Request):
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             # For now, we will prohibit the creation of communities by users themselves.
             db.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         ndclist_table = db.get(table="Communities")
 
         existing_community = await ndclist_table.find_one({"aminoId": data["aminoId"]})
         if existing_community:
             db.close()
-            return Errors.Exs9(timestamp() - t1)
+            return Errors.Exs9(timestamp() - t1, lang=request.state.lang)
 
         is_staff = UserRole.is_global_staff(user.get("role", 0))
         agentAminoId = None
@@ -170,18 +170,20 @@ async def create_community(request: Request):
         if "agentGlobalLink" in data and data["agentGlobalLink"]:
             if not is_staff:
                 db.close()
-                return Errors.NotEnoughRights(timestamp() - t1)
+                return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
             if f"{Config.SITE_DOMAIN}/u/" not in data["agentGlobalLink"]:
                 db.close()
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
             agentAminoId = data["agentGlobalLink"].split("/")[-1]
         else:
             agentAminoId = user.get("aminoId")
             if not agentAminoId:
                 db.close()
-                return Errors.InternalServerError(timestamp() - t1)
+                return Errors.InternalServerError(
+                    timestamp() - t1, lang=request.state.lang
+                )
 
         latest_community = await ndclist_table.find_one(sort=[("id", -1)])
         if latest_community and latest_community.get("id"):
@@ -192,7 +194,7 @@ async def create_community(request: Request):
         shape = await ndclist_table.find_one({"id": 0})
         if not shape:
             db.close()
-            return Errors.InternalServerError(timestamp() - t1)
+            return Errors.InternalServerError(timestamp() - t1, lang=request.state.lang)
 
         shape["id"] = ndcId
         shape["name"] = data["name"]
@@ -216,7 +218,9 @@ async def create_community(request: Request):
 
             if not aid2id_request and aminoId != "astral":
                 db.close()
-                return Errors.InternalServerError(timestamp() - t1)
+                return Errors.InternalServerError(
+                    timestamp() - t1, lang=request.state.lang
+                )
 
             if not aid2id_request and aminoId == "astral":
                 continue
@@ -229,7 +233,9 @@ async def create_community(request: Request):
             profile = await global_table.find_one({"id": uid})
             if not profile:
                 db.close()
-                return Errors.InternalServerError(timestamp() - t1)
+                return Errors.InternalServerError(
+                    timestamp() - t1, lang=request.state.lang
+                )
 
             modtime = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
             profile.pop("_id", None)
@@ -304,7 +310,7 @@ async def destroy_community(request: Request, ndcId: int):
 
     if not (is_god or is_agent):
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
     # well.. fine. we will delete everything
     # starting from communities table
     ndclist_table = db.get(table="Communities")
@@ -350,7 +356,7 @@ async def edit_community(request: Request, ndcId: int = 0):
                 is_allowed = True
 
         if not is_allowed:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         preparedQueries = {
             "modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -388,7 +394,7 @@ async def edit_community(request: Request, ndcId: int = 0):
                 if "hidden" in conf:
                     preparedQueries["hidden"] = bool(conf["hidden"])
             except Exception:
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         for key in ["welcomeMessage", "welcomeMessageEnabled"]:
             if key in conf:
@@ -401,7 +407,7 @@ async def edit_community(request: Request, ndcId: int = 0):
                 {"aminoId": preparedQueries["aminoId"], "id": {"$ne": ndcId}}
             )
             if existing_community:
-                return Errors.Exs9(timestamp() - t1)
+                return Errors.Exs9(timestamp() - t1, lang=request.state.lang)
 
         await communities_table.update_one({"id": ndcId}, {"$set": preparedQueries})
 
@@ -437,7 +443,7 @@ async def get_community_themePack(request: Request, ndcId: int = 0):
                 is_allowed = True
 
         if not is_allowed:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         communities_table = db.get(table="Communities")
         theme = await communities_table.find_one(
@@ -472,14 +478,14 @@ async def communities_with_role(request: Request, userId: str):
             trigger_uid != userId
             and not UserRole.is_global_staff(trigger_user.get("role", 0))
         ):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         target_user = await users.find_one(
             {"id": userId},
             projection={"communityList": 1, "_id": 0},
         )
         if not target_user:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         community_ids = [i for i in target_user.get("communityList", []) if i]
 
@@ -620,39 +626,41 @@ async def edit_community_modules(request: Request, ndcId: int):
 
     modules_in = data.get("modules")
     if not isinstance(modules_in, dict) or not modules_in:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
         if not await _can_edit_community(db, ndcId, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         comms = db.get(table="Communities")
         community = await comms.find_one({"id": ndcId})
         if community is None:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         set_ops = {}
         for mod_name, mod_val in modules_in.items():
             if mod_name not in MODULE_SCHEMA:
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
             if isinstance(mod_val, bool):
                 set_ops[f"configuration.modules.{mod_name}.enabled"] = mod_val
                 continue
 
             if not isinstance(mod_val, dict):
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
             for field, value in mod_val.items():
                 ok, coerced = _validate_module_field(mod_name, field, value)
                 if not ok:
-                    return Errors.InvalidRequest(timestamp() - t1)
+                    return Errors.InvalidRequest(
+                        timestamp() - t1, lang=request.state.lang
+                    )
 
                 set_ops[f"configuration.modules.{mod_name}.{field}"] = coerced
 
         if not set_ops:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         set_ops["modifiedTime"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         await comms.update_one({"id": ndcId}, {"$set": set_ops})
@@ -675,12 +683,12 @@ async def get_modules_schema(request: Request, ndcId: int):
     db = await Database().init()
     try:
         if not await _can_edit_community(db, ndcId, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         comms = db.get(table="Communities")
         community = await comms.find_one({"id": ndcId})
         if community is None:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         mods = community.get("configuration", {}).get("modules", {})
     finally:
@@ -758,12 +766,12 @@ async def edit_community_navigation(request: Request, ndcId: int):
     db = await Database().init()
     try:
         if not await _can_edit_community(db, ndcId, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         comms = db.get(table="Communities")
         community = await comms.find_one({"id": ndcId})
         if community is None:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         custom_pages = (
             community.get("configuration", {}).get("pageCustomList", []) or []
@@ -777,13 +785,13 @@ async def edit_community_navigation(request: Request, ndcId: int):
         if "sidepanelTopNav" in data:
             ok, cleaned = _validate_nav(data["sidepanelTopNav"], custom_ids)
             if not ok:
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
             set_ops["configuration.sidepanelTopNav"] = cleaned
 
         if "sidepanelBottomNav" in data:
             ok, cleaned = _validate_nav(data["sidepanelBottomNav"], custom_ids)
             if not ok:
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
             set_ops["configuration.sidepanelBottomNav"] = cleaned
 
         if "homepageNav" in data:
@@ -791,14 +799,14 @@ async def edit_community_navigation(request: Request, ndcId: int):
                 data["homepageNav"], custom_ids, allow_start=True
             )
             if not ok:
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
             starts = [e for e in cleaned if e.get("isStartPage")]
             if len(starts) > 1:
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
             set_ops["configuration.homepageNav"] = cleaned
 
         if not set_ops:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         set_ops["modifiedTime"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         await comms.update_one({"id": ndcId}, {"$set": set_ops})
@@ -824,7 +832,7 @@ async def add_community_page(request: Request, ndcId: int):
 
     url = (data.get("url") or "").strip()
     if not url:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
@@ -841,12 +849,12 @@ async def add_community_page(request: Request, ndcId: int):
             ):
                 is_allowed = True
         if not is_allowed:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         comms = db.get(table="Communities")
         community = await comms.find_one({"id": ndcId})
         if community is None:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         page = {
             "id": data.get("id") or str(uuid4()),
@@ -892,7 +900,7 @@ async def remove_community_page(request: Request, ndcId: int, pageId: str):
             ):
                 is_allowed = True
         if not is_allowed:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         comms = db.get(table="Communities")
         res = await comms.update_one(
@@ -905,7 +913,7 @@ async def remove_community_page(request: Request, ndcId: int, pageId: str):
             },
         )
         if res.modified_count == 0:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     finally:
         db.close()
 

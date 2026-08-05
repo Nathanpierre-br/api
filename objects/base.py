@@ -3,8 +3,6 @@ from typing import Union
 
 from fastapi.responses import JSONResponse
 
-from helpers.processors.signature import SignatureProcessor
-
 
 class Base:
     @staticmethod

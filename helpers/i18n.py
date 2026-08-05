@@ -1,8 +1,9 @@
 import yaml
+from helpers.config import Config
 
 
 class __i18n_singleton:
-    def __init__(self, path: str = "files/i18n.yaml"):
+    def __init__(self, path: str = "files/i18n"):
         self.data: dict = {}
         self.path: str = path
         self.reload()
@@ -14,10 +15,13 @@ class __i18n_singleton:
         if self.path is None:
             raise Exception("invalid path")
 
-        with open(self.path, mode="r", encoding="utf-8") as f:
-            content = f.read()
-            self.data = yaml.safe_load(content)
-
+        for lang in Config.LANG_SEGMENTS:
+            try:
+                with open(f"{self.path}/{lang}.yaml", mode="r", encoding="utf-8") as f:
+                    content = f.read()
+                    self.data[lang] = yaml.safe_load(content)
+            except Exception:
+                print(f"No translation for {lang} since there is no {path}/{lang}.yaml")
         return
 
     def get(self, key: str, lang: str = "en") -> str:
@@ -29,8 +33,13 @@ class __i18n_singleton:
                     return None
             return data
 
-        lang_data = self.data.get(lang, {})
+        lang_data = self.data.get(lang)
+        if lang_data is None:
+            lang_data = self.data.get("en", {})
         result = _get_nested(lang_data, key)
+
+        if isinstance(result, list):
+            return result
 
         if not isinstance(result, str) or not result:
             result = _get_nested(lang_data, "errors.no-i18n")

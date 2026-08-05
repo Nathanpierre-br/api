@@ -36,7 +36,7 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
     body = await request.body()
 
     if len(body) > Config.MAX_FILE_SIZE:
-        return Errors.BigMediaContent(timestamp() - t1)
+        return Errors.BigMediaContent(timestamp() - t1, lang=request.state.lang)
 
     # init s3 class
     s3 = resource(
@@ -52,7 +52,9 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
     file_ext = detect_file_ext(body)
     is_zip = body.startswith(b"PK\x03\x04")
     if file_ext is None and not is_zip:
-        return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+        return Errors.InvalidMediaContent(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
     if is_zip:
         # themes are basically zips
@@ -76,7 +78,9 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
                             theme_config = loads(f.read())
                 rev = theme_config["revision"]
             except Exception:
-                return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+                return Errors.InvalidMediaContent(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
 
             filename = Config.S3_NDCTHEMES_FOLDER + f"x{ndcId}-rev{rev}.ndthemepack"
         elif target in ("avatar-frame", "chat-bubble", "sticker"):
@@ -87,7 +91,9 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
                 if not user_info or not RoleTypes.is_global_staff(
                     user_info.get("role", 0)
                 ):
-                    return Errors.NotEnoughRights(timestamp() - t1)
+                    return Errors.NotEnoughRights(
+                        timestamp() - t1, lang=request.state.lang
+                    )
             finally:
                 db.close()
 
@@ -97,7 +103,9 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
                         if zip_ref.testzip() is not None:
                             raise ValueError("bad zip")
             except Exception:
-                return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+                return Errors.InvalidMediaContent(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
 
             filename = (
                 Config.S3_STORE_FOLDER
@@ -106,7 +114,9 @@ async def upload(request: Request, ndcId: int = 0, target: str = ""):
             )
 
         else:
-            return Errors.InvalidRequest(spent_time=timestamp() - t1)
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
     else:
         # generating filename

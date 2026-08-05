@@ -66,7 +66,7 @@ async def get_altamino_team(request: Request):
 
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         global_cursor = sensitive_table.find(
             {"role": {"$in": UserRole.GODS}},
@@ -133,7 +133,7 @@ async def get_altamino_team_member(request: Request, userId: str):
 
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         global_member = await sensitive_table.find_one(
             {"id": userId, "role": {"$in": UserRole.GODS}},
@@ -149,7 +149,7 @@ async def get_altamino_team_member(request: Request, userId: str):
             },
         )
         if not global_member:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         local_profile = await local_table.find_one(
             {"id": userId},
@@ -165,7 +165,7 @@ async def get_altamino_team_member(request: Request, userId: str):
             },
         )
         if not local_profile:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         merged = dict(local_profile)
         merged["uid"] = global_member["id"]
@@ -180,7 +180,7 @@ async def get_altamino_team_member(request: Request, userId: str):
 
         return Base.Answer({"userProfile": merged}, spent_time=timestamp() - t1)
     except:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     finally:
         db.close()
 
@@ -193,10 +193,10 @@ async def link_telegram(request: Request, body: dict):
     amino_id = body.get("aminoId")
 
     if not trigger_uid or telegram_id is None:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if not isinstance(telegram_id, int):
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
@@ -204,7 +204,7 @@ async def link_telegram(request: Request, body: dict):
 
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or user.get("role", 0) != UserRole.System:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
 
@@ -225,7 +225,7 @@ async def unlink_telegram(request: Request, body: dict = None):
     amino_id = body.get("aminoId")
 
     if not trigger_uid:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
@@ -233,7 +233,7 @@ async def unlink_telegram(request: Request, body: dict = None):
 
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or user.get("role", 0) != UserRole.System:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         target_query = {"aminoId": amino_id} if amino_id else {"id": trigger_uid}
 
@@ -249,7 +249,7 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
     trigger_uid = request.state.session.get("uid")
 
     if not trigger_uid:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
@@ -257,11 +257,11 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
 
         trigger_user = await sensitive_table.find_one({"id": trigger_uid})
         if not trigger_user or trigger_user.get("role", 0) != UserRole.AltAminoStaff:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         target_user = await sensitive_table.find_one({"id": userId})
         if not target_user:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         update_fields = {}
 
@@ -275,9 +275,9 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
                 target_user.get("role", 0) == UserRole.AltAminoStaff
                 or userId == trigger_uid
             ):
-                return Errors.NotEnoughRights(timestamp() - t1)
+                return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
             if not UserRole.is_valid_role(new_role):
-                return Errors.InvalidRequest(timestamp() - t1)
+                return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
             update_fields["role"] = new_role
 
@@ -296,7 +296,7 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
 
         return Base.Answer(spent_time=timestamp() - t1)
     except:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     finally:
         db.close()
 
@@ -305,14 +305,14 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
 async def support_reset_password(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not Config.ENABLE_EMAIL:
-        return Errors.PathUnderMaintenance(timestamp() - t1)
+        return Errors.PathUnderMaintenance(timestamp() - t1, lang=request.state.lang)
     trigger_uid = request.state.session.get("uid")
     db = await Database().init()
     sensitive_table = db.get(table="Users")
     user = await sensitive_table.find_one({"id": trigger_uid})
     if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
     try:
         secret = "".join(secrets.choice(ascii_letters + digits) for _ in range(12))
         data = await request.json()
@@ -323,9 +323,9 @@ async def support_reset_password(request: Request, ndcId: int = 0):
         ).hash
         email = data["email"]
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     if not await EmailProcessor.Validate(email):
-        return Errors.InvalidEmail(timestamp() - t1)
+        return Errors.InvalidEmail(timestamp() - t1, lang=request.state.lang)
     table = db.get(table="Users")
     await table.update_one({"email": email}, {"$set": {"passwordHash": updateSecret}})
     db.close()
@@ -347,7 +347,7 @@ async def support_reset_password(request: Request, ndcId: int = 0):
         )
     except Exception as e:
         print(e)
-        return Errors.MailError(timestamp() - t1)
+        return Errors.MailError(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(
         {},
         spent_time=timestamp() - t1,
@@ -358,21 +358,21 @@ async def support_reset_password(request: Request, ndcId: int = 0):
 async def set_user_status(request: Request, userId: str):
     t1 = timestamp()
     if not Config.ENABLE_EMAIL:
-        return Errors.PathUnderMaintenance(timestamp() - t1)
+        return Errors.PathUnderMaintenance(timestamp() - t1, lang=request.state.lang)
     trigger_uid = request.state.session.get("uid")
     db = await Database().init()
     sensitive_table = db.get(table="Users")
     user = await sensitive_table.find_one({"id": trigger_uid})
     if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
     try:
         data = await request.json()
         status = data.get("status", 0)
         if not UserStatus.is_valid_status(status):
             raise Exception
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     table = db.get(table="Users")
     await table.update_one({"id": userId}, {"$set": {"status": status}})
@@ -393,13 +393,13 @@ async def get_user_communities(request: Request, userId: str):
         sensitive_table = db.get(table="Users")
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         target = await sensitive_table.find_one(
             {"id": userId}, {"communityList": 1, "nickname": 1, "icon": 1}
         )
         if not target:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         community_ids = target.get("communityList", [])
 
@@ -516,19 +516,19 @@ async def create_frame(request: Request):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         try:
             data = await request.json()
             resource_url = data["resourceUrl"]
         except Exception:
             print("data error")
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         fetched = await _fetch_resource_config(resource_url)
         if fetched is None:
             print("fetched none")
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
         md5_hex, config = fetched
 
         frame_id = str(uuid.uuid4())
@@ -557,7 +557,7 @@ async def create_frame(request: Request):
 
         if not doc["name"]:
             print("no name")
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         frames = db.get(table="AvatarFrames")
         await frames.insert_one(doc)
@@ -577,12 +577,12 @@ async def edit_frame(request: Request, frameId: str):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         try:
             data = await request.json()
         except Exception:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         allowed = {
             "resourceUrl",
@@ -599,13 +599,13 @@ async def edit_frame(request: Request, frameId: str):
         }
         changes = {k: v for k, v in data.items() if k in allowed and v is not None}
         if not changes:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
         changes["modifiedTime"] = _iso()
 
         frames = db.get(table="AvatarFrames")
         result = await frames.update_one({"frameId": frameId}, {"$set": changes})
         if result.matched_count == 0:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
@@ -619,12 +619,12 @@ async def delete_frame(request: Request, frameId: str):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         frames = db.get(table="AvatarFrames")
         result = await frames.delete_one({"frameId": frameId})
         if result.deleted_count == 0:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         # снести владение и снять у всех, кто носит
         await _purge_ownership(db, StoreItemType.AvatarFrame, frameId, "frameId")
@@ -641,7 +641,7 @@ async def list_frames(request: Request):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         frames = db.get(table="AvatarFrames")
         docs = await frames.find({}, {"_id": 0}).to_list(length=None)
@@ -661,17 +661,17 @@ async def create_bubble(request: Request):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         try:
             data = await request.json()
             resource_url = data["resourceUrl"]
         except Exception:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         fetched = await _fetch_resource_config(resource_url)
         if fetched is None:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
         md5_hex, config = fetched
 
         bubble_id = str(uuid.uuid4())
@@ -703,7 +703,7 @@ async def create_bubble(request: Request):
         }
 
         if not doc["name"]:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         bubbles = db.get(table="ChatBubbles")
         await bubbles.insert_one(doc)
@@ -723,12 +723,12 @@ async def edit_bubble(request: Request, bubbleId: str):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         try:
             data = await request.json()
         except Exception:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         allowed = {
             "name",
@@ -751,13 +751,13 @@ async def edit_bubble(request: Request, bubbleId: str):
         }
         changes = {k: v for k, v in data.items() if k in allowed and v is not None}
         if not changes:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
         changes["modifiedTime"] = _iso()
 
         bubbles = db.get(table="ChatBubbles")
         result = await bubbles.update_one({"bubbleId": bubbleId}, {"$set": changes})
         if result.matched_count == 0:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         return Base.Answer(spent_time=timestamp() - t1)
     finally:
@@ -771,12 +771,12 @@ async def delete_bubble(request: Request, bubbleId: str):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         bubbles = db.get(table="ChatBubbles")
         result = await bubbles.delete_one({"bubbleId": bubbleId})
         if result.deleted_count == 0:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         # снести владение и снять у всех, кто носит
         await _purge_ownership(db, StoreItemType.ChatBubble, bubbleId, "bubbleId")
@@ -793,7 +793,7 @@ async def list_bubbles(request: Request):
     db = await Database().init()
     try:
         if not await _require_global_staff(db, trigger_uid):
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         bubbles = db.get(table="ChatBubbles")
         docs = await bubbles.find({}, {"_id": 0}).to_list(length=None)
@@ -810,7 +810,7 @@ async def disable_toggle(request: Request, t: str, action: str, objId: str):
     _t = {"user": "Users", "community": "Communities"}
 
     if t not in _t or action not in ("disable", "enable"):
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session.get("uid")
     db = await Database().init()
@@ -818,7 +818,7 @@ async def disable_toggle(request: Request, t: str, action: str, objId: str):
     user = await sensitive_table.find_one({"id": trigger_uid})
     if not user or not UserRole.is_global_staff(user.get("role", 0)):
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     table = db.get(table=_t[t])
     result = await table.update_one(
@@ -827,7 +827,7 @@ async def disable_toggle(request: Request, t: str, action: str, objId: str):
     )
     if result.matched_count == 0:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(
         {},
         spent_time=timestamp() - t1,

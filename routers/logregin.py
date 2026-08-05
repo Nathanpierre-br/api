@@ -51,14 +51,14 @@ async def verifyPassword(request: Request):
             digest_size=64,
         ).hash
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
 
     table = db.get(table="Users")
     row = await table.find_one({"id": uid, "passwordHash": secret})
     if row is None:
-        return Errors.InvalidLogin(timestamp() - t1)
+        return Errors.InvalidLogin(timestamp() - t1, lang=request.state.lang)
 
     return Base.Answer(
         {},
@@ -87,21 +87,23 @@ async def changePassword(request: Request):
         email = validationContext["identity"]
         deviceId = data["deviceID"]
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     if not Config.ENABLE_EMAIL:
         table = db.get(table="VerificationCodes")
         row = await table.find_one({"deviceId": deviceId, "email": email})
         if row is None:
-            return Errors.UnverifiedEmail(timestamp() - t1)
+            return Errors.UnverifiedEmail(timestamp() - t1, lang=request.state.lang)
         if str(code) != str(row["captchaAnswer"]):
-            return Errors.InvalidVerificationCode(timestamp() - t1)
+            return Errors.InvalidVerificationCode(
+                timestamp() - t1, lang=request.state.lang
+            )
 
     table = db.get(table="Users")
     row = await table.find_one({"email": email, "passwordHash": oldSecret})
     if row is None:
-        return Errors.UserUnavailable(timestamp() - t1)
+        return Errors.UserUnavailable(timestamp() - t1, lang=request.state.lang)
     print(uid, row.get("id"))
     # if row.get("id") != uid:
     #    return Errors.SUS()
@@ -133,10 +135,10 @@ async def requestCode(request: Request):
         ):
             raise Exception()
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if not await EmailProcessor.Validate(reciever):
-        return Errors.InvalidEmail(timestamp() - t1)
+        return Errors.InvalidEmail(timestamp() - t1, lang=request.state.lang)
 
     inspector = Aether.encode("email:" + reciever).decode()
     turtle = await CacheProcessor.Get(inspector, prefix="turtlelimiter:")
@@ -150,6 +152,7 @@ async def requestCode(request: Request):
         return Errors.VerificationRequired(
             Config.API_BASE_URL + "/api/v1/turtle/hello/email?inspector=" + inspector,
             timestamp() - t1,
+            lang=request.state.lang,
         )
 
     if not Config.ENABLE_EMAIL:
@@ -167,7 +170,9 @@ async def requestCode(request: Request):
     uniqueCode, captchaAnswer = None, None
     if row is not None:
         if ceil(timestamp()) - row["timestamp"] <= 60:
-            return Errors.WaitMinuteForAnotherCode(timestamp() - t1)
+            return Errors.WaitMinuteForAnotherCode(
+                timestamp() - t1, lang=request.state.lang
+            )
         else:
             await table.update_many(code_req, {"$set": {"timestamp": int(timestamp())}})
             uniqueCode = row["uniqueCode"]
@@ -212,7 +217,7 @@ async def requestCode(request: Request):
         )
     except Exception as e:
         print(e)
-        return Errors.MailError(timestamp() - t1)
+        return Errors.MailError(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -255,7 +260,7 @@ async def check_code(request: Request):
         ):
             raise Exception()
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     email = data["validationContext"]["identity"]
 
@@ -271,9 +276,9 @@ async def check_code(request: Request):
     table = db.get(table="VerificationCodes")
     row = await table.find_one({"deviceId": data["deviceID"], "email": email})
     if row is None:
-        return Errors.UnverifiedEmail(timestamp() - t1)
+        return Errors.UnverifiedEmail(timestamp() - t1, lang=request.state.lang)
     if str(data["validationContext"]["data"]["code"]) != str(row["captchaAnswer"]):
-        return Errors.InvalidVerificationCode(timestamp() - t1)
+        return Errors.InvalidVerificationCode(timestamp() - t1, lang=request.state.lang)
 
     print(
         await table.update_many(
@@ -309,7 +314,7 @@ async def register(request: Request):
                 raise Exception()
     except Exception as e:
         print(e)
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
 
@@ -320,25 +325,27 @@ async def register(request: Request):
         )
         if codes_row is None:
             print("No codes")
-            return Errors.UnverifiedEmail(timestamp() - t1)
+            return Errors.UnverifiedEmail(timestamp() - t1, lang=request.state.lang)
         if data.get("validationContext"):
             if str(data["validationContext"]["data"]["code"]) != str(
                 codes_row["captchaAnswer"]
             ):
                 print("Invalid code (somehow)")
-                return Errors.InvalidVerificationCode(timestamp() - t1)
+                return Errors.InvalidVerificationCode(
+                    timestamp() - t1, lang=request.state.lang
+                )
             else:
                 codes_row["codeVerified"] = True
 
         if not codes_row["codeVerified"]:
             print("Code not verified")
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     users = db.get(table="Users")
     row = await users.find_one({"email": data["email"]})
     if row is not None:
         db.close()
-        return Errors.EmailWasTaken(timestamp() - t1)
+        return Errors.EmailWasTaken(timestamp() - t1, lang=request.state.lang)
 
     uid = str(uuid4())
 
@@ -400,14 +407,14 @@ async def register_check(request: Request):
             gl_users = db.get(table="Users")
             row = await gl_users.find_one({"email": data["email"]})
             if row is not None:
-                return Errors.EmailWasTaken(timestamp() - t1)
+                return Errors.EmailWasTaken(timestamp() - t1, lang=request.state.lang)
         elif data.get("secret"):
             if data["secret"][:2] != "0 ":
                 raise Exception()
         else:
             raise Exception()
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -417,10 +424,10 @@ async def login(request: Request):
     data = await request.json()
 
     if data.get("email") is None or data.get("secret") is None:
-        return Errors.InvalidLogin(timestamp() - t1)
+        return Errors.InvalidLogin(timestamp() - t1, lang=request.state.lang)
 
     if not await EmailProcessor.Validate(data["email"]):
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     secretSplitted = data["secret"].split()
     prefix = secretSplitted[0]
@@ -437,10 +444,10 @@ async def login(request: Request):
 
         if row is None:
             db.close()
-            return Errors.InvalidLogin(timestamp() - t1)
+            return Errors.InvalidLogin(timestamp() - t1, lang=request.state.lang)
         elif row.get("status", 0) == 9:
             db.close()
-            return Errors.UserBanned(timestamp() - t1)
+            return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
         else:
             table = db.get("x0", "Users")
             additionalRow = await table.find_one({"id": row["id"]})
@@ -482,10 +489,12 @@ async def login(request: Request):
         row = await table.find_one({"id": data["i"]})
         if row is None or row["passwordHash"] != data["h"]:
             db.close()
-            return Errors.InvalidLogin(spent_time=timestamp() - t1)
+            return Errors.InvalidLogin(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
         if row.get("status", 0) == 9:
             db.close()
-            return Errors.UserBanned(timestamp() - t1)
+            return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
 
         table = db.get(database="x0", table="Users")
         additionalRow = await table.find_one({"id": row["id"]})
@@ -510,17 +519,21 @@ async def login(request: Request):
         if (len(secretSplitted) != 6) or (
             int(secretSplitted[0]) * int(secretSplitted[4]) != int(secretSplitted[5])
         ):
-            return Errors.InvalidRequest(spent_time=timestamp() - t1)
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
         decodedPswdHash = b64decode(secretSplitted[3]).decode()
         db = await Database().init()
         table = db.get(table="Users")
         row = await table.find_one({"id": secretSplitted[1]})
         if row is None or row["passwordHash"] != decodedPswdHash:
             db.close()
-            return Errors.InvalidLogin(spent_time=timestamp() - t1)
+            return Errors.InvalidLogin(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
         if row.get("status", 0) == 9:
             db.close()
-            return Errors.UserBanned(timestamp() - t1)
+            return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
 
         table = db.get(database="x0", table="Users")
         additionalRow = await table.find_one({"id": row["id"]})
@@ -539,7 +552,9 @@ async def login(request: Request):
             spent_time=timestamp() - t1,
         )
     else:
-        return Errors.InvalidRequest(spent_time=timestamp() - t1)
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
 
 @logregin.post("/g/s/auth/logout")
@@ -567,7 +582,7 @@ async def dev_device(request: Request):
         row = await table.find_one({"id": uid})
         db.close()
         if row.get("status", 0) == 9:
-            return Errors.UserBanned(timestamp() - t1)
+            return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
 
     return Base.Answer({"devOptions": None}, timestamp() - t1)
 
@@ -584,8 +599,8 @@ async def device(request: Request, ndcId: int = 0):
         row = await table.find_one({"id": uid})
         db.close()
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
         if row.get("status", 0) == 9:
-            return Errors.UserBanned(timestamp() - t1)
+            return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
 
     return Base.Answer({"devOptions": None}, timestamp() - t1)

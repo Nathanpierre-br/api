@@ -60,7 +60,7 @@ async def apply_avatar_frame(request: Request, ndcId: int = 0):
         frame_id = data.get("frameId")
         apply_to_all = int(data.get("applyToAll", 0)) == 1
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     # [note] in case of default frame w/ None id
     if not frame_id:
@@ -70,7 +70,7 @@ async def apply_avatar_frame(request: Request, ndcId: int = 0):
         ok = await svc.apply_avatar_frame(frame_id, apply_to_all)
 
     if not ok:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(spent_time=timestamp() - t1)
 
 
@@ -83,7 +83,7 @@ async def get_avatar_frame(request: Request, frameId: str, ndcId: int = 0):
         payload = await svc.get_avatar_frame(frameId)
 
     if payload is None:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(payload, spent_time=timestamp() - t1)
 
 
@@ -97,16 +97,19 @@ async def store_purchase(request: Request, ndcId: int = 0):
         object_id = data["objectId"]
         object_type = int(data["objectType"])
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     async with await StoreService.create(_uid(request), ndcId) as svc:
         result = await svc.purchase(object_id, object_type)
 
     if not result.ok:
         if result.error_code == "invalid":
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
         return Errors.Custom(
-            result.error_code, result.error_message, spent_time=timestamp() - t1
+            result.error_code,
+            result.error_message,
+            spent_time=timestamp() - t1,
+            lang=request.state.lang,
         )
 
     return Base.Answer({"storeItem": result.store_item}, spent_time=timestamp() - t1)
@@ -137,7 +140,7 @@ async def get_chat_bubble(request: Request, bubbleId: str, ndcId: int = 0):
         payload = await svc.get_chat_bubble(bubbleId)
 
     if payload is None:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(payload, spent_time=timestamp() - t1)
 
 

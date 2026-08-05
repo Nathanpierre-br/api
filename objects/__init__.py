@@ -8,8 +8,10 @@ from .links import Links
 from .turtle import TurtleAnswers
 from .user import User
 from .medialist import MediaList
+from .modhistory import ModHistory
 
 __all__ = [
+    "ModHistory",
     "MediaList",
     "Errors",
     "User",

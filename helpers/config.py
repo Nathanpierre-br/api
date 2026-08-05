@@ -7,7 +7,7 @@ class Config:
     """
 
     # static values
-    LANG_SEGMENTS = ["en", "ru", "es", "ar", "pt", "zh", "ko", "ja"]
+    LANG_SEGMENTS = ["en", "ru", "es", "ar", "pt"]
 
     # database connection settings (required)
     REDIS_CONNECTION_STRING = environ.get("REDIS_CONNECTION_STRING")

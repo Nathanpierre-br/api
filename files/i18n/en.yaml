@@ -1,3 +1,77 @@
+errors:
+  CantProcessData: "Can't really process it now, cat is laying on our servers."
+  InvalidRequest: "Invalid request. Check all data that you sended or try again later."
+  Exs9: "The data already exists."
+  SUS: "🤨"
+  UnsupportedClient: "Looks like your client is unsupported. Try update app or contact devs."
+  ExpiredRequest: "Request is expired. Please try again."
+  ExpiredSession: "Session is expired. Please relogin."
+  InvalidSession: "Session is invalid. Please relogin."
+  InternalServerError: "Internal server error. If this error staying too long, contact AltAmino's dev team."
+  MailError: "Error while tried send email. If this error staying too long, contact AltAmino's dev team."
+  WaitMinuteForAnotherCode: "Not so fast, Sonic! Wait for a minute to get code again"
+  TooManyRequest: "Whoa! Slow down! You are sending requests too quickly."
+  Forbidden: "You trying to access forbidden method, media or you temporary banned."
+  IpFrozen: "Your client and IP is frozen due trying find vulnerabilities or doing sus things."
+  OutdatedDevice: "We dont support your device as it outdated. Sorry. :("
+  InvalidPath: "Function does not exists. It will be implemented later."
+  UnimplementedPath: "Function is created but is not available or not ready. Try again later."
+  PathUnderMaintenance: "Function is under maintenance. Try again later."
+  PathWorkingInvalid: "Looks like function working improperly or some data is missing. Try again later or contact devs."
+  InvalidMediaContent: "Invalid media content. Check all data that you sended or try again later."
+  NSFWContent: "Content is forbidden to upload."
+  BigMediaContent: "Media content is larger, than 5MB."
+  NotEnoughCoins: "You don't have enough coins for this transaction."
+  AlreadyClaimed: "Sorry, you can't check in any more."
+  LotteryPlayed: "You have played the maximum number of lucky draws."
+  LotteryNotAvailable: "Sorry, the lucky draw is not available. Please check in first."
+  BigMessage: "Message content is larger, than 2345 symbols."
+  VerificationRequired: "Action you made requires verification that you aren't a robot. Please solve a challenge. 👉👈"
+  IncorrectVerificationCode: "Invalid verification code. Make sure that you copied correct code."
+  EmailWasTaken: "Email was taken for another account. Try different one."
+  AminoIdWasTaken: "Amino ID was taken for another account. Try different one."
+  NotWorkingEmail: "Sorry, but we can't send code to this email. Try different one."
+  InvalidEmail: "This email is invalid. Try different one."
+  ExpiredVerificationCode: "Link and verification code are expired. Request new verification code."
+  InvalidVerificationCode: "Link and verification code are invalid. Request new verification code."
+  VerificationCodeAlreadySent: "Verification already sent to your email. Please wait, check spam folder or contact AltAmino's dev team."
+  InvalidLogin: "Invalid login. Are your credentials are valid?"
+  AccountNotExist: "This account does not exist."
+  DataNotExist: "The requested data does not exist."
+  AccountDisabled: "This account was banned by AltAmino Team."
+  AccountDeleted: "This account was deleted by its owner."
+  UnverifiedEmail: "This email not verified. Did you even requested code?"
+  TooManyChatUsers: "In chat can be only 1000 users max. :("
+  TooManyInvitedUsers: "In chat can be invited only 1000 users max. :("
+  ChatInvitesForbidden: "It's forbidden to invite users here. :("
+  RemovedFromChat: "You're been removed from this chat. For some reason..."
+  UserNotJoined: "You or member you selected not in chat. Join first!"
+  MemberKickedByOrganizer: "This user was removed from this chat and cannot be reinvited."
+  UserBanned: "You are banned."
+  UserUnavailable: "User not found."
+  ViewModeEnabled: "Shh! Chat in View Only mode. 🤫"
+  ChatMessageTooBig: "We can't send this message, it's too big."
+  InvalidMessage: "Message you trying send is invalid."
+  NotEnoughRights:
+    - "Nuh-uh. 😉"
+    - "You can't. 😐"
+    - "You can't. Just can't. 😐"
+    - "You don't have permission to do that, innit? 😉"
+    - "Just stop lying that you have permissions to do that. 😉"
+    - "Wooow. Keep trying, I bet you will recieve something as result. 😙"
+    - "...Nice try though. 🧐"
+    - "You definetly know how to press buttons. If you pressed any. 🥱"
+    - "Sesame doesn't want to open. Try another phrase. 🤔"
+    - "... 😶"
+  MythicData:
+    - "This data does not exists in this world. Try reload page."
+    - "Dungeon have some bugs. Try enter it again."
+    - "There are legends about this data... They say all you have to do is reload the page..."
+    - "Sesame is bugging. Try again."
+  VerificationRequired_Title: "Hold on!"
+  VerificationRequired_OkButtonText: "Verify"
+  VerificationRequired_CancelButtonText: "Cancel"
+
 explore:
     hand-picked: Team's Pick
     recommended: Recommended
@@ -6,16 +80,28 @@ explore:
 mod:
     op:
         hide:
-            content:
-                action: Hid content
-                title: Your content got hidden! 
+            blog:
+                action: Hid blog
+                title: Your blog got hidden! 
+            wiki:
+                action: Hid wiki item
+                title: Your wiki item got hidden! 
+            chat:
+                action: Hid chat
+                title: Your chat got hidden! 
             profile:
                 action: Hid profile
                 title: Your profile got hidden! 
         unhide:
-            content:
-                action: Unhid content
-                title: Your content got unhidden! 
+            blog:
+                action: Unhid blog
+                title: Your blog got unhidden! 
+            wiki:
+                action: Unhid wiki item
+                title: Your wiki item got unhidden! 
+            chat:
+                action: Unhid chat
+                title: Your chat got unhidden! 
             profile:
                 action: Unhid profile
                 title: Your profile got unhidden! 
@@ -35,8 +121,6 @@ mod:
         copyright:
             action: Copyright infringement
             title: Your content was removed due copyright infringement!        
-            title: You got unbanned! 
-            title: You got banned! 
         promotion:
             agent: 
                 action: Agent promotion
@@ -51,3 +135,46 @@ mod:
                 action: Leader promoted
             curator:
                 action: Curator promoted
+        titles-change:
+            action: Titles changed
+        msg-delete:
+            action: Message deleted
+    templates:
+        strike:
+            - id: "strike-1"
+              title: "Spam"
+              content: "Your content was removed for spam. Please follow community guidelines."
+              messageType: 4
+            - id: "strike-2"
+              title: "Inappropriate content"
+              content: "Your content was removed for violating our community rules regarding inappropriate content."
+              messageType: 4
+            - id: "strike-3"
+              title: "Harassment"
+              content: "Your content was removed for harassment or bullying of other members."
+              messageType: 4
+            - id: "strike-4"
+              title: "NSFW content"
+              content: "Your content was removed for containing NSFW or adult material which is not allowed on this platform."
+              messageType: 4
+            - id: "strike-5"
+              title: "Misinformation"
+              content: "Your content was removed for spreading misinformation or false information."
+              messageType: 4
+        warning:
+            - id: "warn-1"
+              title: "Friendly reminder"
+              content: "This is a friendly reminder to please follow our community guidelines."
+              messageType: 7
+            - id: "warn-2"
+              title: "Spam warning"
+              content: "Please avoid posting repetitive or promotional content in this community."
+              messageType: 7
+            - id: "warn-3"
+              title: "Behavior warning"
+              content: "Your recent behavior was not in line with our community standards. Please be respectful to other members."
+              messageType: 7
+            - id: "warn-4"
+              title: "Content warning"
+              content: "Please make sure your content follows our community rules before posting."
+              messageType: 7

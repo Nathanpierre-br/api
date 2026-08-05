@@ -108,6 +108,8 @@ class RequestProcessor:
         else:
             request.state.session = {"validsession": False}
 
+        request.state.lang = headers.get("NDCLANG", "en").lower()
+
         # non-get request checks
         if request.method in ["POST", "PUT"]:
             content_type = headers.get(

@@ -70,21 +70,21 @@ app.add_middleware(
 
 @app.exception_handler(403)
 async def custom_403_handler(_, __):
-    return Errors.Forbidden()
+    return Errors.Forbidden(lang=_.headers.get("NDCLANG", "en"))
 
 
 @app.exception_handler(404)
 @app.exception_handler(405)
 async def custom_404_handler(_, __):
     print("No path like: ", _.url.path, "(", await _.body(), ") | ", __)
-    return Errors.InvalidPath()
+    return Errors.InvalidPath(lang=_.headers.get("NDCLANG", "en"))
 
 
 @app.exception_handler(422)
 @app.exception_handler(RequestValidationError)
 async def custom_422_handler(_, exc: RequestValidationError):
     print(exc.errors())
-    return Errors.CantProcessData()
+    return Errors.CantProcessData(lang=_.headers.get("NDCLANG", "en"))
 
 
 @app.exception_handler(500)
@@ -102,4 +102,4 @@ async def custom_500_handler(_, __):
     except Exception:
         print("WE CAN'T EVEN FUCKING PRINT WHAT HAPPENED. COOL")
 
-    return Errors.InternalServerError()
+    return Errors.InternalServerError(lang=_.headers.get("NDCLANG", "en"))

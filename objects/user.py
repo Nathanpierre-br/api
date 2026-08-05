@@ -1,7 +1,6 @@
 from typing import Union
 
 from .medialist import MediaList
-from helpers.store import build_avatar_frame_icon
 
 
 LEVEL_REPUTATION = {

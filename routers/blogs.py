@@ -13,9 +13,10 @@ from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
 from helpers.tipping_limiter import check_and_increment_tipping_limit
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
+from helpers.decorators.strikecheck import strike_check
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Blog, Comments, Errors, User, MediaList
+from objects import Base, Blog, Comments, Errors, User
 from objects.types import BlogType, UserRole
 
 blog_methods = APIRouter()
@@ -149,7 +150,7 @@ async def announcement(
     start = parse_page_token(pageToken, start)
 
     db = await Database().init()
-    table = db.get(f"x0", "Blogs")
+    table = db.get("x0", "Blogs")
 
     blogs = [
         item
@@ -182,7 +183,7 @@ async def get_announcement(
     t1 = timestamp()
 
     db = await Database().init()
-    table = db.get(f"x0", "Blogs")
+    table = db.get("x0", "Blogs")
 
     blog = await table.find_one({"id": blogId})
     if blog:
@@ -222,7 +223,7 @@ async def get_blog(
         )
 
     db.close()
-    return Errors.DataNotExist(timestamp() - t1)
+    return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
 
 # get blog's wall
@@ -251,7 +252,7 @@ async def get_blog_comments(
     blog_info = await table.find_one({"id": blogId})
     if blog_info is None:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     wall_data = blog_info.get("wall", {})
 
@@ -309,7 +310,7 @@ async def get_blog_comment_answers(
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -318,12 +319,12 @@ async def get_blog_comment_answers(
     blog_info = await table.find_one({"id": blogId})
     if blog_info is None:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     wall_data = blog_info.get("wall", {})
     if commentId not in wall_data:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     wall_thread = wall_data[commentId].get("subWMs", [])
     certain_wall = []
@@ -361,15 +362,13 @@ async def get_blog_comment_answers(
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/comment")
 @blog_methods.post("/x{ndcId}/s/item/{blogId}/comment")
 @turtlelimiter(limit=1, period=TurtleTime.second, tag="blog-comment")
+@strike_check
 async def post_blog_comment(
     blogId: str,
     request: Request,
     ndcId: int = 0,
 ):
     t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-
     trigger_uid = request.state.session["uid"]
 
     data = await request.json()
@@ -377,14 +376,14 @@ async def post_blog_comment(
         if not data["content"]:
             raise Exception()
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Blogs")
     blog_info = await table.find_one({"id": blogId})
     if not blog_info:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     commentUid = str(uuid4())
     wm = ModelFabric.Construct(
@@ -430,7 +429,7 @@ async def post_blog_comment(
 async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
     data = await request.json()
@@ -441,11 +440,11 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     blog = await table.find_one({"id": blogId})
     if not blog:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     if blog["authorId"] != trigger_uid:
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     preparedQueries = {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
 
@@ -495,7 +494,7 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
 async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -505,14 +504,14 @@ async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
     blog = await table.find_one({"id": blogId})
     if not blog:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
     users = db.get(f"x{ndcId}", "Users")
     user = await users.find_one({"id": trigger_uid})
     if blog["authorId"] != trigger_uid and (
         not user or not UserRole.is_global_staff(user.get("role", 0))
     ):
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     await table.delete_one({"id": blogId})
 
@@ -529,7 +528,7 @@ async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
 async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
     try:
@@ -575,7 +574,7 @@ async def vote_blog(request: Request, blogId: str, ndcId: int = 0):
 async def remove_vote_from_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -635,11 +634,9 @@ async def get_blog_voters(
 @blog_methods.post("/g/s/blog")
 @blog_methods.post("/x{ndcId}/s/blog")
 @turtlelimiter(limit=1, period=TurtleTime.second, tag="post-blog")
+@strike_check
 async def post_blog(request: Request, ndcId: int = 0):
     t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-
     trigger_uid = request.state.session["uid"]
 
     data = await request.json()
@@ -649,13 +646,13 @@ async def post_blog(request: Request, ndcId: int = 0):
         content = data["content"]
         extensions = data.get("extensions", {})
     except KeyError:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if blog_type not in [BlogType.Basic, BlogType.Image, BlogType.Question]:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if content is None and blog_type != BlogType.Image:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
 
@@ -664,13 +661,13 @@ async def post_blog(request: Request, ndcId: int = 0):
         user_in_community = await xndcid_users.find_one({"id": trigger_uid})
         if not user_in_community:
             db.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
     else:
-        users = db.get(f"x0", "Users")
+        users = db.get("x0", "Users")
         user = await users.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             db.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     style = extensions.get("style", {})
     useful_extensions = {
@@ -718,7 +715,7 @@ async def delete_blog_comment(
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -727,17 +724,17 @@ async def delete_blog_comment(
     blog_info = await table.find_one({"id": blogId})
     if not blog_info:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     wall_data = blog_info.get("wall", {})
     if commentId not in wall_data:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     wm = wall_data[commentId]
     if wm["authorId"] != trigger_uid and blog_info["authorId"] != trigger_uid:
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     unset_fields = {f"wall.{commentId}": ""}
     if wm.get("isSubWM") is False:
@@ -772,7 +769,7 @@ async def vote_blog_comment(
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -787,7 +784,7 @@ async def vote_blog_comment(
     blog_info = await table.find_one({"id": blogId})
     if not blog_info or commentId not in blog_info.get("wall", {}):
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     if value == 1:
         await table.update_one(
@@ -807,7 +804,7 @@ async def vote_blog_comment(
         )
     else:
         db.close()
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db.close()
     return Base.Answer(spent_time=timestamp() - t1)
@@ -827,7 +824,7 @@ async def remove_blog_comment_vote(
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -897,7 +894,7 @@ async def get_blog_comment_voters(
 async def tip_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -905,31 +902,31 @@ async def tip_blog(request: Request, blogId: str, ndcId: int = 0):
         data = await request.json()
         coins = float(data.get("coins", 0))
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if coins < 1 or coins > 500:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     is_blocked, _ = await check_and_increment_tipping_limit(trigger_uid)
     if is_blocked:
-        return Errors.TooManyRequest(timestamp() - t1)
+        return Errors.TooManyRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     users_table = db.get(table="Users")
     sender = await users_table.find_one({"id": trigger_uid})
     if sender is None:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     if sender.get("coins", 0.0) < coins:
         db.close()
-        return Errors.NotEnoughCoins(timestamp() - t1)
+        return Errors.NotEnoughCoins(timestamp() - t1, lang=request.state.lang)
 
     blogs_table = db.get(f"x{ndcId}", "Blogs")
     blog = await blogs_table.find_one({"id": blogId})
     if blog is None:
         db.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     author_uid = blog.get("authorId")
 
@@ -939,7 +936,7 @@ async def tip_blog(request: Request, blogId: str, ndcId: int = 0):
         await users_table.update_one({"id": author_uid}, {"$inc": {"coins": coins}})
     else:
         db.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     # Update blog tipInfo leaderboard
     tip_info = blog.get("tipInfo", {})

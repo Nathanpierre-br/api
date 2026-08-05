@@ -36,6 +36,20 @@ class ModelFabric:
         return loads(initedSchema.dumps(loadedSchema))
 
 
+class MH_Item(Schema):
+    id = UUID(load_default=lambda: str(uuid4()), metadata={"as_string": True})
+    operation = Integer(required=True)
+    additionalValue = Integer(required=False)
+    reason = String(load_default="")
+    badgeColor = String(load_default="default")
+    modLevel = Integer(required=True)
+    objectId = String(required=True)
+    objectType = Integer(required=True)
+    authorId = UUID(required=True, metadata={"as_string": True})
+    timeout = Integer(load_default=None)
+    createdTime = String(load_default=dttmn)
+
+
 class Global:
     class Users(Schema):
         id = UUID(load_default=lambda: str(uuid4()), metadata={"as_string": True})

@@ -1,10 +1,8 @@
 import random
-from json import dumps
 from datetime import UTC, datetime, timedelta
 from re import escape as regex_escape
 from time import time as timestamp
 from uuid import uuid4
-from datetime import datetime, timedelta, timezone as _tz
 from fastapi import APIRouter, Request
 from pymongo import DESCENDING
 from services.store import StoreService
@@ -41,10 +39,10 @@ from helpers.checkins import (
 from helpers.database.models import Community, ModelFabric
 from helpers.database.mongo import Database
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
+from helpers.decorators.strikecheck import strike_check
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Comments, Errors, User, MediaList
-from helpers.checkins import build_history_b64, iso_to_unix
 
 profile_methods = APIRouter()
 profile_methods.route_class = CachableRoute
@@ -235,7 +233,7 @@ async def check_in_history(
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
     trigger_uid = request.state.session["uid"]
 
     db = await Database().init()
@@ -243,7 +241,7 @@ async def check_in_history(
     row = await table.find_one({"id": trigger_uid})
     if row is None:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
     db.close()
 
     if not stopTime:
@@ -278,7 +276,7 @@ async def check_in_history(
 async def community_general_check(request: Request, ndcId: int):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
     trigger_uid = request.state.session["uid"]
 
     tz = await get_tz(request)
@@ -290,7 +288,7 @@ async def community_general_check(request: Request, ndcId: int):
         com_table = db.get(table="Communities")
         community = await com_table.find_one({"id": ndcId})
         if community is None:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         table = db.get(f"x{ndcId}", table="Users")
         row = await table.find_one({"id": trigger_uid})
@@ -298,9 +296,9 @@ async def community_general_check(request: Request, ndcId: int):
         db.close()
 
     if row is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
     if row.get("banned"):
-        return Errors.UserBanned(timestamp() - t1)
+        return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
 
     history = row.get("checkInHistory", {}) or {}
     checked_in_today = has_check_in_today(history, today)
@@ -329,14 +327,14 @@ async def community_general_check(request: Request, ndcId: int):
 async def get_user_achievements(request: Request, userId: str, ndcId: int):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", table="Users")
     row = await table.find_one({"id": userId})
     if row is None:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     blogs_table = db.get(f"x{ndcId}", table="Blogs")
     blogs_count = await blogs_table.count_documents({"authorId": userId, "status": 0})
@@ -362,7 +360,7 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
 async def claim_daily_reward(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
     trigger_uid = request.state.session["uid"]
 
     tz = await get_tz(request)
@@ -376,10 +374,10 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
 
         row = await table.find_one({"id": trigger_uid})
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         if (row.get("checkInHistory", {}) or {}).get(today_str):
-            return Errors.AlreadyClaimed(timestamp() - t1)
+            return Errors.AlreadyClaimed(timestamp() - t1, lang=request.state.lang)
 
         coins = round(
             random.choices(CHECKIN_COIN_REWARDS, CHECKIN_COIN_WEIGHTS, k=1)[0], 2
@@ -390,7 +388,7 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
             {"$set": {f"checkInHistory.{today_str}": 1}},
         )
         if result.modified_count == 0:
-            return Errors.AlreadyClaimed(timestamp() - t1)
+            return Errors.AlreadyClaimed(timestamp() - t1, lang=request.state.lang)
 
         updated_row = await table.find_one({"id": trigger_uid})
         history = updated_row.get("checkInHistory", {}) or {}
@@ -428,7 +426,7 @@ async def claim_daily_reward(request: Request, ndcId: int = 0):
 async def claim_daily_lottery(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
     trigger_uid = request.state.session["uid"]
 
     tz = await get_tz(request)
@@ -442,13 +440,13 @@ async def claim_daily_lottery(request: Request, ndcId: int = 0):
 
         row = await table.find_one({"id": trigger_uid})
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         if not (row.get("checkInHistory", {}) or {}).get(today_str):
-            return Errors.LotteryNotAvailable(timestamp() - t1)
+            return Errors.LotteryNotAvailable(timestamp() - t1, lang=request.state.lang)
 
         if row.get("lastLotteryDate") == today_str:
-            return Errors.LotteryPlayed(timestamp() - t1)
+            return Errors.LotteryPlayed(timestamp() - t1, lang=request.state.lang)
 
         award = round(random.choices(LOTTERY_REWARDS, LOTTERY_WEIGHTS, k=1)[0], 2)
 
@@ -457,7 +455,7 @@ async def claim_daily_lottery(request: Request, ndcId: int = 0):
             {"$set": {"lastLotteryDate": today_str}},
         )
         if result.modified_count == 0:
-            return Errors.LotteryPlayed(timestamp() - t1)
+            return Errors.LotteryPlayed(timestamp() - t1, lang=request.state.lang)
 
         await global_table.update_one({"id": trigger_uid}, {"$inc": {"coins": award}})
 
@@ -506,7 +504,7 @@ async def check_in_repair(request: Request, ndcId: int = 0):
 
         row = await table.find_one({"id": trigger_uid})
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         global_row = await global_table.find_one({"id": trigger_uid}) or {}
         history = row.get("checkInHistory", {}) or {}
@@ -525,7 +523,7 @@ async def check_in_repair(request: Request, ndcId: int = 0):
                 missed.append(day_str)
 
         if not missed:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         repair_day = missed[0]
 
@@ -533,24 +531,28 @@ async def check_in_repair(request: Request, ndcId: int = 0):
             cost = REPAIR_COIN_COST
             balance = round(float(global_row.get("coins", 0.0)), 2)
             if balance < cost:
-                return Errors.NotEnoughCoins(timestamp() - t1)
+                return Errors.NotEnoughCoins(timestamp() - t1, lang=request.state.lang)
 
             res = await global_table.update_one(
                 {"id": trigger_uid, "coins": {"$gte": cost}},
                 {"$inc": {"coins": -cost}},
             )
             if res.modified_count == 0:
-                return Errors.NotEnoughCoins(timestamp() - t1)
+                return Errors.NotEnoughCoins(timestamp() - t1, lang=request.state.lang)
 
         elif repair_method == REPAIR_METHOD_AMINOPLUS:
             if not global_row.get("isPaidSubscriber"):
-                return Errors.MembershipRequired(timestamp() - t1)
+                return Errors.MembershipRequired(
+                    timestamp() - t1, lang=request.state.lang
+                )
 
             last_free = global_row.get("lastFreeStreakRepair")
             if last_free:
                 last_dt = datetime.fromisoformat(last_free.replace("Z", "+00:00"))
                 if (datetime.now(UTC) - last_dt) < timedelta(days=30):
-                    return Errors.RepairAlreadyUsed(timestamp() - t1)
+                    return Errors.RepairAlreadyUsed(
+                        timestamp() - t1, lang=request.state.lang
+                    )
 
             await global_table.update_one(
                 {"id": trigger_uid},
@@ -563,7 +565,7 @@ async def check_in_repair(request: Request, ndcId: int = 0):
                 },
             )
         else:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
         await table.update_one(
             {"id": trigger_uid},
@@ -649,7 +651,7 @@ async def get_user_wall(
     row = await xndcid_table.find_one({"id": uid})
     if row is None:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     wall_data = row.get("wall", {})
 
@@ -690,7 +692,7 @@ async def get_user_wall_answers(
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -699,12 +701,12 @@ async def get_user_wall_answers(
     row = await xndcid_table.find_one({"id": uid})
     if row is None:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     all_wall = row.get("wall", {})
     if commentId not in all_wall:
         db.close()
-        return Errors.NotFound(timestamp() - t1)
+        return Errors.NotFound(timestamp() - t1, lang=request.state.lang)
 
     comment_thread = all_wall[commentId].get("subWMs", [])
     certain_wall = []
@@ -737,7 +739,7 @@ async def delete_post_from_wall(
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -748,7 +750,7 @@ async def delete_post_from_wall(
 
         if user_info is None:
             db.close()
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         wall = user_info.get("wall", {})
         if wall.get(commentId):
@@ -783,6 +785,7 @@ async def delete_post_from_wall(
 @profile_methods.post("/g/s/user-profile/{uid}/g-comment")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment")
 @turtlelimiter(limit=1, period=TurtleTime.second, tag="blog-comment")
+@strike_check
 async def post_on_user_wall(
     uid: str,
     request: Request,
@@ -792,9 +795,6 @@ async def post_on_user_wall(
     sort: str = "newest",
 ):
     t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
-
     trigger_uid = request.state.session["uid"]
 
     data = await request.json()
@@ -802,7 +802,7 @@ async def post_on_user_wall(
         if not data["content"]:
             raise Exception()
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     xndcid_table = db.get(f"x{ndcId}", "Users")
@@ -846,7 +846,7 @@ async def post_on_user_wall(
 async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
     try:
@@ -860,11 +860,11 @@ async def vote_comment(request: Request, uid: str, commentId: str, ndcId: int = 
     user_info = await table.find_one({"id": uid})
     if user_info is None:
         db.close()
-        return Errors.InvalidLogin(timestamp() - t1)
+        return Errors.InvalidLogin(timestamp() - t1, lang=request.state.lang)
 
     if commentId not in user_info.get("wall", {}):
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     if value == 1:
         await table.update_one(
@@ -898,7 +898,7 @@ async def remove_comment_vote(
 ):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
     db = await Database().init()
@@ -907,11 +907,11 @@ async def remove_comment_vote(
     user_info = await table.find_one({"id": uid})
     if user_info is None:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     if commentId not in user_info.get("wall", {}):
         db.close()
-        return Errors.NotFound(timestamp() - t1)
+        return Errors.NotFound(timestamp() - t1, lang=request.state.lang)
 
     await table.update_one(
         {"id": uid},
@@ -972,11 +972,11 @@ async def get_comment_voted_users(
 async def follow_user(uid: str, request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     suid = request.state.session["uid"]
     if suid == uid:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Users")
@@ -1011,11 +1011,11 @@ async def follow_user(uid: str, request: Request, ndcId: int = 0):
 async def unfollow_user(uid: str, request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     suid = request.state.session["uid"]
     if suid == uid:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Users")
@@ -1031,14 +1031,14 @@ async def unfollow_user(uid: str, request: Request, ndcId: int = 0):
 async def get_user_info(uid: str, request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
     trigger_uid = request.state.session["uid"]
     db = await Database().init()
     g_table = db.get(table="Users")
     table = db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     global_row = await g_table.find_one({"id": uid})
     if global_row:
@@ -1091,17 +1091,17 @@ async def edit_user_info(uid, request: Request, ndcId=0):
     lang = None
 
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
     if trigger_uid != uid:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     preparedQueries = {"modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
 
     if isinstance(data.get("nickname"), str):
         if len(data["nickname"].strip()) == 0:
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
         preparedQueries.update({"nickname": data["nickname"]})
 
     if isinstance(data.get("content"), str):
@@ -1151,7 +1151,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
     db.close()
 
     if row2 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     async with await StoreService.create(uid, ndcId) as svc:
         row2["iconFrame"] = await svc.frame_icon(row2.get("frameId"))
@@ -1167,7 +1167,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
 async def get_self_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     uid = request.state.session["uid"]
 
@@ -1175,11 +1175,11 @@ async def get_self_info(request: Request, ndcId: int = 0):
     table = db.get(table="Users")
     row1 = await table.find_one({"id": uid})
     if row1 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
     table = db.get(database=f"x{ndcId}", table="Users")
     row2 = await table.find_one({"id": uid})
     if row2 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
     row = row1 | row2
     db.close()
     async with await StoreService.create(row, ndcId) as svc:
@@ -1196,7 +1196,7 @@ async def get_self_info(request: Request, ndcId: int = 0):
 async def get_wallet_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -1205,7 +1205,7 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
     row = await table.find_one({"id": trigger_uid})
     if row is None:
         db.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
     db.close()
     current_coins = round(float(row.get("coins", 0.0)), 2)
     return Base.Answer(
@@ -1237,7 +1237,7 @@ async def get_wallet_info(request: Request, ndcId: int = 0):
 async def get_wallet_ads_info(request: Request):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -1245,7 +1245,7 @@ async def get_wallet_ads_info(request: Request):
     table = db.get(table="Users")
     row = await table.find_one({"id": trigger_uid})
     if row is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
     db.close()
     return Base.Answer(
         {"estimatedCoinsEarnedByAds": 0, "coinsEarnedByAds": {"total": 0, "weekly": 0}},

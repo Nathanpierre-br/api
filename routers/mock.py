@@ -83,11 +83,11 @@ async def compose_eligible_check_mock(
     t1 = timestamp()
 
     if not isinstance(objectType, str) and not isinstance(objectSubtype, str):
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     oT_allowed = ["chat-thread"]
     osT_allowed = ["public"]
     if objectType not in oT_allowed or objectSubtype not in osT_allowed:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     return Base.Answer(spent_time=timestamp() - t1)

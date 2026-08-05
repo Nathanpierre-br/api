@@ -18,6 +18,7 @@ from helpers.database.mongo import Database
 from helpers.tipping_limiter import check_and_increment_tipping_limit
 from helpers.decorators.bbnonsfw import bbnonsfw_manual_check
 from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
+from helpers.decorators.strikecheck import strike_check
 from helpers.functions import (
     audio_length,
     calculate_page_tokens,
@@ -224,14 +225,14 @@ async def vvchat_permission(request: Request, chatId: str, ndcId: int = 0):
     payload = await request.json()
     vv_chat_join_type = payload.get("vvChatJoinType", 1)
     if not isinstance(vv_chat_join_type, int):
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Chats")
     chat_info = await table.find_one({"id": chatId})
     if not chat_info:
         db.close()
-        return Errors.DataNotExist(timestamp() - t1)
+        return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
     # AltAmino client only needs a successful ack for this request.
     response = {
@@ -251,7 +252,7 @@ async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str)
     apply_to_all = int(data.get("applyToAll", 0)) == 1
 
     if not chatId and not apply_to_all:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
@@ -265,14 +266,14 @@ async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str)
                 }
             )
             if not ownership:
-                return Errors.NotEnoughRights(timestamp() - t1)
+                return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
         else:
             bubble_id = "85045ed8-b05b-40de-907e-ec886889d086"  # defaultBubbleId
 
         table = db.get(f"x{ndcId}", "Users")
         user = await table.find_one({"id": trigger_uid})
         if user is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         if apply_to_all:
             await table.update_one(
@@ -363,7 +364,7 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
 
     else:
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
 
 # set background
@@ -404,7 +405,9 @@ async def edit_background_chat(chatId: str, request: Request, ndcId: int = 0):
             image_bytes = b64decode(value)
             filetype = detect_file_ext(image_bytes[:128])
             if filetype is None:
-                return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+                return Errors.InvalidMediaContent(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
             filename = (
                 Config.S3_IMAGES_FOLDER
                 + "".join([choice(ascii_letters + digits) for _ in range(64)])
@@ -457,7 +460,7 @@ async def delete_chat(chatId: str, request: Request, ndcId: int = 0):
         return Base.Answer()
     else:
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
 
 # if chat exists + where user is
@@ -503,7 +506,7 @@ async def if_chat_exists(
             db.close()
             return r
         else:
-            return Errors.MythicData(timestamp() - t1)
+            return Errors.MythicData(timestamp() - t1, lang=request.state.lang)
     elif type == "exist-multi":
         return Base.Answer(
             {"threadList": [], "playlistInThreadList": {}}, spent_time=timestamp() - t1
@@ -577,7 +580,7 @@ async def if_chat_exists(
             spent_time=timestamp() - t1,
         )
     else:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
 
 # create chat
@@ -587,20 +590,19 @@ async def if_chat_exists(
 @chats.post("/g/s/chat/thread")
 @chats.post("/x{ndcId}/s/chat/thread")
 @turtlelimiter(limit=1, period=TurtleTime.minute, tag="create-chat")
+@strike_check
 async def create_chat(request: Request, ndcId: int = 0):
     t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession()
 
     data = await request.json()
     trigger_uid = request.state.session["uid"]
     if data["type"] == ChatType.Private and (
         data.get("inviteeUids", []) == [] or len(data.get("inviteeUids", [])) != 1
     ):
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if data["type"] == ChatType.PrivateGroup and data.get("inviteeUids", []) == []:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Chats")
@@ -726,7 +728,7 @@ async def create_chat(request: Request, ndcId: int = 0):
     row2 = await users.find_one({"id": trigger_uid})
 
     if row2 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     global_row = await g_users.find_one({"id": trigger_uid})
 
@@ -857,12 +859,9 @@ async def get_chat_messages(
 @chats.post("/g/s/chat/thread/{chatId}/message")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/message")
 @turtlelimiter(limit=3, period=TurtleTime.second, tag="send-message")
+@strike_check
 async def send_message(request: Request, chatId: str, ndcId: int = 0):
     t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession()
-
-    data = await request.json()
     trigger_uid = request.state.session["uid"]
 
     try:
@@ -900,7 +899,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         ):
             raise Exception()
     except Exception:
-        return Errors.InvalidMessage(timestamp() - t1)
+        return Errors.InvalidMessage(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     chat = db.get(f"x{ndcId}", "Chats")
@@ -909,16 +908,16 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     staff = [chat_info["hostId"]] + chat_info.get("cohostsIds", [])
     if chat_info["isViewMode"] and trigger_uid not in staff:
         db.close()
-        return Errors.ViewModeEnabled(timestamp() - t1)
+        return Errors.ViewModeEnabled(timestamp() - t1, lang=request.state.lang)
 
     if trigger_uid not in chat_info["memberList"]:
         db.close()
-        return Errors.UserNotJoined(timestamp() - t1)
+        return Errors.UserNotJoined(timestamp() - t1, lang=request.state.lang)
 
     if data.get("content"):
         if len(data["content"]) > Config.MAX_TEXT_SIZE:
             db.close()
-            return Errors.BigMessage(timestamp() - t1)
+            return Errors.BigMessage(timestamp() - t1, lang=request.state.lang)
 
     extensions = data.get("extensions", {})
 
@@ -926,7 +925,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         try:
             if len(data.get("mediaUploadValue")) > Config.MAX_FILE_SIZE:
                 db.close()
-                return Errors.BigMediaContent(timestamp() - t1)
+                return Errors.BigMediaContent(timestamp() - t1, lang=request.state.lang)
             s3 = resource(
                 service_name=Config.S3_SERVICE_NAME,
                 aws_access_key_id=Config.S3_ACCESS_KEY,
@@ -937,10 +936,14 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 image_bytes = b64decode(data["mediaUploadValue"])
                 filetype = detect_file_ext(image_bytes)
                 if filetype is None:
-                    return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+                    return Errors.InvalidMediaContent(
+                        spent_time=timestamp() - t1, lang=request.state.lang
+                    )
 
                 if await bbnonsfw_manual_check(image_bytes):
-                    return Errors.NSFWContent(spent_time=timestamp() - t1)
+                    return Errors.NSFWContent(
+                        spent_time=timestamp() - t1, lang=request.state.lang
+                    )
 
                 filename = (
                     Config.S3_IMAGES_FOLDER
@@ -971,7 +974,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
         except Exception as e:
             print(e)
             db.close()
-            return Errors.InvalidMessage(timestamp() - t1)
+            return Errors.InvalidMessage(timestamp() - t1, lang=request.state.lang)
     else:
         mediaLink = None
 
@@ -992,7 +995,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
 		image_bytes = b64decode(linksnippet["mediaUploadValue"])
 		filetype = detect_file_ext(image_bytes)
 		if filetype is None:
-			return Errors.InvalidMediaContent(spent_time=timestamp() - t1)
+			return Errors.InvalidMediaContent(spent_time=timestamp()-t1, lang=request.state.lang)
 		filename = (
 			Config.S3_IMAGES_FOLDER
 			+ "".join([choice(ascii_letters + digits) for _ in range(64)])
@@ -1032,7 +1035,9 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             mediaLink = f"ndcsticker://{data['stickerId']}"
         else:
             print("invalid stickerId:", data["stickerId"])
-            return Errors.InvalidRequest(spent_time=timestamp() - t1)
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
     messageId = str(uuid4())
     xndc_users = db.get(f"x{ndcId}", "Users")
@@ -1148,19 +1153,21 @@ async def get_message(request: Request, chatId: str, messageId: str, ndcId: int 
 
     if not chat_info:
         db.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     if chat_info.get("chatType") != 2:
         if trigger_uid not in chat_info.get("memberList", []):
             db.close()
-            return Errors.NotEnoughRights(spent_time=timestamp() - t1)
+            return Errors.NotEnoughRights(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
     message_table = db.get(f"x{ndcId}", f"_Chat:{chatId}")
     message_data = await message_table.find_one({"messageId": messageId})
 
     if not message_data:
         db.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     xndc_users = db.get(f"x{ndcId}", "Users")
 
@@ -1232,7 +1239,7 @@ async def delete_message(
             trigger_uid not in chat_info.get("cohostsIds", [])
             and trigger_uid != chat_info["hostId"]
         ):
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
         else:
             work = True
         if chat_info["chatType"] == 0 or chat_info["chatType"] == 1:
@@ -1274,7 +1281,7 @@ async def get_chat_members(
     t1 = timestamp()
 
     if type not in ["default", "co-host", "at", "organizer-transfer-candidates"]:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     connection = await Database().init()
     chat_table = connection.get(f"x{ndcId}", "Chats")
@@ -1282,7 +1289,7 @@ async def get_chat_members(
 
     if not chat_info:
         connection.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     xndc_users = connection.get(f"x{ndcId}", "Users")
 
@@ -1295,7 +1302,9 @@ async def get_chat_members(
         )
         if not chat_info:
             connection.close()
-            return Errors.DataNotExist(spent_time=timestamp() - t1)
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
         members_in_chat = chat_info.get("memberList", [])
         invited_in_chat = chat_info.get("invitedList", [])
@@ -1325,7 +1334,9 @@ async def get_chat_members(
         chat_info = await chat_table.find_one({"id": chatId}, {"memberList": 1})
         if not chat_info:
             connection.close()
-            return Errors.DataNotExist(spent_time=timestamp() - t1)
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
         members_in_chat = chat_info.get("memberList", [])
         query = {"id": {"$in": members_in_chat}}
@@ -1345,7 +1356,9 @@ async def get_chat_members(
         )
         if not chat_info:
             connection.close()
-            return Errors.DataNotExist(spent_time=timestamp() - t1)
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
         members_in_chat = chat_info.get("memberList", [])
         cohosts_in_chat = chat_info.get("cohostsIds", [])
@@ -1386,7 +1399,9 @@ async def get_chat_members(
         )
         if not chat_info:
             connection.close()
-            return Errors.DataNotExist(spent_time=timestamp() - t1)
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
         members_in_chat = chat_info.get("memberList", [])
         cohosts_in_chat = chat_info.get("cohostsIds", [])
@@ -1418,7 +1433,7 @@ async def get_chat_members(
 
     else:
         connection.close()
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     answer = Base.Answer(
         {
@@ -1461,11 +1476,11 @@ async def get_chat_cohosts(
 
     if not chat_info:
         connection.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     if trigger_uid != chat_info["hostId"]:
         connection.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     cohosts_ids_all = chat_info.get("cohostsIds", [])
     cohosts_ids_sliced = cohosts_ids_all[start : start + size]
@@ -1513,7 +1528,7 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
     chat_info = await chat.find_one({"id": chatId})
     if not chat_info:
         connection.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(table="Users")
@@ -1521,7 +1536,7 @@ async def set_cohosts(request: Request, chatId: str, ndcId: int = 0):
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             connection.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     await chat.update_one(
         {"id": chatId}, {"$push": {"cohostsIds": {"$each": new_cohosts}}}
@@ -1569,14 +1584,14 @@ async def del_cohosts(request: Request, chatId: str, uid: str, ndcId: int = 0):
     chat_info = await chat.find_one({"id": chatId})
     if not chat_info:
         connection.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(table="Users")
         user = await sensitive_table.find_one({"id": trigger_uid})
         if not user or not UserRole.is_global_staff(user.get("role", 0)):
             connection.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     await chat.update_one({"id": chatId}, {"$pull": {"cohostsIds": uid}})
 
@@ -1617,7 +1632,7 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
     host_candidates = data.get("uidList", [])
     if not host_candidates:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if isinstance(host_candidates, str):
         host_candidates = [host_candidates]
@@ -1627,7 +1642,7 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
     chat_info = await chat.find_one({"id": chatId})
     if not chat_info:
         connection.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     if trigger_uid != chat_info["hostId"]:
         sensitive_table = connection.get(f"x{ndcId}", "Users")
@@ -1637,7 +1652,7 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
             and not UserRole.is_local_staff(user.get("role", 0))
         ):
             connection.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     reset_tip_info = {
         "tipOptionList": [
@@ -1680,7 +1695,7 @@ async def transfer_host(request: Request, chatId: str, ndcId: int = 0):
 async def tip_chat(request: Request, chatId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -1688,31 +1703,31 @@ async def tip_chat(request: Request, chatId: str, ndcId: int = 0):
         data = await request.json()
         coins = float(data.get("coins", 0))
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if coins < 1 or coins > 500:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     is_blocked, _ = await check_and_increment_tipping_limit(trigger_uid)
     if is_blocked:
-        return Errors.TooManyRequest(timestamp() - t1)
+        return Errors.TooManyRequest(timestamp() - t1, lang=request.state.lang)
 
     connection = await Database().init()
     users_table = connection.get(table="Users")
     sender = await users_table.find_one({"id": trigger_uid})
     if sender is None:
         connection.close()
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     if sender.get("coins", 0.0) < coins:
         connection.close()
-        return Errors.NotEnoughCoins(timestamp() - t1)
+        return Errors.NotEnoughCoins(timestamp() - t1, lang=request.state.lang)
 
     chat_table = connection.get(f"x{ndcId}", "Chats")
     chat_info = await chat_table.find_one({"id": chatId})
     if chat_info is None:
         connection.close()
-        return Errors.DataNotExist(spent_time=timestamp() - t1)
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
     host_id = chat_info.get("hostId")
 
@@ -1781,17 +1796,15 @@ async def tip_chat(request: Request, chatId: str, ndcId: int = 0):
 
 @chats.post("/g/s/chat/thread/{chatId}/member/invite")
 @chats.post("/x{ndcId}/s/chat/thread/{chatId}/member/invite")
+@strike_check
 async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
     t1 = timestamp()
-    if not request.state.session["validsession"]:
-        return Errors.InvalidSession()
-
     data = await request.json()
     uid = request.state.session["uid"]
     toInvite = data.get("uids", [])
 
     if uid in [None, "", False]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     connection = await Database().init()
     chat = connection.get(f"x{ndcId}", "Chats")
@@ -1800,7 +1813,7 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
     if uid not in staff or uid not in chat_info["memberList"]:
         if not data.get("canMembersInvite", True):
             connection.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
     actuallyInvite = []
     for member in toInvite:
@@ -1815,7 +1828,7 @@ async def invite_to_chat(request: Request, chatId: str, ndcId: int = 0):
     row2 = await users.find_one({"id": uid})
 
     if row2 is None:
-        return Errors.AccountNotExist(timestamp() - t1)
+        return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
     global_row = await g_users.find_one({"id": uid})
 
@@ -1882,10 +1895,10 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
     uid = request.state.session["uid"]
 
     if uid in [None, "", False]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     if userId != uid:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     connection = await Database().init()
     chat = connection.get(f"x{ndcId}", "Chats")
@@ -1895,7 +1908,7 @@ async def join_chat(request: Request, chatId: str, userId: str, ndcId: int = 0):
         return Base.Answer({"membershipStatus": 1}, timestamp() - t1)
     if userId in chat_info["bannedUids"]:
         connection.close()
-        return Errors.RemovedFromChat(timestamp() - t1)
+        return Errors.RemovedFromChat(timestamp() - t1, lang=request.state.lang)
 
     messageId = str(uuid4())
 
@@ -1961,7 +1974,7 @@ async def leave_chat(
     ban = False
 
     if uid in [None, "", False]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
 
     connection = await Database().init()
     chat = connection.get(f"x{ndcId}", "Chats")
@@ -1975,10 +1988,10 @@ async def leave_chat(
         print("user not leaving, its kick")
         if userId == chat_info["hostId"]:
             connection.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
         elif uid not in chat_info.get("cohostsIds", []) and uid != chat_info["hostId"]:
             connection.close()
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
         else:
             work = True
 
@@ -2056,7 +2069,7 @@ async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
         if not data.get("messageId") or not data.get("createdTime"):
             raise Exception()
     except Exception:
-        return Errors.InvalidMessage(timestamp() - t1)
+        return Errors.InvalidMessage(timestamp() - t1, lang=request.state.lang)
 
     connection = await Database().init()
     chat = connection.get(f"x{ndcId}", "Chats")
@@ -2072,7 +2085,7 @@ async def mark_as_read(request: Request, chatId: str, ndcId: int = 0):
         return Base.Answer({"lastReadTime": readTimestamp}, spent_time=timestamp() - t1)
 
     connection.close()
-    return Errors.DataNotExist(spent_time=timestamp() - t1)
+    return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
 
 
 # toggle things
@@ -2092,9 +2105,9 @@ async def toggle_things(
         return Errors.InvalidSession()
 
     if mode not in ["disable", "enable"]:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     if parameter not in ["members-can-invite", "view-only"]:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -2176,7 +2189,7 @@ async def toggle_things(
 
     else:
         db.close()
-        return Errors.NotEnoughRights(timestamp() - t1)
+        return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
 
 @chats.post("/g/s/chat/thread/{chatId}/member/{userId}/alert")
@@ -2190,15 +2203,15 @@ async def chat_alert_options(
 
     uid = request.state.session["uid"]
     if uid in [None, "", False]:
-        return Errors.InvalidSession(timestamp() - t1)
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
     if uid != userId:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     data = await request.json()
     alert_option = data.get("alertOption")
 
     if alert_option not in (ChatAlertOptions.ON, ChatAlertOptions.OFF):
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     db = await Database().init()
     chat = db.get(f"x{ndcId}", "Chats")
     await chat.update_one(

@@ -66,12 +66,12 @@ async def joined_communities(
         table = db.get(table="Users")
         row1 = await table.find_one({"id": uid})
         if row1 is None:
-            return Errors.AccountNotExist(timestamp() - t1)
-        # experimental ios freezing fix: giving full profile info
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
+
         table = db.get("x0", "Users")
         row2 = await table.find_one({"id": uid})
         if row2 is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         table = db.get(table="Communities")
         all_joined_ids = row1.get("communityList", [])
@@ -109,8 +109,19 @@ async def joined_communities(
                     "userProfile": User.OwnNonSensetiveProfile(
                         row2, ndcId=item, membershipStatus=1
                     )
+                    | {
+                        "isCurrentUserJoined": True,
+                        "joined": True,
+                        "membershipStatus": 1,
+                        "accountMembershipStatus": 1,
+                    }
                 }
-                | {"joined": True, "membershipStatus": 1, "accountMembershipStatus": 1}
+                | {
+                    "isCurrentUserJoined": True,
+                    "joined": True,
+                    "membershipStatus": 1,
+                    "accountMembershipStatus": 1,
+                }
                 for item in cl_needed
             },
             "tags": "fancysomemore",
@@ -262,25 +273,25 @@ async def join_community(request: Request, ndcId: int):
         table_accounts = db.get(table="Users")
         account = await table_accounts.find_one({"id": trigger_uid})
         if account and account.get("status") == 9:
-            return Errors.UserBanned(timestamp() - t1)
+            return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
 
         table_communities = db.get(table="Communities")
         community = await table_communities.find_one({"id": ndcId})
         if not community:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         # adding profile info if not exist
         table_community_users = db.get(f"x{ndcId}", "Users")
         user_info = await table_community_users.find_one({"id": trigger_uid})
 
         if user_info and user_info.get("status") == 9:
-            return Errors.UserBanned(timestamp() - t1)
+            return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
 
         if not user_info:
             g_table = db.get("x0", "Users")
             g_data = await g_table.find_one({"id": trigger_uid})
             if not g_data:
-                return Errors.AccountNotExist(timestamp() - t1)
+                return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
             # prepare new profile data
             new_profile = g_data.copy()
@@ -353,7 +364,7 @@ async def join_community(request: Request, ndcId: int):
         )
     except Exception as e:
         print(f"Error in join_community: {e}")
-        return Errors.InternalServerError(timestamp() - t1)
+        return Errors.InternalServerError(timestamp() - t1, lang=request.state.lang)
     finally:
         db.close()
 
@@ -374,10 +385,10 @@ async def leave_community(request: Request, ndcId: int):
         community = await table_communities.find_one({"id": ndcId})
 
         if not community:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         if trigger_uid == community.get("agent") or ndcId == 0:
-            return Errors.NotEnoughRights(timestamp() - t1)
+            return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
         if trigger_uid not in community.get("memberList", []):
             return Base.Answer(
@@ -430,7 +441,7 @@ async def leave_community(request: Request, ndcId: int):
         return Base.Answer({}, spent_time=timestamp() - t1)
     except Exception as e:
         print(f"Error in leave_community: {e}")
-        return Errors.InternalServerError(timestamp() - t1)
+        return Errors.InternalServerError(timestamp() - t1, lang=request.state.lang)
     finally:
         db.close()
 
@@ -444,16 +455,13 @@ async def leave_community(request: Request, ndcId: int):
 @communities.get("/g/s-x{ndcId}/community/info")
 async def get_community_info(request: Request, ndcId: int = 0):
     t1 = timestamp()
+    uid = request.state.session.get("uid")
 
-    try:
-        uid = request.state.session["uid"]
-    except Exception:
-        uid = None
     db = await Database().init()
     try:
         ndc_info = await Communities.Info(ndcId, db, uid)
         if not ndc_info:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         users_table = db.get(f"x{ndcId}", "Users")
         user_info = await users_table.find_one({"id": uid})
@@ -466,8 +474,8 @@ async def get_community_info(request: Request, ndcId: int = 0):
             {
                 "community": ndc_info,
                 "isCurrentUserJoined": bool(ndc_info.get("membershipStatus", 0)),
-                "currentUserInfo": (full_user_data or {})
-                | {"membershipStatus": ndc_info.get("membershipStatus", 0)},
+                "currentUserInfo": {"userProfile": full_user_data},
+                #| {"membershipStatus": ndc_info.get("membershipStatus", 0)},
             },
             spent_time=timestamp() - t1,
         )
@@ -517,7 +525,7 @@ async def get_community_guidelines(request: Request, ndcId: int = 0):
         info = await table.find_one({"id": ndcId})
 
         if not info:
-            return Errors.DataNotExist(timestamp() - t1)
+            return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         return Base.Answer(
             {
@@ -613,7 +621,7 @@ async def get_user_groups(
         table = db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         favEntries = row.get("quickAccessList", [])
         favEntries = [
@@ -647,15 +655,15 @@ async def get_user_groups(
 async def reorder_user_group(request: Request, userGroupType: str, ndcId: int = 0):
     t1 = timestamp()
     if userGroupType != UserGroupType.QuickAccess:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     try:
         data = await request.json()
         uidList = data["uidList"]
         if not isinstance(uidList, list):
-            return Errors.InvalidRequest(timestamp() - t1)
+            return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     except Exception:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     uid = request.state.session["uid"]
     db = await Database().init()
@@ -663,7 +671,7 @@ async def reorder_user_group(request: Request, userGroupType: str, ndcId: int = 
         table = db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         favEntries = row.get("quickAccessList", [])
         favEntries = [
@@ -696,7 +704,7 @@ async def add_to_user_group(
 ):
     t1 = timestamp()
     if userGroupType != UserGroupType.QuickAccess:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     uid = request.state.session["uid"]
     db = await Database().init()
@@ -704,11 +712,11 @@ async def add_to_user_group(
         table = db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         target = await table.find_one({"id": targetId})
         if target is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         existing = row.get("quickAccessList", [])
         existing_ids = {(e["id"] if isinstance(e, dict) else e) for e in existing}
@@ -733,7 +741,7 @@ async def remove_from_user_group(
 ):
     t1 = timestamp()
     if userGroupType != UserGroupType.QuickAccess:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     uid = request.state.session["uid"]
     db = await Database().init()
@@ -741,7 +749,7 @@ async def remove_from_user_group(
         table = db.get(f"x{ndcId}", "Users")
         row = await table.find_one({"id": uid})
         if row is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         await table.update_one(
             {"id": uid},
@@ -855,14 +863,14 @@ async def reorder_communities(request: Request):
     data = await request.json()
     ndcIdList = data.get("ndcIdList", [])
     if not ndcIdList:
-        return Errors.InvalidRequest(timestamp() - t1)
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     db = await Database().init()
     try:
         table = db.get(table="Users")
         row1 = await table.find_one({"id": uid})
         if row1 is None:
-            return Errors.AccountNotExist(timestamp() - t1)
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
         current_order = row1.get("communityList", [])
 
