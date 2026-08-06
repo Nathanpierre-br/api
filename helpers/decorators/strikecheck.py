@@ -33,9 +33,12 @@ def strike_check(func):
         user = await table.find_one({"id": trigger_uid})
         db.close()
 
-        if user and user.get("timeout_until", 0) > timestamp():
-            return Errors.UserStruck(lang=request.state.lang)
-
+        if user:
+            timeout_until = user.get("timeout_until") or 0
+            if timeout_until > timestamp():
+                return Errors.UserStruck(lang=request.state.lang)
+        # else:
+        #     return Errors.InvalidSession(lang.request.state.lang)
         return await func(*args, **kwargs)
 
     return wrapper

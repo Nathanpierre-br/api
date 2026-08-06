@@ -245,7 +245,9 @@ async def vvchat_permission(request: Request, chatId: str, ndcId: int = 0):
     return Base.Answer(response, spent_time=timestamp() - t1)
 
 
-async def chat_apply_bubble(t1: float, ndcId: int, data: dict, trigger_uid: str):
+async def chat_apply_bubble(
+    request, t1: float, ndcId: int, data: dict, trigger_uid: str
+):
 
     bubble_id = data.get("bubbleId")
     chatId = data.get("threadId")
@@ -313,7 +315,7 @@ async def edit_chat(chatId: str, request: Request, ndcId: int = 0):
     print(f"editing data for chat {chatId}:", data)
     trigger_uid = request.state.session["uid"]
     if chatId == "apply-bubble":
-        return await chat_apply_bubble(t1, ndcId, data, trigger_uid)
+        return await chat_apply_bubble(request, t1, ndcId, data, trigger_uid)
 
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Chats")
@@ -865,6 +867,7 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
     trigger_uid = request.state.session["uid"]
 
     try:
+        data = await request.json()
         if (
             (
                 # [info] types in messagetypes.json
