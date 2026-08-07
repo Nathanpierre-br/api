@@ -122,6 +122,19 @@ class Global:
         createdTime = String(load_default=dttmn)
         modifiedTime = String(load_default=dttmn)
 
+    # pls god pls 
+    # db.Devices.createIndex({ uid: 1 })
+    # db.Devices.createIndex({ deviceToken: 1 }, { unique: true })
+    class Devices(Schema):
+        deviceToken = String(required=True)
+        deviceTokenType = Integer(load_default=1)  # 1 - android (fcm)
+        uid = UUID(load_default=None, allow_none=True, metadata={"as_string": True})
+        deviceId = String(load_default=None, allow_none=True)
+        locale = String(load_default=None, allow_none=True)
+        systemPushEnabled = Bool(load_default=True)
+        createdTime = String(load_default=dttmn)
+        modifiedTime = String(load_default=dttmn)
+
 
 class Community:
     class Chats(Schema):

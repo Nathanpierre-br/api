@@ -18,6 +18,7 @@ from helpers.imageTools import ImageTools
 from helpers.processors.cache import CacheProcessor
 from helpers.processors.device import DeviceProcessor
 from helpers.processors.email import EmailProcessor
+from helpers.processors.push import PushProcessor
 from helpers.processors.session import SessionProcessor
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors, User
@@ -602,5 +603,10 @@ async def device(request: Request, ndcId: int = 0):
             return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
         if row.get("status", 0) == 9:
             return Errors.UserBanned(timestamp() - t1, lang=request.state.lang)
+
+    try:
+        await PushProcessor.Register(uid, await request.json())
+    except Exception as e:
+        print("/device register fail:", e)
 
     return Base.Answer({"devOptions": None}, timestamp() - t1)

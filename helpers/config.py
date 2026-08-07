@@ -79,3 +79,7 @@ class Config:
     ENABLE_BBNOSPAM = environ.get("ENABLE_BBNOSPAM", 0)
     BBNOSPAM_API_KEY = environ.get("BBNOSPAM_API_KEY")
     BBNOSPAM_API_URL = environ.get("BBNOSPAM_API_URL")
+
+    # FCM push notifications (optional but by default disabled)
+    ENABLE_PUSH = environ.get("ENABLE_PUSH", 0)
+    FCM_SERVICE_ACCOUNT = environ.get("FCM_SERVICE_ACCOUNT")
