@@ -29,8 +29,9 @@ from helpers.functions import (
     parse_page_token,
 )
 from helpers.imageTools import ImageTools
+from helpers.processors.push import PushProcessor
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Chat, Errors, User
+from objects import Base, Chat, Errors, Push, User
 from objects.types import ChatType, UserRole, ChatAlertOptions
 from objects.types.store import StoreItemType
 from services.store import StoreService
@@ -1130,6 +1131,12 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
                 },
                 notify_targets,
                 ApiBroadcastType.ChatMessagePush,
+            )
+        )
+        asyncio.get_event_loop().create_task(
+            PushProcessor.SendToUsers(
+                notify_targets,
+                Push.ChatMessage(chat_info, message, messageObj["author"], ndcId),
             )
         )
 
