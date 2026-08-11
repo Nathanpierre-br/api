@@ -42,6 +42,73 @@ chats = APIRouter()
 chats.route_class = CachableRoute
 
 
+
+
+"""
+#подборка
+{
+  "featuredChatThreadList": [ChatThread, ...],  # Закрепленные чаты
+  "liveChatThreadList": [ChatThread, ...],      # Активные лайв-чаты
+  "normalLiveCategoryList": [LiveCategory, ...]  # Обычные категории лайв
+}
+
+
+
+ChatThread:
+{
+  "threadId": str,
+  "title": str,
+  "memberCount": int,
+  "type": int,  # 1 = SR (screen room), 2 = VV (voice), 4 = video, 8 = audio2
+  "thumbnail": str,  # YouTube URL или preview
+  "hasYoutube": bool,
+  "youtubeUrl": str  # Если есть YouTube stream
+}
+
+LiveCategory:
+{
+  "categoryId": int,
+  "name": str,
+  "icon": str
+}
+
+
+"""
+
+
+@chats.get("/x{ndcId}/s/live-layer/speed-dial-public")
+async def get_live_layer_chats(
+    request: Request,
+    ndcId: int = 0,
+    pageToken: str | None = None,
+    start: int = 0,
+    size: int = 5,
+    v: int = 2,
+):
+    t1 = timestamp()
+    size = size if 0 < size < 101 else 25
+    start = parse_page_token(pageToken, start)
+
+    normalLiveCategoryList = []
+    liveChatThreadList = []
+    featuredChatThreadList = []
+
+    db = await Database().init()
+    chats_table = db.get(f"x{ndcId}", "Chats")
+
+    db.close()
+    return Base.Answer(
+        {
+            "featuredChatThreadList": featuredChatThreadList,
+            "liveChatThreadList": liveChatThreadList,
+            "normalLiveCategoryList": normalLiveCategoryList
+        },
+        spent_time=timestamp() - t1,
+    )
+
+
+
+
 # chat search
 # /g/s/chat/thread/explore/search?q=Hello&size=25
 

@@ -317,6 +317,33 @@ async def admin_action(
                     authorId=request.state.session["uid"],
                 )
             )
+        elif operation == 114:
+            featuredType = value.get("featuredType")
+            featuredDuration = value.get("featuredDuration")
+            await table.update_one(
+                {"id": object_id},
+                {
+                    "$set": {
+                        "isFeatured": True,
+                        "featuredTime": int(timestamp() * 1000),
+                        "featuredDuration": featuredDuration,
+                        "featuredType": featuredType,
+                        "featuredBy": request.state.session["uid"],
+                    }
+                }
+            )
+            await history.insert_one(
+                ModelFabric.Construct(
+                    MH_Item,
+                    operation=operation,
+                    badgeColor="success",
+                    reason=reason,
+                    modLevel=modLevel,
+                    objectId=object_id,
+                    objectType=oT,
+                    authorId=request.state.session["uid"],
+                )
+            )
         else:
             db.close()
             return Errors.UnimplementedPath()
