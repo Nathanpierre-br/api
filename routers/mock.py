@@ -8,19 +8,6 @@ from objects import Base, Errors
 mock = APIRouter()
 mock.route_class = CachableRoute
 
-@mock.get("/g/s/sticker-collection")
-@mock.get("/x{ndcId}/s/sticker-collection")
-async def stickers_mock(
-    request: Request,
-    type: str | None = None,
-    includeStickers: bool = False,
-    ndcId: int = 0,
-):
-    if type == "my-active-collection":
-        return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
-    return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
-
-
 @mock.get("/g/s/persona/profile/basic")
 async def personabasic_mock(request: Request):
     if not request.state.session["validsession"]:

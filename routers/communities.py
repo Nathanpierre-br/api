@@ -570,6 +570,11 @@ async def get_community_profiles(
     if query is None:
         return Errors.InvalidRequest()
 
+    if type in ("recent", "summary"):
+        sort_order = [("createdTime", DESCENDING)]
+    else:
+        sort_order = [("role", DESCENDING), ("createdTime", DESCENDING)]
+
     db = await Database().init()
     try:
         table = db.get(f"x{ndcId}", "Users")
@@ -580,7 +585,7 @@ async def get_community_profiles(
             table.find(query)
             .skip(start)
             .limit(size)
-            .sort([("role", DESCENDING), ("createdTime", -1)])
+            .sort(sort_order)
         ):
             async with await StoreService.create(item["id"], ndcId) as svc:
                 item["iconFrame"] = await svc.frame_icon(item.get("frameId"))
@@ -946,7 +951,7 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
         return Base.Answer({})
 
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
+        return Errors.InvalidSession(spent_time=timestamp() - t1, lang=request.state.lang)
 
     trigger_uid = request.state.session["uid"]
 
@@ -1021,7 +1026,6 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
         }
 
         if capped_seconds <= 0:
-            # лимит на сегодня исчерпан — фиксируем чанки, но ничего не начисляем
             if day_changed:
                 set_fields["minutesPerDay"] = 0
             if week_changed:
@@ -1065,3 +1069,99 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
         db.close()
 
     return Base.Answer({}, spent_time=timestamp() - t1)
+
+
+
+"""
+types:
+community-shared
+my-active-collection
+
+
+"""
+@communities.get("/g/s/sticker-collection")
+@communities.get("/x{ndcId}/s/sticker-collection")
+async def sticker_collections(
+    request: Request,
+    type: str | None = None,
+    includeStickers: bool = False,
+    ndcId: int = 0,
+):
+    if type == "my-active-collection":
+        return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
+    return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
+
+
+#----stickers
+
+@communities.post("/g/s/sticker-collection/creatable-check")
+@communities.post("/x{ndcId}/s/sticker-collection/creatable-check")
+async def sticker_creatable_check(
+    request: Request,
+    ndcId: int = 0,
+):
+
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(spent_time=timestamp() - t1, lang=request.state.lang)
+
+    trigger_uid = request.state.session["uid"]
+
+    try:
+        body = await request.json()
+    except Exception:
+        return Errors.InvalidRequest(spent_time=timestamp() - t1, lang=request.state.lang)
+
+    _timestamp = body.get("timestamp")
+    collectionType = body.get("collectionType")
+
+    #check permissions idk
+
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
+
+@communities.post("/g/s/sticker-collection")
+@communities.post("/x{ndcId}/s/sticker-collection")
+async def sticker_creatable_check(
+    request: Request,
+    ndcId: int = 0,
+):
+
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(spent_time=timestamp() - t1, lang=request.state.lang)
+
+    trigger_uid = request.state.session["uid"]
+
+    try:
+        body = await request.json()
+    except Exception:
+        return Errors.InvalidRequest(spent_time=timestamp() - t1, lang=request.state.lang)
+
+    description = body.get("description", "")
+    iconSourceStickerIndex = body.get("iconSourceStickerIndex", 0)
+    collectionType = body.get("collectionType")
+    name = body.get("name", "Sticker Collection Fallback Name")
+    stickerList = body.get("stickerList", [])
+    """
+        "stickerList": [
+            {
+            "name": "Vvv",
+            "icon": "https://media.altamino.top/user-uploads/images/G4oGVPApMXJp1m2eSC1Xm9VyVAKBLXe0uycup67IfkaMq6jQ6U3e1z4ZHvIkBNJl.jpeg"
+            }
+        ],
+    """
+
+    _timestamp = body.get("timestamp")
+
+    if not stickerList or not isinstance(stickerList, list):
+        return Errors.InvalidRequest(spent_time=timestamp() - t1, lang=request.state.lang)
+
+    return Base.Answer({
+        "stickerCollection": {
+
+        }
+    }, spent_time=timestamp() - t1)
