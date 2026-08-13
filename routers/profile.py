@@ -346,9 +346,9 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
                 "numberOfPostsCreated": blogs_count,
                 "numberOfMembersCount": len(row.get("whoFollows", [])),
                 "secondsSpentOfLast24Hours": int(
-                    row.get("secondsSpentOfLast24Hours", 0)
+                    row.get("minutesPerDay", 0) * 60
                 ),
-                "secondsSpentOfLast7Days": int(row.get("secondsSpentOfLast7Days", 0)),
+                "secondsSpentOfLast7Days": int(row.get("minutesPerWeek", 0) * 60),
             }
         },
         spent_time=timestamp() - t1,
@@ -1251,3 +1251,8 @@ async def get_wallet_ads_info(request: Request):
         {"estimatedCoinsEarnedByAds": 0, "coinsEarnedByAds": {"total": 0, "weekly": 0}},
         spent_time=timestamp() - t1,
     )
+
+
+
+
+

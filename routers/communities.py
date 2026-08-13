@@ -2,7 +2,7 @@ from re import escape as regex_escape
 from time import time as timestamp
 from pymongo import DESCENDING
 from fastapi import APIRouter, Request
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import asyncio
 
 from helpers.aioyaml import aioyaml
@@ -923,3 +923,145 @@ async def get_community_titles(request: Request, ndcId: int = 0):
     finally:
         db.close()
     return Base.Answer({"userTitleList": titles}, spent_time=timestamp() - t1)
+
+
+
+
+
+
+REP_PER_MINUTE = 0.5
+MAX_ACTIVE_SECONDS_PER_DAY = 16 * 3600
+MAX_REP_PER_DAY_FROM_ACTIVE_TIME = REP_PER_MINUTE * 60 * MAX_ACTIVE_SECONDS_PER_DAY
+MIN_SECONDS_BETWEEN_REPORTS = 20
+
+def _week_key(dt: datetime) -> str:
+    monday = dt - timedelta(days=dt.weekday())
+    return monday.strftime("%Y-%m-%d")
+
+
+@communities.post("/x{ndcId}/s/community/stats/user-active-time")
+async def count_user_active_time(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    if ndcId == 0:
+        return Base.Answer({})
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(timestamp() - t1, lang=request.state.lang)
+
+    trigger_uid = request.state.session["uid"]
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    chunk_list = body.get("userActiveTimeChunkList") or []
+    if not chunk_list:
+        return Base.Answer({})
+
+    now = datetime.now(timezone.utc)
+    now_ts = int(now.timestamp())
+    today_str = now.strftime("%Y-%m-%d")
+    week_str = _week_key(now)
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", table="Users")
+
+        row = await table.find_one({"id": trigger_uid})
+        if row is None:
+            return Base.Answer({}, spent_time=timestamp() - t1)
+
+        last_report_ts = row.get("lastActiveReportTs", 0)
+        if now_ts - last_report_ts < MIN_SECONDS_BETWEEN_REPORTS:
+            return Base.Answer({}, spent_time=timestamp() - t1)
+
+        already_reported = set(row.get("reportedChunkHashes", []) or [])
+        new_hashes = []
+        total_seconds = 0
+
+        for chunk in chunk_list:
+            start = chunk.get("start")
+            end = chunk.get("end")
+            if start is None or end is None:
+                continue
+            delta = end - start
+            if delta <= 0 or delta > 3600:
+                continue
+            if end > now_ts + 60:
+                continue
+
+            chunk_hash = f"{start}:{end}"
+            if chunk_hash in already_reported:
+                continue
+
+            new_hashes.append(chunk_hash)
+            total_seconds += delta
+
+        if total_seconds <= 0:
+            return Base.Answer({}, spent_time=timestamp() - t1)
+
+        last_active_day = row.get("lastActiveDay")
+        last_active_week = row.get("lastActiveWeek")
+        day_changed = last_active_day != today_str
+        week_changed = last_active_week != week_str
+
+        active_time_today_before = 0 if day_changed else (row.get("activeTime", {}) or {}).get(today_str, 0)
+        minutes_per_day_before = 0 if day_changed else row.get("minutesPerDay", 0)
+        minutes_per_week_before = 0 if week_changed else row.get("minutesPerWeek", 0)
+
+        remaining_daily_cap = max(MAX_ACTIVE_SECONDS_PER_DAY - active_time_today_before, 0)
+        capped_seconds = min(total_seconds, remaining_daily_cap)
+
+        set_fields = {
+            "lastActiveTime": now_ts,
+            "lastActiveReportTs": now_ts,
+            "lastActiveDay": today_str,
+            "lastActiveWeek": week_str,
+        }
+
+        if capped_seconds <= 0:
+            # лимит на сегодня исчерпан — фиксируем чанки, но ничего не начисляем
+            if day_changed:
+                set_fields["minutesPerDay"] = 0
+            if week_changed:
+                set_fields["minutesPerWeek"] = 0
+
+            update_ops = {"$set": set_fields}
+            if new_hashes:
+                update_ops["$addToSet"] = {"reportedChunkHashes": {"$each": new_hashes}}
+            await table.update_one({"id": trigger_uid}, update_ops)
+            return Base.Answer({}, spent_time=timestamp() - t1)
+
+        capped_minutes = capped_seconds / 60
+
+        rep_already_given_today = min(
+            active_time_today_before / 60 * REP_PER_MINUTE,
+            MAX_REP_PER_DAY_FROM_ACTIVE_TIME,
+        )
+        active_time_today_after = active_time_today_before + capped_seconds
+        rep_should_have_today = min(
+            active_time_today_after / 60 * REP_PER_MINUTE,
+            MAX_REP_PER_DAY_FROM_ACTIVE_TIME,
+        )
+        rep_to_add = round(max(rep_should_have_today - rep_already_given_today, 0), 2)
+
+        set_fields["minutesPerDay"] = round(minutes_per_day_before + capped_minutes, 2)
+        set_fields["minutesPerWeek"] = round(minutes_per_week_before + capped_minutes, 2)
+
+        inc_fields = {
+            "activeTimeTotal": capped_seconds,
+            f"activeTime.{today_str}": capped_seconds,
+        }
+        if rep_to_add > 0:
+            inc_fields["reputation"] = rep_to_add
+
+        update_ops = {"$set": set_fields, "$inc": inc_fields}
+        if new_hashes:
+            update_ops["$addToSet"] = {"reportedChunkHashes": {"$each": new_hashes}}
+
+        await table.update_one({"id": trigger_uid}, update_ops)
+    finally:
+        db.close()
+
+    return Base.Answer({}, spent_time=timestamp() - t1)

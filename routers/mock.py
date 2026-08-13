@@ -8,18 +8,6 @@ from objects import Base, Errors
 mock = APIRouter()
 mock.route_class = CachableRoute
 
-
-@mock.post("/x{ndcId}/s/community/stats/user-active-time")
-async def count_user_active_time(request: Request, ndcId: int = 0):
-    """
-    I dont really wanna trust users and allow minutes farming.
-    That's why it's mock
-
-    proof me wrong
-    """
-    return Base.Answer({})
-
-
 @mock.get("/g/s/sticker-collection")
 @mock.get("/x{ndcId}/s/sticker-collection")
 async def stickers_mock(

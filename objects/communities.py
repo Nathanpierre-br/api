@@ -1,7 +1,9 @@
 from hashlib import sha256
 from typing import Union
+from datetime import datetime, timedelta
 
 from helpers.database.mongo import Database
+from helpers.checkins import date_str
 
 from .medialist import MediaList
 from .user import User
@@ -265,6 +267,70 @@ async def _get_community_head_list(table, ndcId: int, agent_id: str) -> list:
 
 
 
+
+VALID_STATUSES_EXCLUDE = [9, 11]
+ACTIVITY_WINDOW_DAYS = 7
+ACTIVE_TIME_THRESHOLD_SECONDS = 300
+
+
+async def _compute_community_heat(table, tz_offset_days: int = 0) -> float:
+    now_local = datetime.utcnow()
+    recent_days = [
+        date_str(now_local - timedelta(days=i))
+        for i in range(ACTIVITY_WINDOW_DAYS)
+    ]
+
+    total_valid = await table.count_documents(
+        {"status": {"$nin": VALID_STATUSES_EXCLUDE}}
+    )
+    if total_valid == 0:
+        return 0.0
+
+    pipeline = [
+        {
+            "$match": {
+                "status": {"$nin": VALID_STATUSES_EXCLUDE},
+                "activeTime": {"$exists": True, "$ne": {}},
+            }
+        },
+        {
+            "$addFields": {
+                "_activeTimeArr": {"$objectToArray": "$activeTime"}
+            }
+        },
+        {
+            "$addFields": {
+                "_recentActiveSeconds": {
+                    "$sum": {
+                        "$map": {
+                            "input": {
+                                "$filter": {
+                                    "input": "$_activeTimeArr",
+                                    "as": "entry",
+                                    "cond": {"$in": ["$$entry.k", recent_days]},
+                                }
+                            },
+                            "as": "entry",
+                            "in": "$$entry.v",
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "$match": {
+                "_recentActiveSeconds": {"$gte": ACTIVE_TIME_THRESHOLD_SECONDS}
+            }
+        },
+        {"$count": "activeCount"},
+    ]
+
+    result = await table.aggregate(pipeline).to_list(length=1)
+    active_count = result[0]["activeCount"] if result else 0
+
+    heat = active_count / total_valid
+    return round(min(heat, 1.0), 2)
+
 class Communities:
     @staticmethod
     def ModuleInfo(module_data: dict):
@@ -295,6 +361,8 @@ class Communities:
         host_xndcId = await table.find_one({"id": data["agent"]})
         agent = User.OwnNonSensetiveProfile(host_xndcId, ndcId) if host_xndcId else None
         community_head_list = []#await _get_community_head_list(table, ndcId, data["agent"]) #it's work, but idk why app need it, so i will not add it for now
+        community_heat = await _compute_community_heat(table)
+
 
         membershipStatus = 0
         if trigger_uid and (
@@ -329,7 +397,7 @@ class Communities:
             "content": data.get("description", ""),
             "tagline": data.get("tagline", ""),
             "templateId": data.get("templateId", 9),
-            "communityHeat": data.get("heat", 0.00),
+            "communityHeat": community_heat, #data.get("heat", 0.00),
             "extensions": {},
             "createdTime": data.get("createdTime", "2023-01-01T12:00:00Z"),
             "modifiedTime": data.get("modifiedTime", "2023-01-01T12:00:00Z"),
