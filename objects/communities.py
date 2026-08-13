@@ -5,7 +5,7 @@ from helpers.database.mongo import Database
 
 from .medialist import MediaList
 from .user import User
-
+from .types.users import UserRole
 """
 this is top tier bullshit
 """
@@ -254,6 +254,17 @@ def _mod_field(mods: dict, name: str, field: str, default):
     return default
 
 
+
+
+async def _get_community_head_list(table, ndcId: int, agent_id: str) -> list:
+    cursor = table.find({"role": {"$in": [UserRole.Agent, UserRole.Leader]}})
+    heads = []
+    async for u in cursor:
+        heads.append(User.OwnNonSensetiveProfile(u, ndcId))
+    return heads
+
+
+
 class Communities:
     @staticmethod
     def ModuleInfo(module_data: dict):
@@ -283,6 +294,7 @@ class Communities:
         table = connection.get(f"x{ndcId}", "Users")
         host_xndcId = await table.find_one({"id": data["agent"]})
         agent = User.OwnNonSensetiveProfile(host_xndcId, ndcId) if host_xndcId else None
+        community_head_list = []#await _get_community_head_list(table, ndcId, data["agent"]) #it's work, but idk why app need it, so i will not add it for now
 
         membershipStatus = 0
         if trigger_uid and (
@@ -344,6 +356,7 @@ class Communities:
             },
             "mediaList": data.get("mediaList", []),
             "isStandaloneAppMonetizationEnabled": False,
+            "communityHeadList": community_head_list,
             "activeInfo": {},
             "configuration": {
                 "page": _build_pages(mods, conf),
@@ -448,7 +461,6 @@ class Communities:
                 ),
                 "frontPageLayout": conf.get("frontPageLayout", 1),
             },
-            "communityHeadList": data.get("communityHeadList", []),
             "promotionalMediaList": [MediaList.Item(data["coverUrl"])]
             if "coverUrl" in data
             else None,

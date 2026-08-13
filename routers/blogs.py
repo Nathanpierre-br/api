@@ -41,24 +41,30 @@ async def get_featured_blogs(request: Request, ndcId: int, pageToken: str | None
 	db = await Database().init()
 	table = db.get(f"x{ndcId}", "Blogs")
 	current_time = int(time() * 1000)
-	
 	query = {
-		"isFeatured": True,
-		"$expr": {
-			"$gt": [
-				{"$add": ["$featuredTime", {"$multiply": ["$featuredDuration", 1000]}]},
-				current_time
-			]
-		}
+		"$or": [
+			{
+				"featuredType": 1,
+				"$expr": {
+					"$gt": [
+						{"$add": ["$featuredTime", {"$multiply": ["$featuredDuration", 1000]}]},
+						current_time
+					]
+				}
+			},
+			{
+				"featuredType": 2
+			}
+		]
 	}
 
 	blogs = [
-			item
-			async for item in table.find(query)
+		item
+		async for item in table.find(query)
 			.skip(start)
 			.limit(size)
-			.sort("createdTime", DESCENDING)
-		]
+			.sort("featuredTime", DESCENDING)
+	]
 
 	blogList = [
 		await Blog.Info(
@@ -101,24 +107,30 @@ async def get_featured_more(
 	db = await Database().init()
 	table = db.get(f"x{ndcId}", "Blogs")
 	current_time = int(time() * 1000)
-	
 	query = {
-		"isFeatured": True,
-		"$expr": {
-			"$gt": [
-				{"$add": ["$featuredTime", {"$multiply": ["$featuredDuration", 1000]}]},
-				current_time
-			]
-		}
+		"$or": [
+			{
+				"featuredType": 1,
+				"$expr": {
+					"$gt": [
+						{"$add": ["$featuredTime", {"$multiply": ["$featuredDuration", 1000]}]},
+						current_time
+					]
+				}
+			},
+			{
+				"featuredType": 2
+			}
+		]
 	}
 
 	blogs = [
-			item
-			async for item in table.find(query)
+		item
+		async for item in table.find(query)
 			.skip(start)
 			.limit(size)
 			.sort("createdTime", DESCENDING)
-		]
+	]
 
 	blogList = [
 		await Blog.Info(

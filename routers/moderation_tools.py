@@ -324,7 +324,6 @@ async def admin_action(
                 {"id": object_id},
                 {
                     "$set": {
-                        "isFeatured": True,
                         "featuredTime": int(timestamp() * 1000),
                         "featuredDuration": featuredDuration,
                         "featuredType": featuredType,

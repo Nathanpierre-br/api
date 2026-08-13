@@ -48,6 +48,7 @@ class Blog:
             "createdTime": data["createdTime"],
             "modifiedTime": data["modifiedTime"],
             "extensions": {
+                "featuredType": data.get("featuredType", 0),
                 "privilegeOfCommentOnPost": data.get("commentAllowance", 1),
             }
             | extensions,
