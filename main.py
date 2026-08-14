@@ -22,6 +22,8 @@ from routers.moderation_tools import moderation_tools
 from routers.profile import profile_methods
 from routers.turtle import turtle
 from routers.upload_media import upload_media
+from routers.update import update
+from routers.repository import repository
 from routers.altteam import altteam
 from routers.store import store
 
@@ -54,6 +56,8 @@ app.include_router(moderation_tools, prefix="/api/v1")
 app.include_router(altacm, prefix="/api/v1")
 app.include_router(altteam, prefix="/api/v1")
 app.include_router(store, prefix="/api/v1")
+app.include_router(update, prefix="/api/v1")
+app.include_router(repository, prefix="/api/v1")
 app.include_router(static_things)
 
 # brotli can break amino libraries, but it's easy to fix

@@ -83,3 +83,12 @@ class Config:
     # FCM push notifications (optional but by default disabled)
     ENABLE_PUSH = environ.get("ENABLE_PUSH", 0)
     FCM_SERVICE_ACCOUNT = environ.get("FCM_SERVICE_ACCOUNT")
+
+    # client updates (optional, /update is derived from the latest github release)
+    UPDATE_GITHUB_REPO = environ.get("UPDATE_GITHUB_REPO", "altamino/apps")
+    UPDATE_GITHUB_TOKEN = environ.get("UPDATE_GITHUB_TOKEN")  # only for private repos
+    UPDATE_CACHE_TTL = int(environ.get("UPDATE_CACHE_TTL", 600))
+    # landing page for the update button, empty means the app download itself
+    UPDATE_PAGE_URL = environ.get("UPDATE_PAGE_URL", "")
+    # public face of the source feeds, not the domain this instance runs on
+    UPDATE_REPO_SITE = environ.get("UPDATE_REPO_SITE", "https://altamino.top")
