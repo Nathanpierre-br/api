@@ -110,6 +110,7 @@ async def joined_communities(
                         row2, ndcId=item, membershipStatus=1
                     )
                     | {
+                        "ndcId": item,
                         "isCurrentUserJoined": True,
                         "joined": True,
                         "membershipStatus": 1,
@@ -117,6 +118,7 @@ async def joined_communities(
                     }
                 }
                 | {
+                    "ndcId": item,
                     "isCurrentUserJoined": True,
                     "joined": True,
                     "membershipStatus": 1,
@@ -581,12 +583,7 @@ async def get_community_profiles(
 
         items = []
         total = await table.count_documents(query)
-        async for item in (
-            table.find(query)
-            .skip(start)
-            .limit(size)
-            .sort(sort_order)
-        ):
+        async for item in table.find(query).skip(start).limit(size).sort(sort_order):
             async with await StoreService.create(item["id"], ndcId) as svc:
                 item["iconFrame"] = await svc.frame_icon(item.get("frameId"))
 
@@ -930,14 +927,11 @@ async def get_community_titles(request: Request, ndcId: int = 0):
     return Base.Answer({"userTitleList": titles}, spent_time=timestamp() - t1)
 
 
-
-
-
-
 REP_PER_MINUTE = 0.5
 MAX_ACTIVE_SECONDS_PER_DAY = 16 * 3600
 MAX_REP_PER_DAY_FROM_ACTIVE_TIME = REP_PER_MINUTE * 60 * MAX_ACTIVE_SECONDS_PER_DAY
 MIN_SECONDS_BETWEEN_REPORTS = 20
+
 
 def _week_key(dt: datetime) -> str:
     monday = dt - timedelta(days=dt.weekday())
@@ -951,7 +945,9 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
         return Base.Answer({})
 
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(spent_time=timestamp() - t1, lang=request.state.lang)
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
     trigger_uid = request.state.session["uid"]
 
@@ -1011,11 +1007,15 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
         day_changed = last_active_day != today_str
         week_changed = last_active_week != week_str
 
-        active_time_today_before = 0 if day_changed else (row.get("activeTime", {}) or {}).get(today_str, 0)
+        active_time_today_before = (
+            0 if day_changed else (row.get("activeTime", {}) or {}).get(today_str, 0)
+        )
         minutes_per_day_before = 0 if day_changed else row.get("minutesPerDay", 0)
         minutes_per_week_before = 0 if week_changed else row.get("minutesPerWeek", 0)
 
-        remaining_daily_cap = max(MAX_ACTIVE_SECONDS_PER_DAY - active_time_today_before, 0)
+        remaining_daily_cap = max(
+            MAX_ACTIVE_SECONDS_PER_DAY - active_time_today_before, 0
+        )
         capped_seconds = min(total_seconds, remaining_daily_cap)
 
         set_fields = {
@@ -1051,7 +1051,9 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
         rep_to_add = round(max(rep_should_have_today - rep_already_given_today, 0), 2)
 
         set_fields["minutesPerDay"] = round(minutes_per_day_before + capped_minutes, 2)
-        set_fields["minutesPerWeek"] = round(minutes_per_week_before + capped_minutes, 2)
+        set_fields["minutesPerWeek"] = round(
+            minutes_per_week_before + capped_minutes, 2
+        )
 
         inc_fields = {
             "activeTimeTotal": capped_seconds,
@@ -1071,7 +1073,6 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
     return Base.Answer({}, spent_time=timestamp() - t1)
 
 
-
 """
 types:
 community-shared
@@ -1079,6 +1080,8 @@ my-active-collection
 
 
 """
+
+
 @communities.get("/g/s/sticker-collection")
 @communities.get("/x{ndcId}/s/sticker-collection")
 async def sticker_collections(
@@ -1092,7 +1095,8 @@ async def sticker_collections(
     return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
 
 
-#----stickers
+# ----stickers
+
 
 @communities.post("/g/s/sticker-collection/creatable-check")
 @communities.post("/x{ndcId}/s/sticker-collection/creatable-check")
@@ -1104,22 +1108,25 @@ async def sticker_creatable_check(
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(spent_time=timestamp() - t1, lang=request.state.lang)
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
     trigger_uid = request.state.session["uid"]
 
     try:
         body = await request.json()
     except Exception:
-        return Errors.InvalidRequest(spent_time=timestamp() - t1, lang=request.state.lang)
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
     _timestamp = body.get("timestamp")
     collectionType = body.get("collectionType")
 
-    #check permissions idk
+    # check permissions idk
 
     return Base.Answer(spent_time=timestamp() - t1)
-
 
 
 @communities.post("/g/s/sticker-collection")
@@ -1132,14 +1139,18 @@ async def sticker_creatable_check(
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
-        return Errors.InvalidSession(spent_time=timestamp() - t1, lang=request.state.lang)
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
     trigger_uid = request.state.session["uid"]
 
     try:
         body = await request.json()
     except Exception:
-        return Errors.InvalidRequest(spent_time=timestamp() - t1, lang=request.state.lang)
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
     description = body.get("description", "")
     iconSourceStickerIndex = body.get("iconSourceStickerIndex", 0)
@@ -1158,10 +1169,8 @@ async def sticker_creatable_check(
     _timestamp = body.get("timestamp")
 
     if not stickerList or not isinstance(stickerList, list):
-        return Errors.InvalidRequest(spent_time=timestamp() - t1, lang=request.state.lang)
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
 
-    return Base.Answer({
-        "stickerCollection": {
-
-        }
-    }, spent_time=timestamp() - t1)
+    return Base.Answer({"stickerCollection": {}}, spent_time=timestamp() - t1)

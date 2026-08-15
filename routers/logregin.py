@@ -400,21 +400,22 @@ async def register_check(request: Request):
         ):
             raise Exception()
 
-        if data.get("email"):
+        if "email" in data:
             if not await EmailProcessor.Validate(data["email"]):
-                raise Exception()
+                raise Exception("Invalid email")
 
             db = await Database().init()
             gl_users = db.get(table="Users")
             row = await gl_users.find_one({"email": data["email"]})
             if row is not None:
                 return Errors.EmailWasTaken(timestamp() - t1, lang=request.state.lang)
-        elif data.get("secret"):
+        elif "secret" in data:
             if data["secret"][:2] != "0 ":
-                raise Exception()
+                raise Exception("Invalid secret")
         else:
-            raise Exception()
-    except Exception:
+            raise Exception("What to do?")
+    except Exception as e:
+        print(e)
         return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     return Base.Answer(spent_time=timestamp() - t1)
 

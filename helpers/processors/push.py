@@ -31,7 +31,7 @@ AUTH_SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
 class PushProcessor:
     _limit = Semaphore(16)
 
-    TOKEN_LIFETIME = 60*55
+    TOKEN_LIFETIME = 60 * 55
     SEND_URL = "https://fcm.googleapis.com/v1/projects/{}/messages:send"
 
     @staticmethod
@@ -52,7 +52,10 @@ class PushProcessor:
         db = await Database().init()
         await db.get(table="Devices").update_one(
             {"deviceToken": document["deviceToken"]},
-            {"$set": document, "$setOnInsert": {"createdTime": document.pop("createdTime")}},
+            {
+                "$set": document,
+                "$setOnInsert": {"createdTime": document.pop("createdTime")},
+            },
             upsert=True,
         )
         db.close()
@@ -97,16 +100,19 @@ class PushProcessor:
                     headers={"Authorization": f"Bearer {accessToken}"},
                     json={"message": {"token": deviceToken, **message}},
                 )
-                
+
             if response.status_code == 200:
                 return True
-            
+
             error = response.json().get("error", {})
         except Exception as e:
             print("FCM send fail:", e)
             return False
 
-        if any(details.get("errorCode") == "UNREGISTERED" for details in error.get("details", [])):
+        if any(
+            details.get("errorCode") == "UNREGISTERED"
+            for details in error.get("details", [])
+        ):
             db = await Database().init()
             await db.get(table="Devices").delete_one({"deviceToken": deviceToken})
             db.close()
@@ -135,7 +141,9 @@ class PushProcessor:
         async with AsyncClient(timeout=10) as client:
             results = await gather(
                 *[
-                    PushProcessor.Send(client, accessToken, device["deviceToken"], message)
+                    PushProcessor.Send(
+                        client, accessToken, device["deviceToken"], message
+                    )
                     for device in devices
                 ],
                 return_exceptions=True,

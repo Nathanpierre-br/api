@@ -42,8 +42,6 @@ chats = APIRouter()
 chats.route_class = CachableRoute
 
 
-
-
 """
 #подборка
 {
@@ -101,12 +99,10 @@ async def get_live_layer_chats(
         {
             "featuredChatThreadList": featuredChatThreadList,
             "liveChatThreadList": liveChatThreadList,
-            "normalLiveCategoryList": normalLiveCategoryList
+            "normalLiveCategoryList": normalLiveCategoryList,
         },
         spent_time=timestamp() - t1,
     )
-
-
 
 
 # chat search

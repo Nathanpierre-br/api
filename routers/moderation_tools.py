@@ -329,7 +329,7 @@ async def admin_action(
                         "featuredType": featuredType,
                         "featuredBy": request.state.session["uid"],
                     }
-                }
+                },
             )
             await history.insert_one(
                 ModelFabric.Construct(

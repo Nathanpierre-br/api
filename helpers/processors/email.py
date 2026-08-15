@@ -33,7 +33,7 @@ class EmailProcessor:
         # if not an email, return false
         if not match(
             r"^([a-z0-9]+(?:[._-][a-z0-9]+)*)@([a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]{2,})$",
-            email,
+            email.lower(),
         ):
             return False
 

@@ -291,7 +291,9 @@ async def community_general_check(request: Request, ndcId: int):
             return Errors.DataNotExist(timestamp() - t1, lang=request.state.lang)
 
         table = db.get(f"x{ndcId}", table="Users")
+        global_table = db.get(table="Users")
         row = await table.find_one({"id": trigger_uid})
+        gl_row = await global_table.find_one({"id": trigger_uid})
     finally:
         db.close()
 
@@ -310,8 +312,7 @@ async def community_general_check(request: Request, ndcId: int):
         {
             "hasCheckInToday": checked_in_today,
             "consecutiveCheckInDays": compute_streak(history, today),
-            "canPlayLottery": checked_in_today
-            and row.get("lastLotteryDate") != today_str,
+            "canPlayLottery": gl_row.get("lastLotteryDate") != today_str,
             "userProfile": User.GetUserInfo(row, ndcId=ndcId),
             "notificationsCount": 0,
             "noticesCount": 0,
@@ -345,9 +346,7 @@ async def get_user_achievements(request: Request, userId: str, ndcId: int):
             "achievements": {
                 "numberOfPostsCreated": blogs_count,
                 "numberOfMembersCount": len(row.get("whoFollows", [])),
-                "secondsSpentOfLast24Hours": int(
-                    row.get("minutesPerDay", 0) * 60
-                ),
+                "secondsSpentOfLast24Hours": int(row.get("minutesPerDay", 0) * 60),
                 "secondsSpentOfLast7Days": int(row.get("minutesPerWeek", 0) * 60),
             }
         },
@@ -442,15 +441,19 @@ async def claim_daily_lottery(request: Request, ndcId: int = 0):
         if row is None:
             return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
 
+        gl_row = await global_table.find_one({"id": trigger_uid})
+        if gl_row is None:
+            return Errors.AccountNotExist(timestamp() - t1, lang=request.state.lang)
+
         if not (row.get("checkInHistory", {}) or {}).get(today_str):
             return Errors.LotteryNotAvailable(timestamp() - t1, lang=request.state.lang)
 
-        if row.get("lastLotteryDate") == today_str:
+        if gl_row.get("lastLotteryDate") == today_str:
             return Errors.LotteryPlayed(timestamp() - t1, lang=request.state.lang)
 
         award = round(random.choices(LOTTERY_REWARDS, LOTTERY_WEIGHTS, k=1)[0], 2)
 
-        result = await table.update_one(
+        result = await global_table.update_one(
             {"id": trigger_uid, "lastLotteryDate": {"$ne": today_str}},
             {"$set": {"lastLotteryDate": today_str}},
         )
@@ -782,8 +785,11 @@ async def delete_post_from_wall(
 
 
 @profile_methods.post("/g/s/user-profile/{uid}/comment")
+@profile_methods.post("/g/s/user-profile/{uid}/comment/{cumId}")
 @profile_methods.post("/g/s/user-profile/{uid}/g-comment")
+@profile_methods.post("/g/s/user-profile/{uid}/g-comment/{cumId}")
 @profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment")
+@profile_methods.post("/x{ndcId}/s/user-profile/{uid}/comment/{cumId}")
 @turtlelimiter(limit=1, period=TurtleTime.second, tag="blog-comment")
 @strike_check
 async def post_on_user_wall(
@@ -793,6 +799,7 @@ async def post_on_user_wall(
     start: int = 0,
     size: int = 25,
     sort: str = "newest",
+    cumId: str | None = None,  # to allow edit comments
 ):
     t1 = timestamp()
     trigger_uid = request.state.session["uid"]
@@ -807,14 +814,24 @@ async def post_on_user_wall(
     db = await Database().init()
     xndcid_table = db.get(f"x{ndcId}", "Users")
 
-    commentUid = str(uuid4())
-    wm = ModelFabric.Construct(
-        Community.WallMessage,
-        authorId=trigger_uid,
-        content=data["content"],
-        mediaList=data.get("mediaList", []),
-        isSubWM=True if data.get("respondTo") else False,
-    )
+    user_info = await xndcid_table.find_one({"id": uid})
+    if not user_info:
+        return Errors.DataNotExist(lang=request.state.lang)
+
+    if cumId:
+        commentUid = cumId
+        wm = user_info["wall"][uid]
+        wm["content"] = data["content"]
+        wm["mediaList"] = data.get("mediaList", [])
+    else:
+        commentUid = str(uuid4())
+        wm = ModelFabric.Construct(
+            Community.WallMessage,
+            authorId=trigger_uid,
+            content=data["content"],
+            mediaList=data.get("mediaList", []),
+            isSubWM=True if data.get("respondTo") else False,
+        )
 
     if data.get("respondTo"):
         await xndcid_table.update_one(
@@ -1042,10 +1059,9 @@ async def get_user_info(uid: str, request: Request, ndcId: int = 0):
 
     global_row = await g_table.find_one({"id": uid})
     if global_row:
-        if not row2.get("tagList"):
-            global_tag_list = global_row.get("tagList")
-            if global_tag_list:
-                row2["tagList"] = global_tag_list
+        row2["tagList"] = list(
+            set(global_row.get("tagList", []) + row2.get("tagList", []))
+        )
 
         if "isTeamMember" in global_row:
             row2["isTeamMember"] = global_row["isTeamMember"]
@@ -1102,7 +1118,9 @@ async def edit_user_info(uid, request: Request, ndcId=0):
     if isinstance(data.get("nickname"), str):
         if len(data["nickname"].strip()) == 0:
             return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
-        preparedQueries.update({"nickname": data["nickname"]})
+        preparedQueries.update(
+            {"nickname": data["nickname"][:64]}
+        )  # finally hard limiting this
 
     if isinstance(data.get("content"), str):
         preparedQueries.update({"description": data["content"]})
@@ -1137,7 +1155,7 @@ async def edit_user_info(uid, request: Request, ndcId=0):
 
     db = await Database().init()
 
-    if preparedQueries:
+    if len(preparedQueries) > 1:
         table = db.get(database=f"x{ndcId}", table="Users")
         await table.update_one({"id": uid}, {"$set": preparedQueries})
 
@@ -1251,8 +1269,3 @@ async def get_wallet_ads_info(request: Request):
         {"estimatedCoinsEarnedByAds": 0, "coinsEarnedByAds": {"total": 0, "weekly": 0}},
         spent_time=timestamp() - t1,
     )
-
-
-
-
-

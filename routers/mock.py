@@ -8,6 +8,7 @@ from objects import Base, Errors
 mock = APIRouter()
 mock.route_class = CachableRoute
 
+
 @mock.get("/g/s/persona/profile/basic")
 async def personabasic_mock(request: Request):
     if not request.state.session["validsession"]:

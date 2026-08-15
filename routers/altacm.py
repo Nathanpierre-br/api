@@ -200,9 +200,7 @@ async def create_community(request: Request):
         shape["name"] = data["name"]
         shape["aminoId"] = data["aminoId"]
         shape["hidden"] = False
-        shape["lang"] = (
-            data["lang"] if data["lang"] in ["en", "ru", "es", "ar"] else "en"
-        )
+        shape["lang"] = data["lang"] if data["lang"] in Config.LANG_SEGMENTS else "en"
         for key in ["_id", "theme"]:
             shape.pop(key, None)
 
@@ -383,7 +381,7 @@ async def edit_community(request: Request, ndcId: int = 0):
             if "lang" in data:
                 lang_val = data["lang"]
                 preparedQueries["lang"] = (
-                    lang_val if lang_val in ["en", "ru", "es", "ar"] else "en"
+                    lang_val if lang_val in Config.LANG_SEGMENTS else "en"
                 )
 
             try:

@@ -122,7 +122,7 @@ class Global:
         createdTime = String(load_default=dttmn)
         modifiedTime = String(load_default=dttmn)
 
-    # pls god pls 
+    # pls god pls
     # db.Devices.createIndex({ uid: 1 })
     # db.Devices.createIndex({ deviceToken: 1 }, { unique: true })
     class Devices(Schema):

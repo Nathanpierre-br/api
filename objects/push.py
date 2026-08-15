@@ -8,7 +8,7 @@ class Push:
     def Payload(notifType: int, pushId: str, title: str, body: str, **fields) -> dict:
         payload = {
             "notifType": notifType,
-            "id": pushId, # pushId uses for dedup
+            "id": pushId,  # pushId uses for dedup
             "aps": {
                 "alert": {"title": title[:64], "body": body[:200]},
                 "sound": "default",
@@ -43,5 +43,5 @@ class Push:
             uid=author.get("uid"),
             nickname=nickname,
             picUrl=author.get("icon"),
-            picType=1
+            picType=1,
         )
