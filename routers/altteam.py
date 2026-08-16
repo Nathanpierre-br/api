@@ -40,7 +40,7 @@ altteam.route_class = CachableRoute
 
 
 @altteam.get("/g/s/altteam/version")
-async def get_altamino_team(request: Request):
+async def get_altteam_version(request: Request):
     t1 = timestamp()
     latest_version = "1.0.3"
     current_version = request.query_params.get("version")
@@ -179,7 +179,7 @@ async def get_altamino_team_member(request: Request, userId: str):
         merged["isNicknameVerified"] = bool(global_member.get("isVerified", False))
 
         return Base.Answer({"userProfile": merged}, spent_time=timestamp() - t1)
-    except:
+    except Exception:
         return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     finally:
         db.close()
@@ -295,7 +295,7 @@ async def edit_altteam_member(request: Request, userId: str, body: dict):
             await sensitive_table.update_one({"id": userId}, {"$set": update_fields})
 
         return Base.Answer(spent_time=timestamp() - t1)
-    except:
+    except Exception:
         return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
     finally:
         db.close()

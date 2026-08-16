@@ -22,6 +22,7 @@ from helpers.processors.push import PushProcessor
 from helpers.processors.session import SessionProcessor
 from helpers.routers.cachable import CachableRoute
 from objects import Base, Errors, User
+from pyotp import TOTP
 
 logregin = APIRouter()
 logregin.route_class = CachableRoute
@@ -29,7 +30,6 @@ logregin.route_class = CachableRoute
 
 @logregin.get("/verification-code/{code}")
 async def seeVerificationCode(code):
-    timestamp()
     db = await Database().init()
     table = db.get(table="VerificationCodes")
     row = await table.find_one({"uniqueCode": code})
@@ -290,6 +290,36 @@ async def check_code(request: Request):
 
     db.close()
     return Base.Answer(spent_time=timestamp() - t1)
+
+
+@logregin.post("/g/s/auth/otp/confirm")
+async def confirmOtp(request: Request):
+    data = await request.json()
+    uid, code, otp_type = data.get("uid"), data.get("code"), data.get("type")
+    if uid is None or code is None or otp_type is None:
+        return Errors.InvalidRequest(lang=request.state.lang)
+
+    if otp_type == 1:
+        db = await Database().init()
+        table = db.get(table="Users")
+        row = await table.find_one({"id": uid}, {"otpSecret": 1})
+        db.close()
+
+        if row is None or row.get("otpSecret") is None:
+            return Errors.DataNotExist(lang=request.state.lang)
+
+        # creating one:
+        # pyotp.random_base32()
+        totp = TOTP(row["otpSecret"])
+        if not totp.verify(str(code)):
+            return Errors.InvalidVerificationCode(lang=request.state.lang)
+
+        # logic to let log in
+
+        return Base.Answer()
+    elif otp_type == 2:
+        # email 2fa
+        return Errors.PathNotImplemented(lang=request.state.lang)
 
 
 @logregin.post("/g/s/auth/register")

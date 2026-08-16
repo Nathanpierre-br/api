@@ -92,7 +92,7 @@ async def get_live_layer_chats(
     featuredChatThreadList = []
 
     db = await Database().init()
-    chats_table = db.get(f"x{ndcId}", "Chats")
+    db.get(f"x{ndcId}", "Chats")
 
     db.close()
     return Base.Answer(
@@ -205,7 +205,7 @@ async def get_explore_chats(
 ):
     t1 = timestamp()
 
-    trigger_uid = request.state.session.get("uid")
+    request.state.session.get("uid")
     # con = await Database().init()
     answer = {"threadList": []}
 

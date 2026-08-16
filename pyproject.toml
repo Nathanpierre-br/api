@@ -28,7 +28,8 @@ dependencies = [
     "uvicorn>=0.42.0",
     "websockets>=16.0",
     "google-auth>=2.35.0",
-    "aiohttp"
+    "aiohttp",
+    "pyotp>=2.10.0",
 ]
 
 [dependency-groups]

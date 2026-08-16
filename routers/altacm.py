@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from time import time as timestamp
+from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from pymongo import DESCENDING
@@ -816,9 +817,6 @@ async def edit_community_navigation(request: Request, ndcId: int):
         {"community": await Communities.Info(updated, trigger_uid=trigger_uid)},
         spent_time=timestamp() - t1,
     )
-
-
-from uuid import uuid4
 
 
 @altacm.post("/altacm/s/community/x{ndcId}/page")

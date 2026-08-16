@@ -205,3 +205,30 @@ async def recommend_store_by_product(request: Request, ndcId: int = 0):
         {"communityList": [], "storeItemCommunityCheckList": []},
         spent_time=timestamp() - t1,
     )
+
+
+@store.get("/x{ndcId}/s/store/share-requests/pending-check")
+@store.get("/g/s/store/share-requests/pending-check")
+@validauth_required
+async def recommend_store_by_product(request: Request, objectType: int, ndcId: int = 0):
+    t1 = timestamp()
+    return Base.Answer(
+        spent_time=timestamp() - t1,
+    )
+
+
+
+@store.post("/x{ndcId}/s/store/share-requests")
+@store.post("/g/s/store/share-requests")
+@validauth_required
+async def store_share_request(request: Request, ndcId: int = 0):
+    t1 = timestamp()
+    try:
+        data = await request.json()
+        object_id = data["objectId"]
+        object_type = int(data["objectType"])
+        _timestamp = int(data["timestamp"]) 
+    except Exception:
+        return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
+
+    return Base.Answer(spent_time=timestamp() - t1) #TODO: implement store share request

@@ -498,7 +498,7 @@ async def check_in_repair(request: Request, ndcId: int = 0):
     repair_method = int(body.get("repairMethod", REPAIR_METHOD_COIN))
     tz = await get_tz(request)
     now_local = local_date(tz)
-    today_str = date_str(now_local)
+    date_str(now_local)
 
     db = await Database().init()
     try:

@@ -2,7 +2,8 @@ from re import escape as regex_escape
 from time import time as timestamp
 from pymongo import DESCENDING
 from fastapi import APIRouter, Request
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, UTC
+from uuid import uuid4
 import asyncio
 
 from helpers.aioyaml import aioyaml
@@ -20,6 +21,7 @@ from helpers.config import Config
 from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
 from services.store import StoreService
+from objects.types import UserRole
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -1073,30 +1075,18 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
     return Base.Answer({}, spent_time=timestamp() - t1)
 
 
-"""
-types:
-community-shared
-my-active-collection
 
-
-"""
-
-
-@communities.get("/g/s/sticker-collection")
-@communities.get("/x{ndcId}/s/sticker-collection")
-async def sticker_collections(
-    request: Request,
-    type: str | None = None,
-    includeStickers: bool = False,
-    ndcId: int = 0,
-):
-    if type == "my-active-collection":
-        return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
-    return Base.Answer({"stickerCollectionCount": 0, "stickerCollectionList": []})
 
 
 # ----stickers
 
+"""
+types:
+community-shared
+my-active-collection
+my-favorite-collection
+my-collection
+"""
 
 @communities.post("/g/s/sticker-collection/creatable-check")
 @communities.post("/x{ndcId}/s/sticker-collection/creatable-check")
@@ -1112,7 +1102,27 @@ async def sticker_creatable_check(
             spent_time=timestamp() - t1, lang=request.state.lang
         )
 
-    trigger_uid = request.state.session["uid"]
+    trigger_uid = request.state.session.get("uid")
+    db = await Database().init()
+    sensitive_table = db.get(table="Users")
+    ndc_table = db.get(database=f"x{ndcId}", table="Users")
+
+    g_user = await sensitive_table.find_one({"id": trigger_uid})
+    ndc_user = await ndc_table.find_one({"id": trigger_uid})
+    if ndcId == 0:
+        if not g_user or not UserRole.is_global_staff(g_user.get("role", 0)):
+            return Errors.NotEnoughRights(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+    """
+    else:
+        if not g_user and not UserRole.is_global_staff(g_user.get("role", 0)):
+            if not ndc_user or not UserRole.is_local_staff(ndc_user.get("role", 0)):
+                return Errors.NotEnoughRights(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
+                
+    """
 
     try:
         body = await request.json()
@@ -1124,18 +1134,156 @@ async def sticker_creatable_check(
     _timestamp = body.get("timestamp")
     collectionType = body.get("collectionType")
 
-    # check permissions idk
-
     return Base.Answer(spent_time=timestamp() - t1)
 
 
+
+def _shape_collection(doc: dict, includeStickers: bool) -> dict:
+    doc = dict(doc)
+    doc.pop("_id", None)
+
+    sticker_list = doc.get("stickerList", [])
+    for sticker in sticker_list:
+        sticker.pop("_id", None)
+
+    if not includeStickers:
+        doc["stickerList"] = []
+    else:
+        doc["stickerList"] = sticker_list
+
+    return doc
+
+
+@communities.get("/g/s/sticker-collection/{collectionId}")
+@communities.get("/x{ndcId}/s/sticker-collection/{collectionId}")
+async def get_sticker_collection(
+    request: Request,
+    collectionId: str,
+    includeStickers: bool = False,
+    ndcId: int = 0,
+):
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "StickerCollections")
+        doc = await table.find_one({"collectionId": collectionId})
+    finally:
+        db.close()
+
+    if not doc:
+        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
+
+    collection = _shape_collection(doc, includeStickers)
+
+    return Base.Answer(
+        {"stickerCollection": collection}, spent_time=timestamp() - t1
+    )
+
+async def _collect_from_communities(db, ndc_ids: list[int], query: dict, includeStickers: bool):
+    items = []
+    for ndc_id in ndc_ids:
+        table = db.get(f"x{ndc_id}", "StickerCollections")
+        async for doc in table.find(query).sort([("createdTime", -1)]):
+            items.append(_shape_collection(doc, includeStickers))
+    return items
+
+
+@communities.get("/g/s/sticker-collection")
+@communities.get("/x{ndcId}/s/sticker-collection")
+async def sticker_collections(
+    request: Request,
+    type: str | None = None,
+    includeStickers: bool = False,
+    start: int = 0,
+    size: int = 20,
+    stoptime: str | None = None,
+    ndcId: int = 0,
+):
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    trigger_uid = request.state.session["uid"]
+    size = size if 0 < size < 101 else 20
+
+    db = await Database().init()
+    try:
+        if type in ("my-collection", "my-favorite-collection", "my-active-collection"):
+            sensitive_table = db.get(table="Users")
+            user = await sensitive_table.find_one(
+                {"id": trigger_uid}, projection={"communityList": 1, "_id": 0}
+            )
+            ndc_ids = [i for i in (user or {}).get("communityList", []) if i]
+
+            if type == "my-collection":
+                query = {"status": 0, "uid": trigger_uid}
+
+            elif type == "my-active-collection":
+                query = {"status": 0, "uid": trigger_uid, "isActivated": True}
+
+            else:  # my-favorite-collection
+                fav_ids = set()
+                for ndc_id in ndc_ids:
+                    ndc_user = await db.get(f"x{ndc_id}", "Users").find_one(
+                        {"id": trigger_uid},
+                        projection={"favoriteCollectionList": 1, "_id": 0},
+                    )
+                    if ndc_user and ndc_user.get("favoriteCollectionList"):
+                        fav_ids.update(ndc_user["favoriteCollectionList"])
+                query = {"status": 0, "collectionId": {"$in": list(fav_ids)}}
+
+            if stoptime:
+                query["createdTime"] = {"$lt": stoptime}
+
+            all_items = await _collect_from_communities(
+                db, ndc_ids, query, includeStickers
+            )
+            all_items.sort(key=lambda x: x.get("createdTime") or "", reverse=True)
+            total = len(all_items)
+            items = all_items[start : start + size]
+
+        else:
+            if type == "community-shared":
+                query = {"status": 0, "isShared": True}
+            else:
+                query = {"status": 0}
+
+            if stoptime:
+                query["createdTime"] = {"$lt": stoptime}
+
+            table = db.get(f"x{ndcId}", "StickerCollections")
+            total = await table.count_documents(query)
+            items = []
+            async for doc in (
+                table.find(query)
+                .sort([("createdTime", -1)])
+                .skip(start)
+                .limit(size)
+            ):
+                items.append(_shape_collection(doc, includeStickers))
+    finally:
+        db.close()
+
+    return Base.Answer(
+        {"stickerCollectionCount": total, "stickerCollectionList": items},
+        spent_time=timestamp() - t1,
+    )
+
 @communities.post("/g/s/sticker-collection")
 @communities.post("/x{ndcId}/s/sticker-collection")
-async def sticker_creatable_check(
+async def create_sticker_collection(
     request: Request,
     ndcId: int = 0,
 ):
-
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
@@ -1153,24 +1301,459 @@ async def sticker_creatable_check(
         )
 
     description = body.get("description", "")
-    iconSourceStickerIndex = body.get("iconSourceStickerIndex", 0)
-    collectionType = body.get("collectionType")
-    name = body.get("name", "Sticker Collection Fallback Name")
-    stickerList = body.get("stickerList", [])
-    """
-        "stickerList": [
-            {
-            "name": "Vvv",
-            "icon": "https://media.altamino.top/user-uploads/images/G4oGVPApMXJp1m2eSC1Xm9VyVAKBLXe0uycup67IfkaMq6jQ6U3e1z4ZHvIkBNJl.jpeg"
-            }
-        ],
-    """
+    collection_icon_index = body.get("iconSourceStickerIndex", 0)
+    collection_type = body.get("collectionType")
+    collection_name = body.get("name", "Sticker Collection Fallback Name")
+    sticker_list = body.get("stickerList", [])
 
-    _timestamp = body.get("timestamp")
-
-    if not stickerList or not isinstance(stickerList, list):
+    if not sticker_list or not isinstance(sticker_list, list):
         return Errors.InvalidRequest(
             spent_time=timestamp() - t1, lang=request.state.lang
         )
 
-    return Base.Answer({"stickerCollection": {}}, spent_time=timestamp() - t1)
+    if not isinstance(collection_icon_index, int) or isinstance(
+        collection_icon_index, bool
+    ):
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    if not (0 <= collection_icon_index < len(sticker_list)):
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    if collection_type is not None and (
+        isinstance(collection_type, bool) or not isinstance(collection_type, int)
+    ):
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    collection_id = str(uuid4())
+
+    prepared_stickers = []
+    for sticker in sticker_list:
+        if not isinstance(sticker, dict):
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        name = sticker.get("name")
+        icon = sticker.get("icon")
+
+        if not isinstance(name, str) or not name.strip():
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        if not isinstance(icon, str) or not icon.strip():
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        prepared_stickers.append(
+            {
+                "stickerId": str(uuid4()),
+                "stickerCollectionId": collection_id,
+                "name": name.strip(),
+                "icon": icon.strip(),
+                "iconV2": icon.strip(),
+                "smallIcon": icon.strip(),
+                "smallIconV2": icon.strip(),
+                "mediumIcon": icon.strip(),
+                "mediumIconV2": icon.strip(),
+                "usedCount": 0,
+                "status": 0,
+                "extensions": {},
+                "createdTime": now,
+            }
+        )
+
+    icon_sticker = prepared_stickers[collection_icon_index]
+
+    collection = {
+        "collectionId": collection_id,
+        "communityId": ndcId,
+        "uid": trigger_uid,
+        "name": collection_name.strip()
+        if isinstance(collection_name, str)
+        else "Sticker Collection Fallback Name",
+        "description": description if isinstance(description, str) else "",
+        "collectionType": collection_type,
+        "icon": icon_sticker["icon"],
+        "smallIcon": icon_sticker["icon"],
+        "bannerUrl": None,
+        "stickersCount": len(prepared_stickers),
+        "usedCount": 0,
+        "status": 0,
+        "isActivated": True,
+        "ownershipStatus": 1,
+        "isNew": True,
+        "availableNdcIds": [ndcId] if ndcId else [],
+        "extensions": {"iconSourceStickerId": icon_sticker["stickerId"]},
+        "restrictionInfo": {
+            "discountStatus": 0,
+            "discountValue": 0,
+            "ownerUid": trigger_uid,
+            "ownerType": 0,
+            "restrictType": None,
+            "restrictValue": None,
+            "availableDuration": None,
+        },
+        "author": None,
+        "stickerList": prepared_stickers,
+        "createdTime": now,
+        "modifiedTime": now,
+    }
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "StickerCollections")
+        await table.insert_one(dict(collection))
+
+        ndc_users_table = db.get(f"x{ndcId}", "Users")
+        await ndc_users_table.update_one(
+            {"id": trigger_uid},
+            {"$addToSet": {"myCollectionList": collection_id}},
+        )
+    finally:
+        db.close()
+
+    collection.pop("_id", None)
+
+    return Base.Answer(
+        {"stickerCollection": collection}, spent_time=timestamp() - t1
+    )
+
+
+
+
+@communities.post("/g/s/sticker-collection/{collectionId}")
+@communities.post("/x{ndcId}/s/sticker-collection/{collectionId}")
+async def edit_sticker_collection(
+    request: Request,
+    collectionId: str,
+    ndcId: int = 0,
+):
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    trigger_uid = request.state.session["uid"]
+
+    try:
+        body = await request.json()
+    except Exception:
+        return Errors.InvalidRequest(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "StickerCollections")
+        doc = await table.find_one({"collectionId": collectionId})
+
+        if not doc:
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        is_owner = doc.get("uid") == trigger_uid
+        is_allowed = is_owner
+
+        if not is_allowed:
+            sensitive_table = db.get(table="Users")
+            global_user = await sensitive_table.find_one({"id": trigger_uid})
+            if global_user and UserRole.is_global_staff(global_user.get("role", 0)):
+                is_allowed = True
+
+        if not is_allowed:
+            return Errors.NotEnoughRights(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        existing_stickers = {
+            s["stickerId"]: s for s in doc.get("stickerList", []) if s.get("stickerId")
+        }
+
+        set_ops = {}
+
+        if "name" in body:
+            name = body["name"]
+            if not isinstance(name, str) or not name.strip():
+                return Errors.InvalidRequest(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
+            set_ops["name"] = name.strip()
+
+        if "description" in body:
+            description = body["description"]
+            if not isinstance(description, str):
+                return Errors.InvalidRequest(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
+            set_ops["description"] = description
+
+        if "collectionType" in body:
+            collection_type = body["collectionType"]
+            if collection_type is not None and (
+                isinstance(collection_type, bool)
+                or not isinstance(collection_type, int)
+            ):
+                return Errors.InvalidRequest(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
+            set_ops["collectionType"] = collection_type
+
+        prepared_stickers = None
+        if "stickerList" in body:
+            sticker_list = body["stickerList"]
+            if not sticker_list or not isinstance(sticker_list, list):
+                return Errors.InvalidRequest(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
+
+            now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            prepared_stickers = []
+
+            for sticker in sticker_list:
+                if not isinstance(sticker, dict):
+                    return Errors.InvalidRequest(
+                        spent_time=timestamp() - t1, lang=request.state.lang
+                    )
+
+                name = sticker.get("name")
+                icon = sticker.get("icon")
+
+                if not isinstance(name, str) or not name.strip():
+                    return Errors.InvalidRequest(
+                        spent_time=timestamp() - t1, lang=request.state.lang
+                    )
+
+                if not isinstance(icon, str) or not icon.strip():
+                    return Errors.InvalidRequest(
+                        spent_time=timestamp() - t1, lang=request.state.lang
+                    )
+
+                sticker_id = sticker.get("stickerId")
+                existing = existing_stickers.get(sticker_id) if sticker_id else None
+
+                if existing:
+                    prepared_stickers.append(
+                        {
+                            "stickerId": existing["stickerId"],
+                            "stickerCollectionId": collectionId,
+                            "name": name.strip(),
+                            "icon": icon.strip(),
+                            "iconV2": icon.strip(),
+                            "smallIcon": icon.strip(),
+                            "smallIconV2": icon.strip(),
+                            "mediumIcon": icon.strip(),
+                            "mediumIconV2": icon.strip(),
+                            "usedCount": existing.get("usedCount", 0),
+                            "status": existing.get("status", 0),
+                            "extensions": existing.get("extensions", {}),
+                            "createdTime": existing.get("createdTime", now),
+                        }
+                    )
+                else:
+                    prepared_stickers.append(
+                        {
+                            "stickerId": str(uuid4()),
+                            "stickerCollectionId": collectionId,
+                            "name": name.strip(),
+                            "icon": icon.strip(),
+                            "iconV2": icon.strip(),
+                            "smallIcon": icon.strip(),
+                            "smallIconV2": icon.strip(),
+                            "mediumIcon": icon.strip(),
+                            "mediumIconV2": icon.strip(),
+                            "usedCount": 0,
+                            "status": 0,
+                            "extensions": {},
+                            "createdTime": now,
+                        }
+                    )
+
+            set_ops["stickerList"] = prepared_stickers
+            set_ops["stickersCount"] = len(prepared_stickers)
+
+        if "iconSourceStickerIndex" in body:
+            icon_index = body["iconSourceStickerIndex"]
+            if not isinstance(icon_index, int) or isinstance(icon_index, bool):
+                return Errors.InvalidRequest(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
+
+            reference_stickers = (
+                prepared_stickers
+                if prepared_stickers is not None
+                else doc.get("stickerList", [])
+            )
+
+            if not (0 <= icon_index < len(reference_stickers)):
+                return Errors.InvalidRequest(
+                    spent_time=timestamp() - t1, lang=request.state.lang
+                )
+
+            icon_sticker = reference_stickers[icon_index]
+            set_ops["icon"] = icon_sticker["icon"]
+            set_ops["smallIcon"] = icon_sticker["icon"]
+            set_ops["extensions"] = {
+                **doc.get("extensions", {}),
+                "iconSourceStickerId": icon_sticker["stickerId"],
+            }
+
+        if not set_ops:
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        set_ops["modifiedTime"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        await table.update_one({"collectionId": collectionId}, {"$set": set_ops})
+        updated = await table.find_one({"collectionId": collectionId})
+    finally:
+        db.close()
+
+    collection = _shape_collection(updated, includeStickers=True)
+
+    return Base.Answer(
+        {"stickerCollection": collection}, spent_time=timestamp() - t1
+    )
+
+
+@communities.delete("/g/s/sticker-collection/{collectionId}")
+@communities.delete("/x{ndcId}/s/sticker-collection/{collectionId}")
+async def delete_sticker_collection(
+    request: Request,
+    collectionId: str,
+    ndcId: int = 0,
+):
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "StickerCollections")
+        doc = await table.find_one({"collectionId": collectionId})
+
+        if not doc:
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        is_owner = doc.get("uid") == trigger_uid
+        is_allowed = is_owner
+
+        if not is_allowed:
+            sensitive_table = db.get(table="Users")
+            global_user = await sensitive_table.find_one({"id": trigger_uid})
+            if global_user and UserRole.is_global_staff(global_user.get("role", 0)):
+                is_allowed = True
+
+        if not is_allowed:
+            return Errors.NotEnoughRights(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        await table.delete_one({"collectionId": collectionId})
+
+        ndc_users_table = db.get(f"x{ndcId}", "Users")
+        await ndc_users_table.update_one(
+            {"id": doc.get("uid")},
+            {"$pull": {"myCollectionList": collectionId}},
+        )
+    finally:
+        db.close()
+
+    return Base.Answer(spent_time=timestamp() - t1)
+
+
+
+
+@communities.post("/g/s/sticker-collection/{collectionId}/activate")
+@communities.post("/x{ndcId}/s/sticker-collection/{collectionId}/activate")
+async def activate_sticker_collection(
+    request: Request,
+    collectionId: str,
+    ndcId: int = 0,
+):
+    return await _set_collection_activation(request, collectionId, ndcId, True)
+
+
+@communities.post("/g/s/sticker-collection/{collectionId}/deactivate")
+@communities.post("/x{ndcId}/s/sticker-collection/{collectionId}/deactivate")
+async def deactivate_sticker_collection(
+    request: Request,
+    collectionId: str,
+    ndcId: int = 0,
+):
+    return await _set_collection_activation(request, collectionId, ndcId, False)
+
+
+async def _set_collection_activation(
+    request: Request, collectionId: str, ndcId: int, activate: bool
+):
+    t1 = timestamp()
+
+    if not request.state.session["validsession"]:
+        return Errors.InvalidSession(
+            spent_time=timestamp() - t1, lang=request.state.lang
+        )
+
+    trigger_uid = request.state.session["uid"]
+
+    db = await Database().init()
+    try:
+        table = db.get(f"x{ndcId}", "StickerCollections")
+        doc = await table.find_one({"collectionId": collectionId})
+
+        if not doc:
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        is_owner = doc.get("uid") == trigger_uid
+        is_allowed = is_owner
+
+        if not is_allowed:
+            sensitive_table = db.get(table="Users")
+            global_user = await sensitive_table.find_one({"id": trigger_uid})
+            if global_user and UserRole.is_global_staff(global_user.get("role", 0)):
+                is_allowed = True
+
+        if not is_allowed:
+            return Errors.NotEnoughRights(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        await table.update_one(
+            {"collectionId": collectionId},
+            {
+                "$set": {
+                    "isActivated": activate,
+                    "modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                }
+            },
+        )
+        updated = await table.find_one({"collectionId": collectionId})
+    finally:
+        db.close()
+
+    collection = _shape_collection(updated, includeStickers=True)
+
+    return Base.Answer(
+        {"stickerCollection": collection}, spent_time=timestamp() - t1
+    )
