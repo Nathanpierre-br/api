@@ -1,85 +1,175 @@
 ru: |
-  AltAmino – проект, который пытается возродить Amino, имитируя оригинальные сервера. Проект написан с нуля и находится в далеко не стабильной версии, так что стоит ожидать баги, ошибки, а также периодические падения серверов. 
-  
-  Так как платформа изначально была 13+, то и мы будем придерживаться такого рейтинга, и именно относительно его мы и построили общие для всех сообществ (включая глобального) правила. 
-  
-  Мы не отвечаем за тех, кому меньше 13 (в Европейском союзе - 16) лет и можем даже заблокировать аккаунт такого пользователя, если потребуется.
-  
-  [B]NSFW / 18+ контент
-  
-  Всё, что расценивается как NSFW / 18+ контент, строго запрещено. Это касается не только медиаконтента (аудио, видео, фото), но и текста. 
-  
-  За контент такого содержания мы будем крайне строго карать.
-  
-  [B]Запрещённый контент
-  
-  Любой экстремистский, пропагандистский, суицидальный, политический и/или террористический контент и контент, который может навредить здоровью человека, распространяет запрещённые вещества или предметы, призывает действиям экстремистского, суицидального и другого запрещённого характера, а также любой другой контент, общепризнанный как запрещённый и/или экстремистский строго запрещён.
-  
-  Пользователей, что выкладывают данный контент, ожидает перманентная блокировка (включая последующие аккаунты). Если контент крайне серьезный, мы можем сообщить интернет-провайдеру, что с их IP адреса совершаются такие действия. 
-  
-  [B]Спам, реклама
-  
-  Объединим в этом пункте понятия "спам" и "реклама" в одно целое, так как эти вещи всё равно никто не любит. 
-  Автоматизированная реклама и спам (т.е. рейды, спам, реклама ботами и похожее) запрещено, а IP адреса рискуют быть заблокированными и получить жалобу на спам в Spamhaus.
-  
-  Обратите внимание! Мы не блокируем VPN, прокси, датацентры и подобное, так как прекрасно понимаем, что Интернет не везде достаточно свободный.
-  
-  Обратите внимание! Мы не запрещаем ботов и можем даже одобрять аккаунты ботов, выдавая верификацию аккаунта и звание. Однако это не значит, что надо пользоваться ботами и скриптами (автоматизацией), что наносит вред как платформе, так и сообществам, чатам, пользователям и так далее! 
-  
-  [B]Непристойное поведение
-  
-  Агрессия, угрозы, оскорбления и/или непристойное поведение не приветствуются. Пожалуйста, будьте хотя бы нейтральны к друг другу! Вы все такие же люди в реальности и повода принижать честь и достоинство других реально не имеет смысла. 
-  
-  К непристойному поведению также можно отнести непрофессионализм администрации сообществ. Например: игнорирование участников и/или выдача наказаний участникам без весомых причин, низкая активность, несоблюдение собственных и общих правил, игнорирование или выдумка нарушений...
-  
-  [B]Конфиденциальность участников
-  
-  Без разрешения участника запрещено распространение любой личной о нём информации вне зависимости от причин. Мы такое не приветствуем и будем делать всё, чтобы привлечь к ответственности доксеров.
-  
-  [B]Нелегальные действия
-  
-  Нарушение авторского права, гэмблинг, казино, ставки, лотереи и всё, что требует любого вложения средств, строго запрещено.
+    AltAmino – проект, направленный на возрождение Amino, имитируя оригинальные сервера. Проект сейчас реализуется на ранней стадии развития и находится в далеко нестабильной версии. Важно понимать, что могут возникать баги, ошибки, а также периодические падения серверов. Команда AltAmino видит большинство проблем и постпенно решает их, неберитесь терпения.
+
+    Чтобы вы и остальные пользователи платформы чувствовали себя максимально комфортно, придерживайтесь приведённых ниже правил.
+
+    [B]NSFW / 18+ контент
+
+    NSFW контент — это любые материалы, содержащие откровенные, вульгарные или неприличные сцены, направленные на возбуждение сексуального интереса. Сюда относятся не только прямые порнографические кадры, но и художественно завуалированные формы: эротические зарисовки с акцентом на интимные части тела, текстовые описания сексуальных действий, а также аудиозаписи с выраженными звуками сексуального характера. Под это правило попадает и так называемый «мягкий эротический» контент, если он демонстрируется в контексте, явно рассчитанном на сексуальное возбуждение, а не на художественное, образовательное или медицинское освещение темы.
+
+    Любой контент, который может нанести вред психическому или нравственному развитию пользователей, приравнивается к непристойному и подлежит строгому ограничению. На платформе категорически недопустимы домогательства в любой форме.
+
+    Под домогательствами понимаются:
+    *навязчивые предложения сексуального характера,
+    *нежелательные комплименты с интимным подтекстом,
+    *требования прислать откровенные фото или видео
+    *любые другие действия, создающие для собеседника дискомфорт, давление или ощущение угрозы в сексуальном контексте, независимо от возраста жертвы.
+
+    Такое поведение расценивается как грубое нарушение правил платформы и влечёт за собой немедленные санкции вплоть до бессрочной блокировки аккаунта.
+
+    Разрешены произведения искусства — картины, рисунки, скульптуры, художественные фото — с изображением обнажённой натуры при условии, что интимные зоны не занимают более половины кадра(50%) и не являются основным акцентом работы. Контент должен иметь очевидную художественную ценность и не быть направлен на возбуждение или сексуальную провокацию.
+    [B]Запрещённый контент
+
+    [u] Контент с призывом к саморазрушению
+
+    Суицидальный контент на нашей платформе абсолютно запрещён в любых проявлениях. Мы не допускаем публикации материалов, которые содержат призывы к самоубийству, описывают способы его совершения, обсуждают летальные дозировки или методы, демонстрируют изображения или видео сцен самоповреждения или суицида, а также романтизируют или оправдывают добровольный уход из жизни. Подобный контент будет подлежать немедленному скрытию.
+
+    [u] Экстремитский контент
+
+    Как разновидность экстремисткого контента запрещается возбуждение социальной, расовой, национальной или религиозной розни. Это могут быть высказывания о необходимости геноцида, депортации, а также оскорбительные высказывания, которые производятся в адрес человека в связи с его принадлежностью к какому-то определенному сообществу с ярко выраженными идентификационными основаниями (культурными, социальными, этническими и т.д.).
+
+    Пропаганда исключительности, превосходства либо неполноценности человека по признаку его социальной, расовой, национальной, религиозной или языковой принадлежности, или отношения к религии. Необходимо быть осторожными в высказываниях и публикациях, которые указывают на существование особых признаков и способностей, отличающих представителей одной группы в лучшую или худшую сторону и тем самым способствуют возбуждению ненависти и вражды.
+
+    [u] Терроризм
+
+    Под террористическим контентом мы понимаем: любые высказывания, оправдывающие или прославляющие террористические акты и их исполнителей; призывы к совершению терактов; публикации, содержащие угрозы совершения насильственных действий против людей или объектов; распространение символики, флагов, лозунгов, фотографий и видео террористических организаций; инструкции, схемы, рецепты и руководства по изготовлению оружия, взрывчатых веществ, ядов и иных средств, которые могут быть использованы в террористических целях.
+
+    Под запрет попадает не только очевидно экстремистский, террористический или суицидальный контент, но и любые материалы, которые так или иначе оправдывают насилие, разжигают вражду по национальным, религиозным, социальным или иным признакам, призывают к дестабилизации, дискредитируют государственные институты или распространяют заведомо ложную информацию, способную вызвать панику и вред для общества. Также категорически нельзя публиковать инструкции, советы или призывы к изготовлению, приобретению или использованию оружия, взрывчатки, наркотиков, психотропов и других веществ или предметов, оборот которых ограничен или запрещён законом. Сюда же относится любой контент, который может навредить физическому или психическому здоровью человека, включая склонение к самоубийству, пропаганду опасных практик и деструктивного поведения. Мы также блокируем всё, что официально признано запрещённым или экстремистским на уровне законодательства, независимо от формы подачи — текст, изображения, аудио, видео или ссылки.
+
+    [B]Спам
+
+    Спам — это нежелательные сообщения в любой форме, которые отправляются в большом количестве. Чаще всего спам отправляется в форме текстовым сообщений, изображений, постов.
+
+    Спам в любом его проявлении категорически запрещён. Мы не делаем различий между ручным и автоматическим засорением чатов, лент и личных сообщений — массовые однотипные сообщения, повторяющиеся ссылки, бессмысленные копипасты, флуд с целью продвижения или просто ради шума одинаково недопустимы. Все такие действия фиксируются автоматически, и если ваш IP попадает под подозрение по спам-активности, он может быть заблокирован на нашей стороне, а также передан в глобальные спам-базы, такие как Spamhaus, что создаст проблемы с доступом к множеству других сервисов. Мы не блокируем VPN и прокси, потому что не считаем анонимность синонимом спама, но сам факт спам-поведения — всегда достаточное основание для применения санкций независимо от способа подключения.
+
+    [B]Реклама
+
+    Реклама на платформе запрещена, за исключением:
+    * реклама сообществ, если была согласована с администрацией сообщества
+    * стороняя реклама, которая была предварительно и письменно согласована с Командой AltAmino.
+
+    Под рекламой мы понимаем любые публичные или личные сообщения, содержащие призыв приобрести товары или услуги, продвижение сторонних ресурсов, проектов, каналов, групп, сайтов, приложений или любых коммерческих и некоммерческих инициатив, не имеющих прямого отношения к нашей платформе. Это касается как прямой рекламы с ценами и контактами, так и скрытых форм — например, завуалированных рекомендаций, ссылок с UTM-метками, массовых упоминаний брендов или приглашений под видом личного опыта. Даже если вы не получаете за это денег, а просто хотите "рассказать о крутом проекте", но делаете это систематически или в нерелевантных местах — это тоже реклама, и она подлежит блокировке. Исключения делаются только для официальных партнёров и специальных интеграций, которые проходят модерацию заранее.
+
+    [B]Непристойное поведение
+
+    Непристойное поведение — это не просто грубость, это то, что разрушает любое сообщество изнутри. Мы не терпим агрессии, угроз, оскорблений, унижений, травли, домогательств и любого другого поведения, направленного на подавление или унижение другого человека. Не имеет значения, сказано это в лицо или исподтишка, в открытом чате или в личке, в шутку или всерьёз — если кому-то стало неуютно, это уже повод разобраться. Призываем вас быть хотя бы нейтральными, потому что за каждым экраном реальный человек, и принижать его достоинство — бессмысленно и деструктивно. Это касается и администраторов сообществ: если модератор игнорирует участников, выдаёт наказания без объяснений и оснований, сам нарушает правила, которым должен следовать, или проявляет предвзятость — это тоже непристойное поведение, только с приставкой "должностное". И мы будем пресекать это так же жёстко, как и любую другую агрессию.
+
+    Мы выступаем против организованной ненависти в любых её проявлениях. Это деятельность, при которой отдельные лица или группы систематически нападают на людей, разжигают вражду и насилие, лишают других человеческого достоинства или продвигают идеологии, основанные на превосходстве одной группы над другой. Мы не допускаем скоординированных атак на основе расы, национальности, религии, пола, возраста, сексуальной ориентации, политических убеждений или любых других характеристик. Все формы такой деятельности, включая создание и участие в группах ненависти, распространение соответствующих материалов и призывы к действиям, строго запрещены. Нарушители подлежат немедленной блокировке.
+
+    [B]Конфиденциальность участников
+
+    Мы уважаем право каждого участника на приватность. Распространение любой личной информации о человеке без его добровольного и осознанного согласия строго запрещено — независимо от того, руководствуетесь ли вы благими намерениями, любопытством, местью или желанием разоблачить. Это правило распространяется на все виды данных: от очевидных (имя, адрес, номер телефона, место учёбы или работы, дата рождения, фото, видео) до тех, что могут быть использованы для идентификации личности даже в совокупности с другой информацией. Особенно строго мы относимся к публикации личных переписок, распространению скриншотов из закрытых чатов, раскрытию анонимности пользователя вопреки его воле, а также к любым попыткам отследить человека в реальной жизни без его согласия. Мы не просто не приветствуем такое поведение — мы активно боремся с ним и будем привлекать нарушителей к максимальной ответственности в рамках наших возможностей.
+
+    Угрозы любого рода, направленные на взлом, атаку, доксинг, преследование или шантаж других участников, категорически запрещены. Мы рассматриваем такое поведение как одну из самых серьёзных форм жестокого обращения и насилия в цифровой среде, потому что оно посягает на безопасность, приватность и психологическое благополучие человека. Под запрет попадают не только прямые угрозы, но и любые намёки, двусмысленные заявления, подготовительные действия и призывы к другим участникам совершить подобные акты. Мы не допускаем ни публичных, ни личных сообщений, содержащих такие высказывания. Все случаи фиксируются, а нарушители подлежат немедленной блокировке всех аккаунтов с возможной передачей данных.
+
+    [B] Авторские права
+
+    AltAmino требует от всех пользователей уважения к авторским правам. Любой публикуемый контент должен быть вашим собственным творчеством или использоваться с разрешения владельца.Если вы хотите поделиться чужой работой, делайте это через ссылку на автора, а не через перезагрузку файла. Цитирование допускается только с указанием первоисточника.
+
+    Запрещены:
+    * плагиат или копирование чужих текстов, изображений, артов, фото, видео и музыки без разрешения;
+    * редактирование и изменение чужих работ;
+    * удаление водяных знаков и подписей;
+    * выдача чужих материалов за свои.
+
+    [B] Азартные игры
+
+    Большинство проектов, связанных с азартными играми и быстрыми инвестициями, — это либо заведомо проигрышные механизмы, либо откровенное мошенничество. Именно поэтому мы полностью запрещаем их на нашей платформе. Под запрет попадают казино, слоты, рулетка, покер на деньги, ставки на спорт, лотереи. Мы не разрешаем ни прямую рекламу, ни завуалированное продвижение через "обзоры", "личный опыт", "советы экспертов" или "предупреждения".
+
+    [B] 
+    
+    [B] 
+    
+    [B] 
+
+    Мы доверяем вам и верим, что вы способны отличать хорошее от плохого. Эти правила — не попытка ограничить вашу свободу, а способ защитить вас и других от реального вреда. Каждый из нас влияет на атмосферу сообщества своими словами и действиями. Мы просим вас быть осознанными, уважительными и добрыми друг к другу. Если вы нарушаете правила — вы нарушаете доверие, и мы будем вынуждены применять санкции вплоть до полной блокировки. Ответственность за контент, который вы публикуете, лежит только на вас. Пожалуйста, делайте осознанный выбор.
+
 en: |
-  AltAmino is a project that aims to revive Amino by simulating the original servers. The project is written from scratch and is in a far-from-stable version, so you should expect bugs, errors, and periodic server downtime.
-  
-  Since the platform was originally 13+, we will adhere to that rating as well, and it is based on this that we have built common rules for all communities (including the global one).
-  
-  We are not responsible for those under 13 years of age (16 years in the European Union), and we may even block such a user's account if necessary.
-  
+  AltAmino is a project aimed at reviving Amino by simulating the original servers. The project is currently in the early stages of development and is in a far-from-stable version. It is important to understand that bugs, errors, and periodic server downtime may occur. The AltAmino team sees most of the problems and is gradually solving them, please be patient.
+
+  To ensure that you and other users of the platform feel as comfortable as possible, please adhere to the rules below.
+
   [B]NSFW / 18+ content
-  
-  Anything considered NSFW / 18+ content is strictly prohibited. This applies not only to media content (audio, video, photos) but also to text.
-  
-  We will punish content of this nature extremely strictly.
-  
+
+  NSFW content is any material containing explicit, vulgar, or indecent scenes aimed at exciting sexual interest. This includes not only direct pornographic imagery but also artistically veiled forms: erotic sketches focusing on intimate body parts, textual descriptions of sexual acts, as well as audio recordings with distinct sexual sounds. This rule also applies to so-called 'soft erotic' content if it is shown in a context clearly intended for sexual arousal, rather than artistic, educational, or medical coverage of the topic.
+
+  Any content that could harm the mental or moral development of users is equated to obscene and is subject to strict restrictions. Harassment in any form is categorically unacceptable on the platform.
+
+  Under harassment we understand:
+  * intrusive offers of a sexual nature,
+  * unwanted compliments with intimate undertones,
+  * demands to send explicit photos or videos,
+  * any other actions that create discomfort, pressure, or a sense of threat for the interlocutor in a sexual context, regardless of the victim's age.
+
+  Such behavior is considered a gross violation of the platform's rules and entails immediate sanctions up to indefinite account suspension.
+
+  Artworks—paintings, drawings, sculptures, artistic photos—depicting nudity are allowed, provided that intimate areas do not occupy more than half of the frame (50%) and are not the main focus of the work. The content must have obvious artistic value and must not be aimed at arousal or sexual provocation.
+
   [B]Prohibited content
-  
-  Any extremist, propaganda, suicidal, political, and/or terrorist content, as well as content that may harm human health, distribute prohibited substances or items, incite extremist, suicidal, or other prohibited actions, as well as any other content generally recognized as prohibited and/or extremist, is strictly forbidden.
-  
-  Users who post such content will face a permanent ban (including subsequent accounts). If the content is extremely serious, we may report to the Internet Service Provider that such actions are being committed from their IP address.
-  
-  [B]Spam, advertising
-  
-  We will combine the concepts of "spam" and "advertising" into one point, as nobody likes these things anyway.
-  Automated advertising and spam (i.e., raids, spam, bot advertising, and similar) are prohibited, and IP addresses risk being blocked and reported for spam to Spamhaus.
-  
-  Please note! We do not block VPNs, proxies, data centers, and the like, as we perfectly understand that the Internet is not free enough everywhere.
-  
-  Please note! We do not prohibit bots and may even approve bot accounts by granting them account verification and a title. However, this does not mean that you should use bots and scripts (automation) that harm the platform, communities, chats, users, and so on!
-  
+
+  [u] Self-destructive content
+
+  Suicidal content on our platform is absolutely prohibited in all forms. We do not allow the publication of materials that contain calls to suicide, describe methods of committing it, discuss lethal dosages or methods, display images or videos of self-harm or suicide scenes, or romanticize or justify voluntary end of life. Such content will be subject to immediate hiding.
+
+  [u] Extremist content
+
+  As a form of extremist content, inciting social, racial, national, or religious hatred is prohibited. This can include statements regarding the necessity of genocide, deportation, as well as offensive remarks directed at a person in connection with their belonging to a specific community with distinct identity characteristics (cultural, social, ethnic, etc.).
+
+  Promotion of the exceptionality, superiority, or inferiority of a person based on their social, racial, national, religious, or linguistic affiliation, or attitude toward religion is prohibited. It is necessary to be cautious in statements and publications that point to the existence of special traits and abilities that distinguish representatives of one group for better or worse and thereby contribute to the incitement of hatred and hostility.
+
+  [u] Terrorism
+
+  By terrorist content we mean: any statements justifying or glorifying terrorist acts and their perpetrators; calls to commit terrorist acts; publications containing threats of violent actions against people or targets; distribution of symbols, flags, slogans, photos, and videos of terrorist organizations; instructions, diagrams, recipes, and guides for the manufacture of weapons, explosives, poisons, and other means that can be used for terrorist purposes.
+
+  The ban covers not only obviously extremist, terrorist, or suicidal content, but also any materials that in one way or another justify violence, incite hatred on national, religious, social, or other grounds, call for destabilization, discredit state institutions, or spread knowingly false information capable of causing panic and harm to society. It is also strictly forbidden to publish instructions, advice, or calls for the manufacture, acquisition, or use of weapons, explosives, drugs, psychotropic substances, and other substances or items whose distribution is restricted or prohibited by law. This also includes any content that could harm a person's physical or mental health, including incitement to suicide, promotion of dangerous practices, and destructive behavior. We also block everything that is officially recognized as prohibited or extremist under legislation, regardless of the presentation format—text, images, audio, video, or links.
+
+  [B]Spam
+
+  Spam is unsolicited messages in any form that are sent in large quantities. Most often, spam is sent in the form of text messages, images, or posts.
+
+  Spam in any of its manifestations is strictly prohibited. We make no distinction between manual and automated cluttering of chats, feeds, and private messages—mass identical messages, repetitive links, meaningless copypastas, or flooding for promotion or simply for noise are equally unacceptable. All such actions are recorded automatically, and if your IP comes under suspicion for spam activity, it may be blocked on our end and also submitted to global spam databases such as Spamhaus, which will create access issues for many other services. We do not block VPNs and proxies because we do not equate anonymity with spam, but the fact of spam behavior is always sufficient ground for applying sanctions regardless of the connection method.
+
+  [B]Advertising
+
+  Advertising on the platform is prohibited, with the exception of:
+  * community advertising, if approved by the community administration
+  * third-party advertising, which has been previously agreed upon in writing with the AltAmino Team.
+
+  By advertising, we mean any public or private messages containing a call to purchase goods or services, promotion of third-party resources, projects, channels, groups, websites, applications, or any commercial and non-commercial initiatives that are not directly related to our platform. This applies to both direct advertising with prices and contacts, and hidden forms—for example, veiled recommendations, links with UTM tags, mass brand mentions, or invitations under the guise of personal experience. Even if you do not get paid for it and just want to 'talk about a cool project', but do it systematically or in irrelevant places—it is also advertising and is subject to being blocked. Exceptions are made only for official partners and special integrations that undergo moderation in advance.
+
   [B]Inappropriate behavior
-  
-  Aggression, threats, insults, and/or inappropriate behavior are not welcome. Please at least be neutral toward each other! You are all human beings in reality, and there is no real point in demeaning the honor and dignity of others.
-  
-  Inappropriate behavior can also include unprofessionalism by community administration. For example: ignoring members and/or punishing members without valid reasons, low activity, failure to comply with one's own or general rules, ignoring or inventing violations...
-  
+
+  Inappropriate behavior is not just rudeness; it is what destroys any community from within. We do not tolerate aggression, threats, insults, humiliation, harassment, bullying, and any other behavior aimed at suppressing or demeaning another person. It does not matter whether it was said to someone's face or behind their back, in a public chat or in a private message, as a joke or in earnest—if someone was made to feel uncomfortable, that is already a reason to look into it. We urge you to be at least neutral, because behind every screen there is a real person, and demeaning their dignity is pointless and destructive. This also applies to community administrators: if a moderator ignores members, hands out punishments without explanation or grounds, violates the rules they are supposed to follow, or shows bias—this is also inappropriate behavior, only with the prefix 'official'. And we will clamp down on this just as harshly as on any other aggression.
+
+  We stand against organized hate in all its manifestations. This is activity in which individuals or groups systematically attack people, incite hatred and violence, strip others of their human dignity, or promote ideologies based on the superiority of one group over another. We do not tolerate coordinated attacks based on race, nationality, religion, gender, age, sexual orientation, political beliefs, or any other characteristics. All forms of such activity, including creating and participating in hate groups, distributing relevant materials, and calling for action, are strictly prohibited. Violators are subject to immediate suspension.
+
   [B]Member privacy
-  
-  Sharing any personal information about a member without their permission is prohibited, regardless of the reasons. We do not welcome this and will do everything possible to hold doxxers accountable.
-  
-  [B]Illegal activities
-  
-  Copyright infringement, gambling, casinos, betting, lotteries, and anything that requires any financial investment is strictly prohibited.
+
+  We respect the right of every member to privacy. Sharing any personal information about a person without their voluntary and informed consent is strictly prohibited—regardless of whether you are guided by good intentions, curiosity, revenge, or a desire to expose. This rule applies to all types of data: from obvious ones (name, address, phone number, place of study or work, date of birth, photo, video) to those that can be used to identify a person even in combination with other information. We are particularly strict about publishing personal correspondence, sharing screenshots from private chats, disclosing user anonymity against their will, and any attempts to track a person in real life without their consent. We do not just discourage such behavior—we actively fight it and will hold violators accountable to the maximum extent of our ability.
+
+  Threats of any kind aimed at hacking, attacking, doxxing, stalking, or blackmailing other members are strictly prohibited. We view such behavior as one of the most serious forms of abuse and violence in the digital environment because it threatens a person's security, privacy, and psychological well-being. The ban covers not only direct threats but also any hints, ambiguous statements, preparatory actions, and calls on other members to commit such acts. We do not tolerate either public or private messages containing such statements. All cases are recorded, and violators are subject to immediate suspension of all accounts with the potential transfer of data.
+
+  [B] Copyright
+
+  AltAmino requires all users to respect copyright. Any published content must be your own creation or used with the owner's permission. If you want to share someone else's work, do so by linking to the author rather than re-uploading the file. Citation is allowed only with attribution to the original source.
+
+  Prohibited:
+  * plagiarism or copying of other people's texts, images, art, photos, videos, and music without permission;
+  * editing and altering other people's works;
+  * removing watermarks and signatures;
+  * passing off other people's materials as your own.
+
+  [B] Gambling
+
+  Most projects related to gambling and quick investments are either bound to lose or outright scams. That is why we completely prohibit them on our platform. The ban covers casinos, slots, roulette, money poker, sports betting, and lotteries. We do not allow either direct advertising or veiled promotion through 'reviews', 'personal experience', 'expert advice', or 'warnings'.
+
+  [B] 
+
+  [B] 
+
+  [B] 
+
+  We trust you and believe that you are capable of distinguishing good from bad. These rules are not an attempt to limit your freedom, but a way to protect you and others from real harm. Each of us affects the community atmosphere with our words and actions. We ask you to be mindful, respectful, and kind to each other. If you violate the rules, you violate trust, and we will be forced to apply sanctions up to a complete block. Responsibility for the content you publish lies solely with you. Please make a conscious choice.
 
 
 ar: |

@@ -17,7 +17,7 @@ from helpers.decorators.turtlelimit import TurtleTime, turtlelimiter
 from helpers.decorators.strikecheck import strike_check
 from helpers.functions import calculate_page_tokens, parse_page_token
 from helpers.routers.cachable import CachableRoute
-from objects import Base, Blog, Comments, Errors, User
+from objects import Base, Blog, Comments, Errors, User, MediaList
 from objects.types import BlogType, UserRole
 
 blog_methods = APIRouter()
@@ -214,6 +214,7 @@ async def get_latest_blog_posts(
 
 @blog_methods.get("/g/s/blog")
 @blog_methods.get("/x{ndcId}/s/blog")
+@blog_methods.get("/x{ndcId}/s/item")
 async def get_blogs(
     request: Request,
     q: Union[str, None] = None,
@@ -230,7 +231,8 @@ async def get_blogs(
     db = await Database().init()
     table = db.get(f"x{ndcId}", "Blogs")
 
-    query = {"blogType": 0}
+    is_wiki = request.url.path.endswith("/item")
+    query = {"blogType": 2 if is_wiki else 0}
     # /api/v1/x1/s/blog?size=25&q=de838eb4-312c-4ba0-9d81-9aad3fc984e1&pagingType=t&type=user
     if q:
         raw_q = q.strip()
@@ -258,10 +260,12 @@ async def get_blogs(
         for item in blogs
     ]
 
+    key_name = "itemList" if is_wiki else "blogList"
+
     db.close()
     return Base.Answer(
         {
-            "blogList": blogList,
+            key_name: blogList,
             "paging": calculate_page_tokens(start, size, blogList),
         },
         spent_time=timestamp() - t1,
@@ -331,6 +335,7 @@ async def get_announcement(
 
 @blog_methods.get("/g/s/blog/{blogId}")
 @blog_methods.get("/x{ndcId}/s/blog/{blogId}")
+@blog_methods.get("/x{ndcId}/s/item/{blogId}")
 async def get_blog(
     request: Request,
     blogId: str,
@@ -342,6 +347,7 @@ async def get_blog(
     table = db.get(f"x{ndcId}", "Blogs")
 
     blog = await table.find_one({"id": blogId})
+    answ_key = "item" if blog["blogType"] == 2 else "blog"
     if blog:
         blog_info = await Blog.Info(
             blog, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
@@ -349,7 +355,7 @@ async def get_blog(
         db.close()
 
         return Base.Answer(
-            {"blog": blog_info},
+            {answ_key: blog_info},
             spent_time=timestamp() - t1,
         )
 
@@ -573,6 +579,7 @@ async def post_blog_comment(
 
 @blog_methods.post("/g/s/blog/{blogId}")
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}")
+@blog_methods.post("/x{ndcId}/s/item/{blogId}")
 async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -623,6 +630,19 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
                 "privilegeOfCommentOnPost"
             ]
 
+        if "props" in extensions:
+            preparedQueries["props"] = [
+                {
+                    "title": item["title"],
+                    "type": item["type"]
+                    if item["type"]
+                    in ["text", "levelStar", "date", "levelCost", "levelHeart"]
+                    else "text",
+                    "value": item["value"],
+                }
+                for item in extensions["props"]
+            ]
+
         preparedQueries["extensions"] = current_extensions
 
     await table.update_one({"id": blogId}, {"$set": preparedQueries})
@@ -630,7 +650,9 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
     blog_info = await Blog.Info(updated_blog, db, ndcId=ndcId, trigger_uid=trigger_uid)
 
     db.close()
-    return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
+
+    key = "item" if updated_blog["blogType"] == 2 else "blog"
+    return Base.Answer({key: blog_info}, spent_time=timestamp() - t1)
 
 
 # delete blog post
@@ -638,6 +660,8 @@ async def edit_blog(request: Request, blogId: str, ndcId: int = 0):
 
 @blog_methods.delete("/g/s/blog/{blogId}")
 @blog_methods.delete("/x{ndcId}/s/blog/{blogId}")
+@blog_methods.delete("/x{ndcId}/s/item/{blogId}")
+@blog_methods.post("/x{ndcId}/s/item/{blogId}/batch-delete")
 async def delete_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
@@ -780,6 +804,7 @@ async def get_blog_voters(
 
 @blog_methods.post("/g/s/blog")
 @blog_methods.post("/x{ndcId}/s/blog")
+@blog_methods.post("/x{ndcId}/s/item")
 @turtlelimiter(limit=1, period=TurtleTime.second, tag="post-blog")
 @strike_check
 async def post_blog(request: Request, ndcId: int = 0):
@@ -788,14 +813,21 @@ async def post_blog(request: Request, ndcId: int = 0):
 
     data = await request.json()
     try:
-        blog_type = data["type"]
-        title = data["title"]
+        is_wiki = request.url.path.endswith("/item")
+        blog_type = 2 if is_wiki else data["type"]
+        title = data["label"] if is_wiki else data["title"]
         content = data["content"]
         extensions = data.get("extensions", {})
     except KeyError:
         return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
-    if blog_type not in [BlogType.Basic, BlogType.Image, BlogType.Question]:
+    if blog_type not in [
+        BlogType.Basic,
+        BlogType.Image,
+        BlogType.Question,
+        BlogType.Vote,
+        BlogType.Wiki,
+    ]:
         return Errors.InvalidRequest(timestamp() - t1, lang=request.state.lang)
 
     if content is None and blog_type != BlogType.Image:
@@ -820,6 +852,7 @@ async def post_blog(request: Request, ndcId: int = 0):
     useful_extensions = {
         "commentAllowance": extensions.get("privilegeOfCommentOnPost", 1),
         "style": {},
+        "coverAnimation": extensions.get("coverAnimation", "none"),
     }
     for k in [
         "backgroundMediaList",
@@ -840,7 +873,32 @@ async def post_blog(request: Request, ndcId: int = 0):
         mediaList=data.get("mediaList"),
         extensions=useful_extensions,
     )
-
+    if "durationInDays" in data:
+        blog_data["pollDuration"] = data["durationInDays"]
+        blog_data["pollTimestamp"] = int(timestamp() * 1000)
+    if "polloptList" in data:
+        blog_data["pollOptions"] = [
+            {
+                "type": 0,
+                "status": 0,
+                "title": item["title"],
+                "mediaList": MediaList.List(item.get("mediaList", [])),
+                "voted": [],
+            }
+            for item in data["polloptList"]
+        ]
+    if "props" in extensions:
+        blog_data["props"] = [
+            {
+                "title": item["title"],
+                "type": item["type"]
+                if item["type"]
+                in ["text", "levelStar", "date", "levelCost", "levelHeart"]
+                else "text",
+                "value": item["value"],
+            }
+            for item in extensions["props"]
+        ]
     table = db.get(f"x{ndcId}", "Blogs")
     await table.insert_one(blog_data)
 

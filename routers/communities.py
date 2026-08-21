@@ -22,6 +22,8 @@ from helpers.adminWS import send_ws_message as send_admin_ws
 from helpers.adminWS import ApiBroadcastType
 from services.store import StoreService
 from objects.types import UserRole
+from objects.types.store import StoreItemType
+from helpers.store import _iso
 
 communities = APIRouter()
 communities.route_class = CachableRoute
@@ -1075,9 +1077,6 @@ async def count_user_active_time(request: Request, ndcId: int = 0):
     return Base.Answer({}, spent_time=timestamp() - t1)
 
 
-
-
-
 # ----stickers
 
 """
@@ -1088,13 +1087,79 @@ my-favorite-collection
 my-collection
 """
 
+
+async def _shape_collection(db, doc: dict, ndcId: int, includeStickers: bool) -> dict:
+    doc = dict(doc)
+    doc.pop("_id", None)
+
+    sticker_list = doc.get("stickerList", [])
+    for sticker in sticker_list:
+        sticker.pop("_id", None)
+
+    doc["stickerList"] = sticker_list if includeStickers else []
+
+    author = None
+    creator_id = doc.get("creatorId")
+    if not doc.get("availableNdcIds", []):
+        doc["availableNdcIds"] = [ndcId]
+    if creator_id:
+        author_doc = await db.get("x0", table="Users").find_one(
+            {"id": creator_id}, projection={"_id": 0}
+        )
+        if author_doc:
+            author = User.GetUserInfo(author_doc, ndcId=ndcId)
+
+    doc["author"] = author
+    return doc
+
+
+async def _is_owned(db, uid: str, collectionId: str) -> dict | None:
+    return await db.get(table="UserStoreItems").find_one(
+        {
+            "uid": uid,
+            "objectType": StoreItemType.StickerCollection,
+            "objectId": collectionId,
+        }
+    )
+
+
+async def _grant_ownership(
+    db, uid: str, collectionId: str, isActivated: bool = True
+) -> None:
+    owned = db.get(table="UserStoreItems")
+    existing = await owned.find_one(
+        {
+            "uid": uid,
+            "objectType": StoreItemType.StickerCollection,
+            "objectId": collectionId,
+        }
+    )
+    if existing:
+        return
+
+    await owned.insert_one(
+        {
+            "uid": uid,
+            "objectId": collectionId,
+            "objectType": StoreItemType.StickerCollection,
+            "isActivated": isActivated,
+            "ownershipInfo": {
+                "createdTime": _iso(),
+                "expiredTime": None,
+                "isAutoRenew": False,
+                "ownershipStatus": 1,
+            },
+            "createdTime": _iso(),
+        }
+    )
+
+
 @communities.post("/g/s/sticker-collection/creatable-check")
 @communities.post("/x{ndcId}/s/sticker-collection/creatable-check")
 async def sticker_creatable_check(
     request: Request,
     ndcId: int = 0,
 ):
-
     t1 = timestamp()
 
     if not request.state.session["validsession"]:
@@ -1104,54 +1169,29 @@ async def sticker_creatable_check(
 
     trigger_uid = request.state.session.get("uid")
     db = await Database().init()
-    sensitive_table = db.get(table="Users")
-    ndc_table = db.get(database=f"x{ndcId}", table="Users")
+    try:
+        sensitive_table = db.get(table="Users")
+        g_user = await sensitive_table.find_one({"id": trigger_uid})
 
-    g_user = await sensitive_table.find_one({"id": trigger_uid})
-    ndc_user = await ndc_table.find_one({"id": trigger_uid})
-    if ndcId == 0:
-        if not g_user or not UserRole.is_global_staff(g_user.get("role", 0)):
-            return Errors.NotEnoughRights(
-                spent_time=timestamp() - t1, lang=request.state.lang
-            )
-    """
-    else:
-        if not g_user and not UserRole.is_global_staff(g_user.get("role", 0)):
-            if not ndc_user or not UserRole.is_local_staff(ndc_user.get("role", 0)):
+        if ndcId == 0:
+            if not g_user or not UserRole.is_global_staff(g_user.get("role", 0)):
                 return Errors.NotEnoughRights(
                     spent_time=timestamp() - t1, lang=request.state.lang
                 )
-                
-    """
 
-    try:
-        body = await request.json()
-    except Exception:
-        return Errors.InvalidRequest(
-            spent_time=timestamp() - t1, lang=request.state.lang
-        )
+        try:
+            body = await request.json()
+        except Exception:
+            return Errors.InvalidRequest(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
 
-    _timestamp = body.get("timestamp")
-    collectionType = body.get("collectionType")
+        _timestamp = body.get("timestamp")
+        collectionType = body.get("collectionType")
+    finally:
+        db.close()
 
     return Base.Answer(spent_time=timestamp() - t1)
-
-
-
-def _shape_collection(doc: dict, includeStickers: bool) -> dict:
-    doc = dict(doc)
-    doc.pop("_id", None)
-
-    sticker_list = doc.get("stickerList", [])
-    for sticker in sticker_list:
-        sticker.pop("_id", None)
-
-    if not includeStickers:
-        doc["stickerList"] = []
-    else:
-        doc["stickerList"] = sticker_list
-
-    return doc
 
 
 @communities.get("/g/s/sticker-collection/{collectionId}")
@@ -1171,27 +1211,19 @@ async def get_sticker_collection(
 
     db = await Database().init()
     try:
-        table = db.get(f"x{ndcId}", "StickerCollections")
+        table = db.get(table="StickerCollections")
         doc = await table.find_one({"collectionId": collectionId})
+
+        if not doc:
+            return Errors.DataNotExist(
+                spent_time=timestamp() - t1, lang=request.state.lang
+            )
+
+        collection = await _shape_collection(db, doc, ndcId, includeStickers)
     finally:
         db.close()
 
-    if not doc:
-        return Errors.DataNotExist(spent_time=timestamp() - t1, lang=request.state.lang)
-
-    collection = _shape_collection(doc, includeStickers)
-
-    return Base.Answer(
-        {"stickerCollection": collection}, spent_time=timestamp() - t1
-    )
-
-async def _collect_from_communities(db, ndc_ids: list[int], query: dict, includeStickers: bool):
-    items = []
-    for ndc_id in ndc_ids:
-        table = db.get(f"x{ndc_id}", "StickerCollections")
-        async for doc in table.find(query).sort([("createdTime", -1)]):
-            items.append(_shape_collection(doc, includeStickers))
-    return items
+    return Base.Answer({"stickerCollection": collection}, spent_time=timestamp() - t1)
 
 
 @communities.get("/g/s/sticker-collection")
@@ -1217,59 +1249,43 @@ async def sticker_collections(
 
     db = await Database().init()
     try:
-        if type in ("my-collection", "my-favorite-collection", "my-active-collection"):
-            sensitive_table = db.get(table="Users")
-            user = await sensitive_table.find_one(
-                {"id": trigger_uid}, projection={"communityList": 1, "_id": 0}
+        table = db.get(table="StickerCollections")
+
+        if type in ("my-active-collection", "my-favorite-collection"):
+            owned_query = {
+                "uid": trigger_uid,
+                "objectType": StoreItemType.StickerCollection,
+            }
+            if type == "my-active-collection":
+                owned_query["isActivated"] = True
+
+            owned_docs = (
+                await db.get(table="UserStoreItems")
+                .find(owned_query, {"_id": 0, "objectId": 1})
+                .to_list(length=None)
             )
-            ndc_ids = [i for i in (user or {}).get("communityList", []) if i]
+            owned_ids = [d["objectId"] for d in owned_docs]
 
-            if type == "my-collection":
-                query = {"status": 0, "uid": trigger_uid}
+            query = {"status": 0, "collectionId": {"$in": owned_ids}}
 
-            elif type == "my-active-collection":
-                query = {"status": 0, "uid": trigger_uid, "isActivated": True}
+        elif type == "my-collection":
+            query = {"status": 0, "creatorId": trigger_uid}
 
-            else:  # my-favorite-collection
-                fav_ids = set()
-                for ndc_id in ndc_ids:
-                    ndc_user = await db.get(f"x{ndc_id}", "Users").find_one(
-                        {"id": trigger_uid},
-                        projection={"favoriteCollectionList": 1, "_id": 0},
-                    )
-                    if ndc_user and ndc_user.get("favoriteCollectionList"):
-                        fav_ids.update(ndc_user["favoriteCollectionList"])
-                query = {"status": 0, "collectionId": {"$in": list(fav_ids)}}
-
-            if stoptime:
-                query["createdTime"] = {"$lt": stoptime}
-
-            all_items = await _collect_from_communities(
-                db, ndc_ids, query, includeStickers
-            )
-            all_items.sort(key=lambda x: x.get("createdTime") or "", reverse=True)
-            total = len(all_items)
-            items = all_items[start : start + size]
+        elif type == "community-shared":
+            query = {"status": 0, "isShared": True, "ndcId": ndcId}
 
         else:
-            if type == "community-shared":
-                query = {"status": 0, "isShared": True}
-            else:
-                query = {"status": 0}
+            query = {"status": 0, "ndcId": ndcId}
 
-            if stoptime:
-                query["createdTime"] = {"$lt": stoptime}
+        if stoptime:
+            query["createdTime"] = {"$lt": stoptime}
 
-            table = db.get(f"x{ndcId}", "StickerCollections")
-            total = await table.count_documents(query)
-            items = []
-            async for doc in (
-                table.find(query)
-                .sort([("createdTime", -1)])
-                .skip(start)
-                .limit(size)
-            ):
-                items.append(_shape_collection(doc, includeStickers))
+        total = await table.count_documents(query)
+        items = []
+        async for doc in (
+            table.find(query).sort([("createdTime", -1)]).skip(start).limit(size)
+        ):
+            items.append(await _shape_collection(db, doc, ndcId, includeStickers))
     finally:
         db.close()
 
@@ -1277,6 +1293,7 @@ async def sticker_collections(
         {"stickerCollectionCount": total, "stickerCollectionList": items},
         spent_time=timestamp() - t1,
     )
+
 
 @communities.post("/g/s/sticker-collection")
 @communities.post("/x{ndcId}/s/sticker-collection")
@@ -1375,8 +1392,8 @@ async def create_sticker_collection(
 
     collection = {
         "collectionId": collection_id,
-        "communityId": ndcId,
-        "uid": trigger_uid,
+        "ndcId": ndcId,
+        "creatorId": trigger_uid,
         "name": collection_name.strip()
         if isinstance(collection_name, str)
         else "Sticker Collection Fallback Name",
@@ -1388,21 +1405,16 @@ async def create_sticker_collection(
         "stickersCount": len(prepared_stickers),
         "usedCount": 0,
         "status": 0,
-        "isActivated": True,
-        "ownershipStatus": 1,
-        "isNew": True,
+        "isShared": False,
         "availableNdcIds": [ndcId] if ndcId else [],
         "extensions": {"iconSourceStickerId": icon_sticker["stickerId"]},
-        "restrictionInfo": {
-            "discountStatus": 0,
-            "discountValue": 0,
-            "ownerUid": trigger_uid,
-            "ownerType": 0,
-            "restrictType": None,
-            "restrictValue": None,
-            "availableDuration": None,
-        },
-        "author": None,
+        "discountStatus": 0,
+        "discountValue": 0,
+        "ownerType": 0,
+        "restrictType": 1,
+        "price": 0,
+        "restrictValue": None,
+        "availableDuration": 0,
         "stickerList": prepared_stickers,
         "createdTime": now,
         "modifiedTime": now,
@@ -1410,24 +1422,17 @@ async def create_sticker_collection(
 
     db = await Database().init()
     try:
-        table = db.get(f"x{ndcId}", "StickerCollections")
+        table = db.get(table="StickerCollections")
         await table.insert_one(dict(collection))
 
-        ndc_users_table = db.get(f"x{ndcId}", "Users")
-        await ndc_users_table.update_one(
-            {"id": trigger_uid},
-            {"$addToSet": {"myCollectionList": collection_id}},
-        )
+        # автор сразу владеет и активирует собственный пак
+        await _grant_ownership(db, trigger_uid, collection_id, isActivated=True)
+
+        result = await _shape_collection(db, collection, ndcId, includeStickers=True)
     finally:
         db.close()
 
-    collection.pop("_id", None)
-
-    return Base.Answer(
-        {"stickerCollection": collection}, spent_time=timestamp() - t1
-    )
-
-
+    return Base.Answer({"stickerCollection": result}, spent_time=timestamp() - t1)
 
 
 @communities.post("/g/s/sticker-collection/{collectionId}")
@@ -1455,7 +1460,7 @@ async def edit_sticker_collection(
 
     db = await Database().init()
     try:
-        table = db.get(f"x{ndcId}", "StickerCollections")
+        table = db.get(table="StickerCollections")
         doc = await table.find_one({"collectionId": collectionId})
 
         if not doc:
@@ -1463,7 +1468,7 @@ async def edit_sticker_collection(
                 spent_time=timestamp() - t1, lang=request.state.lang
             )
 
-        is_owner = doc.get("uid") == trigger_uid
+        is_owner = doc.get("creatorId") == trigger_uid
         is_allowed = is_owner
 
         if not is_allowed:
@@ -1618,14 +1623,11 @@ async def edit_sticker_collection(
 
         await table.update_one({"collectionId": collectionId}, {"$set": set_ops})
         updated = await table.find_one({"collectionId": collectionId})
+        collection = await _shape_collection(db, updated, ndcId, includeStickers=True)
     finally:
         db.close()
 
-    collection = _shape_collection(updated, includeStickers=True)
-
-    return Base.Answer(
-        {"stickerCollection": collection}, spent_time=timestamp() - t1
-    )
+    return Base.Answer({"stickerCollection": collection}, spent_time=timestamp() - t1)
 
 
 @communities.delete("/g/s/sticker-collection/{collectionId}")
@@ -1646,7 +1648,7 @@ async def delete_sticker_collection(
 
     db = await Database().init()
     try:
-        table = db.get(f"x{ndcId}", "StickerCollections")
+        table = db.get(table="StickerCollections")
         doc = await table.find_one({"collectionId": collectionId})
 
         if not doc:
@@ -1654,7 +1656,7 @@ async def delete_sticker_collection(
                 spent_time=timestamp() - t1, lang=request.state.lang
             )
 
-        is_owner = doc.get("uid") == trigger_uid
+        is_owner = doc.get("creatorId") == trigger_uid
         is_allowed = is_owner
 
         if not is_allowed:
@@ -1670,17 +1672,14 @@ async def delete_sticker_collection(
 
         await table.delete_one({"collectionId": collectionId})
 
-        ndc_users_table = db.get(f"x{ndcId}", "Users")
-        await ndc_users_table.update_one(
-            {"id": doc.get("uid")},
-            {"$pull": {"myCollectionList": collectionId}},
+        # чистим владение у всех, кто добавил себе этот пак
+        await db.get(table="UserStoreItems").delete_many(
+            {"objectType": StoreItemType.StickerCollection, "objectId": collectionId}
         )
     finally:
         db.close()
 
     return Base.Answer(spent_time=timestamp() - t1)
-
-
 
 
 @communities.post("/g/s/sticker-collection/{collectionId}/activate")
@@ -1717,7 +1716,7 @@ async def _set_collection_activation(
 
     db = await Database().init()
     try:
-        table = db.get(f"x{ndcId}", "StickerCollections")
+        table = db.get(table="StickerCollections")
         doc = await table.find_one({"collectionId": collectionId})
 
         if not doc:
@@ -1725,35 +1724,35 @@ async def _set_collection_activation(
                 spent_time=timestamp() - t1, lang=request.state.lang
             )
 
-        is_owner = doc.get("uid") == trigger_uid
-        is_allowed = is_owner
+        owned = db.get(table="UserStoreItems")
+        existing = await owned.find_one(
+            {
+                "uid": trigger_uid,
+                "objectType": StoreItemType.StickerCollection,
+                "objectId": collectionId,
+            }
+        )
 
-        if not is_allowed:
-            sensitive_table = db.get(table="Users")
-            global_user = await sensitive_table.find_one({"id": trigger_uid})
-            if global_user and UserRole.is_global_staff(global_user.get("role", 0)):
-                is_allowed = True
-
-        if not is_allowed:
-            return Errors.NotEnoughRights(
+        if existing:
+            await owned.update_one(
+                {
+                    "uid": trigger_uid,
+                    "objectType": StoreItemType.StickerCollection,
+                    "objectId": collectionId,
+                },
+                {"$set": {"isActivated": activate}},
+            )
+        elif activate:
+            # юзер жмёт "активировать" на паке, которого у него ещё нет —
+            # трактуем как "добавить себе и включить" (аналог purchase для free-item)
+            await _grant_ownership(db, trigger_uid, collectionId, isActivated=True)
+        else:
+            return Errors.InvalidRequest(
                 spent_time=timestamp() - t1, lang=request.state.lang
             )
 
-        await table.update_one(
-            {"collectionId": collectionId},
-            {
-                "$set": {
-                    "isActivated": activate,
-                    "modifiedTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                }
-            },
-        )
-        updated = await table.find_one({"collectionId": collectionId})
+        collection = await _shape_collection(db, doc, ndcId, includeStickers=True)
     finally:
         db.close()
 
-    collection = _shape_collection(updated, includeStickers=True)
-
-    return Base.Answer(
-        {"stickerCollection": collection}, spent_time=timestamp() - t1
-    )
+    return Base.Answer({"stickerCollection": collection}, spent_time=timestamp() - t1)

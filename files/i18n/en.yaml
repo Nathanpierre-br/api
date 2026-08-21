@@ -118,6 +118,10 @@ mod:
             action: User banned
         unban:
             action: User unbanned
+        feature:
+            action: Blog featured
+        unfeature:
+            action: Blog unfeatured
         copyright:
             action: Copyright infringement
             title: Your content was removed due copyright infringement!        

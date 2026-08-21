@@ -1094,17 +1094,19 @@ async def send_message(request: Request, chatId: str, ndcId: int = 0):
             extensions.update(Chat.InternalSticker(data["stickerId"][2:]))
             data["mediaType"] = 113
             mediaLink = f"ndcsticker://{data['stickerId']}"
-        elif is_valid_uuid4(data["stickerId"]):
-            # should be a custom sticker, but since we dont implemented it still...
-            # [NOTE]: please implement it normally
+        # elif is_valid_uuid4(data["stickerId"]):
+        # should be a custom sticker, but since we dont implemented it still...
+        # [NOTE]: please implement it normally
+        else:
             extensions.update(Chat.InternalSticker(data["stickerId"]))
             data["mediaType"] = 113
             mediaLink = f"ndcsticker://{data['stickerId']}"
+        """        
         else:
             print("invalid stickerId:", data["stickerId"])
             return Errors.InvalidRequest(
                 spent_time=timestamp() - t1, lang=request.state.lang
-            )
+            )"""
 
     messageId = str(uuid4())
     xndc_users = db.get(f"x{ndcId}", "Users")

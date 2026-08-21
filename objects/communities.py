@@ -16,25 +16,25 @@ this is top tier bullshit
 
 RANKING_TABLE = [
     {"id": "1", "level": 1, "reputation": 0, "title": "Level 1"},
-    {"id": "2", "level": 2, "reputation": 20, "title": "Level 2"},
-    {"id": "3", "level": 3, "reputation": 70, "title": "Level 3"},
-    {"id": "4", "level": 4, "reputation": 170, "title": "Level 4"},
-    {"id": "5", "level": 5, "reputation": 320, "title": "Level 5"},
-    {"id": "6", "level": 6, "reputation": 535, "title": "Level 6"},
-    {"id": "7", "level": 7, "reputation": 835, "title": "Level 7"},
-    {"id": "8", "level": 8, "reputation": 1235, "title": "Level 8"},
-    {"id": "9", "level": 9, "reputation": 1750, "title": "Level 9"},
-    {"id": "10", "level": 10, "reputation": 2400, "title": "Level 10"},
-    {"id": "11", "level": 11, "reputation": 3200, "title": "Level 11"},
-    {"id": "12", "level": 12, "reputation": 4200, "title": "Level 12"},
-    {"id": "13", "level": 13, "reputation": 5400, "title": "Level 13"},
-    {"id": "14", "level": 14, "reputation": 6800, "title": "Level 14"},
-    {"id": "15", "level": 15, "reputation": 8500, "title": "Level 15"},
-    {"id": "16", "level": 16, "reputation": 10500, "title": "Level 16"},
-    {"id": "17", "level": 17, "reputation": 12800, "title": "Level 17"},
-    {"id": "18", "level": 18, "reputation": 15500, "title": "Level 18"},
-    {"id": "19", "level": 19, "reputation": 18700, "title": "Level 19"},
-    {"id": "20", "level": 20, "reputation": 22500, "title": "Level 20"},
+    {"id": "2", "level": 2, "reputation": 5, "title": "Level 2"},
+    {"id": "3", "level": 3, "reputation": 10, "title": "Level 3"},
+    {"id": "4", "level": 4, "reputation": 25, "title": "Level 4"},
+    {"id": "5", "level": 5, "reputation": 50, "title": "Level 5"},
+    {"id": "6", "level": 6, "reputation": 100, "title": "Level 6"},
+    {"id": "7", "level": 7, "reputation": 200, "title": "Level 7"},
+    {"id": "8", "level": 8, "reputation": 500, "title": "Level 8"},
+    {"id": "9", "level": 9, "reputation": 1000, "title": "Level 9"},
+    {"id": "10", "level": 10, "reputation": 2000, "title": "Level 10"},
+    {"id": "11", "level": 11, "reputation": 3000, "title": "Level 11"},
+    {"id": "12", "level": 12, "reputation": 5000, "title": "Level 12"},
+    {"id": "13", "level": 13, "reputation": 7000, "title": "Level 13"},
+    {"id": "14", "level": 14, "reputation": 10000, "title": "Level 14"},
+    {"id": "15", "level": 15, "reputation": 20000, "title": "Level 15"},
+    {"id": "16", "level": 16, "reputation": 40000, "title": "Level 16"},
+    {"id": "17", "level": 17, "reputation": 60000, "title": "Level 17"},
+    {"id": "18", "level": 18, "reputation": 100000, "title": "Level 18"},
+    {"id": "19", "level": 19, "reputation": 250000, "title": "Level 19"},
+    {"id": "20", "level": 20, "reputation": 500000, "title": "Level 20"},
 ]
 
 
@@ -44,7 +44,7 @@ MODULE_DEFAULTS = {
     "ranking": True,
     "leaderboard": False,
     "featured": True,
-    "catalog": False,
+    "catalog": True,
     "sharedFolder": False,
     "influencer": False,
     "topicCategories": False,
@@ -228,9 +228,9 @@ def _build_appearance(conf: dict) -> dict:
                     "sidepanelTopNav",
                     [
                         {"id": "guidelines"},
-                        {"id": "featured-default"},
                         {"id": "chat-default"},
                         {"id": "chat-public-chats"},
+                        {"id": "catalog-default"},
                     ],
                 ),
                 "level2": conf.get("sidepanelBottomNav", []),
@@ -368,6 +368,7 @@ class Communities:
         poll_mod = mods.get("poll", {})
         image_mod = mods.get("image", {})
         question_mod = mods.get("question", {})
+        catalog_mod = mods.get("catalog", {})
 
         av = chat_mod.get("avChat", {}) if isinstance(chat_mod, dict) else {}
 
@@ -425,6 +426,7 @@ class Communities:
                             "poll": Communities.ModuleInfo(poll_mod),
                             "image": Communities.ModuleInfo(image_mod),
                             "question": Communities.ModuleInfo(question_mod),
+                            "catalogEntry": Communities.ModuleInfo(catalog_mod),
                         },
                     },
                     "chat": {

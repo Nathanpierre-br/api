@@ -1063,6 +1063,8 @@ async def get_user_info(uid: str, request: Request, ndcId: int = 0):
             set(global_row.get("tagList", []) + row2.get("tagList", []))
         )
 
+        row2["isPaidSubscriber"] = global_row.get("isPaidSubscriber", False)
+
         if "isTeamMember" in global_row:
             row2["isTeamMember"] = global_row["isTeamMember"]
 

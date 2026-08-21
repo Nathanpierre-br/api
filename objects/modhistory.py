@@ -19,8 +19,10 @@ def _get_right_op_name(data: dict, lang: str):
         267: "mod.op.warn.action",
         207: "mod.op.titles-change.action",
         102: "mod.op.msg-delete.action",
+        114: "mod.op.feature.action",
+        116: "mod.op.unfeature.action",
     }
-    key = mapmen.get(op, "mod.op.unknown.action")
+    key = mapmen.get(op, f"mod.op.{op}.action")
     return i18n.get(key, lang)
 
 

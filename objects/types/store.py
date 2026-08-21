@@ -24,7 +24,7 @@ class StoreItemType:
     TYPE_INFO = {
         AvatarFrame: ("AvatarFrames", "frameId"),
         ChatBubble: ("ChatBubbles", "bubbleId"),
-        StickerCollection: ("StickerCollections", "??"),  # ??
+        StickerCollection: ("StickerCollections", "collectionId"),  # ??
     }
 
 

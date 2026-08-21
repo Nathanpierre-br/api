@@ -52,6 +52,7 @@ class User:
             "uid": row["id"],
             "modifiedTime": row.get("modifiedTime"),
             "createdTime": row["createdTime"],
+            "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "twitterID": None,
             "googleID": None,
             "appleID": None,
@@ -206,7 +207,7 @@ class User:
             "tagList": row.get("tagList", []),
             "mediaList": MediaList.List(row.get("mediaList", [])),
             "icon": None if row["icon"] == "" else row["icon"],
-            "accountMembershipStatus": int(row.get("isPaidSubscriber")),
+            "accountMembershipStatus": int(row.get("isPaidSubscriber", 0)),
             "ndcId": ndcId,  # 0 is global
             "isGlobal": ndcId == 0,
             "reputation": 0 if ndcId == 0 else row["reputation"],
