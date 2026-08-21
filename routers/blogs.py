@@ -218,6 +218,7 @@ async def get_latest_blog_posts(
 async def get_blogs(
     request: Request,
     q: Union[str, None] = None,
+    uid: str | None = None,
     ndcId: int = 0,
     size: int = 25,
     pageToken: str | None = None,
@@ -232,16 +233,18 @@ async def get_blogs(
     table = db.get(f"x{ndcId}", "Blogs")
 
     is_wiki = request.url.path.endswith("/item")
-    query = {"blogType": 2 if is_wiki else 0}
-    # /api/v1/x1/s/blog?size=25&q=de838eb4-312c-4ba0-9d81-9aad3fc984e1&pagingType=t&type=user
-    if q:
-        raw_q = q.strip()
-        if type == "user" and re_match(
+    query = {}
+    if is_wiki:
+        query["blogType"] = 2
+
+    if q or uid:
+        raw_q = q.strip() if q else uid.strip()
+        if type in ["user", "user-all"] and re_match(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
             raw_q,
             REGEX_IGNORECASE_FLAG,
         ):
-            query = {"authorId": raw_q}
+            query["authorId"] = raw_q
         else:
             query["title"] = {"$regex": regex_escape(raw_q), "$options": "i"}
 
@@ -347,13 +350,13 @@ async def get_blog(
     table = db.get(f"x{ndcId}", "Blogs")
 
     blog = await table.find_one({"id": blogId})
-    answ_key = "item" if blog["blogType"] == 2 else "blog"
     if blog:
         blog_info = await Blog.Info(
             blog, db, ndcId=ndcId, trigger_uid=request.state.session.get("uid")
         )
         db.close()
 
+        answ_key = "item" if blog["blogType"] == 2 else "blog"
         return Base.Answer(
             {answ_key: blog_info},
             spent_time=timestamp() - t1,
@@ -848,7 +851,7 @@ async def post_blog(request: Request, ndcId: int = 0):
             db.close()
             return Errors.NotEnoughRights(timestamp() - t1, lang=request.state.lang)
 
-    style = extensions.get("style", {})
+    style = extensions.get("style", {}) or {}
     useful_extensions = {
         "commentAllowance": extensions.get("privilegeOfCommentOnPost", 1),
         "style": {},
@@ -905,7 +908,8 @@ async def post_blog(request: Request, ndcId: int = 0):
     blog_info = await Blog.Info(blog_data, db, ndcId=ndcId, trigger_uid=trigger_uid)
 
     db.close()
-    return Base.Answer({"blog": blog_info}, spent_time=timestamp() - t1)
+    key = "item" if blog_type == 2 else "blog"
+    return Base.Answer({key: blog_info}, spent_time=timestamp() - t1)
 
 
 # delete comment from blog
