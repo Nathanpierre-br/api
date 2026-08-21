@@ -24,7 +24,12 @@ class MediaList:
                 raise Exception("External links are not allowed ")
             return [100, item, None, None, None, None]
         elif isinstance(item, list):
-            mediaType, url, desc, tag = item[:4]
+            mediaType, url, desc = item[:3]
+            try:
+                tag = item[3]
+            except Exception:
+                tag = None
+
             if not isinstance(mediaType, int) or not isinstance(url, str):
                 raise Exception("Invalid data held in MediaList item")
 
