@@ -1096,6 +1096,7 @@ async def get_blog_comment_voters(
 
 @blog_methods.post("/x{ndcId}/s/blog/{blogId}/tipping")
 @blog_methods.post("/g/s/blog/{blogId}/tipping")
+@turtlelimiter(limit=5, period=TurtleTime.minute, tag="tip")
 async def tip_blog(request: Request, blogId: str, ndcId: int = 0):
     t1 = timestamp()
     if not request.state.session["validsession"]:
