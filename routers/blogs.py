@@ -838,17 +838,6 @@ async def post_blog(request: Request, ndcId: int = 0):
     data = await request.json()
     try:
         is_wiki = request.url.path.endswith("/item")
-        if is_wiki:
-            raise Exception()
-
-        """
-        блять. выключать вот так статьи, если проблема в объекте а не в бд,
-        УПО ЧТОБЫ НИКТО НЕ ЗАПОСТИЛ СУКА ЧТОБЫ ЛЕНТА НЕ УПАЛА
-        НУ БЛЯТЬ КАКОЙ СУКА НАХУЙ ИДИОТИЗМ
-        И ВЕДЬ ЗАСТАВИЛИ СДЕЛАТЬ ЭТО ЕБЛАНСТВО
-        я рот ебал этого приложения, какого хуя на айос всё нормально, НО НА ЕБУЧЕМ ВЕДРЕ ВСЕ ЧЕРЕЗ ЖОПУ
-        АААААААААААААААААА
-        """
         blog_type = 2 if is_wiki else data["type"]
         title = data["label"] if is_wiki else data["title"]
         content = data["content"]
