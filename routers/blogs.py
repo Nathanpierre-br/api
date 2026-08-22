@@ -24,6 +24,23 @@ blog_methods = APIRouter()
 blog_methods.route_class = CachableRoute
 
 
+def _wrap_wiki_for_blog_feed(item):
+    item_id = item.get("itemId")
+    if not item_id:
+        return item
+
+    ref_object = dict(item)
+    wrapper = dict(item)
+    wrapper.pop("itemId", None)
+    wrapper.pop("label", None)
+    wrapper["blogId"] = item_id
+    wrapper["type"] = 1
+    wrapper["refObjectId"] = item_id
+    wrapper["refObjectType"] = 2
+    wrapper["refObject"] = ref_object
+    return wrapper
+
+
 @blog_methods.get("/x{ndcId}/s/feed/blog-recommended")
 async def get_recommended_blogs(request: Request, ndcId: int):
     # mock for now
@@ -154,6 +171,7 @@ async def get_featured_more(
         )
         for item in blogs
     ]
+    blogList = [_wrap_wiki_for_blog_feed(item) for item in blogList]
 
     db.close()
     return Base.Answer(
@@ -201,6 +219,7 @@ async def get_latest_blog_posts(
         )
         for item in blogs
     ]
+    blogList = [_wrap_wiki_for_blog_feed(item) for item in blogList]
 
     db.close()
     return Base.Answer(
@@ -262,6 +281,8 @@ async def get_blogs(
         )
         for item in blogs
     ]
+    if not is_wiki:
+        blogList = [_wrap_wiki_for_blog_feed(item) for item in blogList]
 
     key_name = "itemList" if is_wiki else "blogList"
 
