@@ -26,10 +26,20 @@ class DeviceProcessor:
 
         did_keys = DeviceProcessor.did_keys
         device_id = device_id.upper()
-        prefix, identifier, mac = device_id[:2], device_id[:-40], device_id[-40:]
+        
+        if len(device_id) == 70:
+            prefix, identifier, mac = device_id[:2], device_id[2:-40], device_id[-40:]
+            data_to_sign = identifier.encode("utf-8")
+        elif len(device_id) == 82:
+            prefix, identifier, mac = device_id[:2], device_id[2:-40], device_id[-40:]
+            data_to_sign = bytes.fromhex(identifier)
+        else:
+            return False
+
         if prefix not in did_keys.keys():
             return False
 
         dev_key = did_keys[prefix]
-        calculated_mac = new(dev_key, bytes.fromhex(identifier), sha1).hexdigest()
+        calculated_mac = new(dev_key, data_to_sign, sha1).hexdigest()
         return mac.upper() == calculated_mac.upper()
+
